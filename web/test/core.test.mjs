@@ -100,3 +100,41 @@ test('parking_sim_ideal_reverse_lands_in_slot', () => {
   while (sim.bodyCenter(p).y < 0) p = sim.step(p, 0, -0.5, 0.01);
   assert.equal(sim.parkState(p, { cx: 0, cy: 0 }).ok, true);
 });
+
+// ── 주행 시뮬레이션(평가·강습 모드 콘셉트) ──
+import * as Sim from '../sim.js';
+const run = (sim, sec, fn) => { for (let i = 0; i < sec * 50; i++) { fn?.(sim, i / 50); sim.step(0.02); } };
+test('sim_harsh_start_is_detected_and_scored', () => {
+  const s = new Sim.DriveSim(); s.npcs = [];
+  run(s, 2, (x) => { x.input.accel = 1; });
+  assert.ok(s.events.some((e) => e.code === 'HARSH_START'));
+  assert.ok(s.report().score < 100);
+});
+test('sim_gentle_start_is_not_penalized', () => {
+  const s = new Sim.DriveSim(); s.npcs = [];
+  run(s, 6, (x) => { x.input.accel = 0.4; });
+  assert.equal(s.events.filter((e) => e.pts > 0).length, 0);
+});
+test('sim_unsafe_lane_change_without_signal', () => {
+  const s = new Sim.DriveSim(); s.npcs = [{ id: 9, s: -3, x: 3.5, v: 16, vd: 16 }];
+  s.ego.v = 14; s.input.accel = 0.3;
+  run(s, 3, (x) => { x.input.steer = 300; x.npcs[0].s = x.ego.s - 6; });
+  const codes = s.events.map((e) => e.code);
+  assert.ok(codes.includes('NO_SIGNAL')); assert.ok(codes.includes('UNSAFE_CUT'));
+});
+test('sim_coach_stop_brings_car_to_halt_without_penalty', () => {
+  const s = new Sim.DriveSim(); s.npcs = []; s.ego.v = 14;
+  s.requestStop(true);
+  run(s, 6, (x) => { x.input.accel = 1; });
+  assert.equal(s.ego.v, 0);
+  assert.equal(s.events.filter((e) => e.pts > 0).length, 0);
+});
+test('sim_speed_cap_holds', () => {
+  const s = new Sim.DriveSim({ cap: 40 }); s.npcs = [];
+  run(s, 30, (x) => { x.input.accel = 0.5; });
+  assert.ok(s.ego.v * 3.6 <= 41);
+});
+test('sim_strong_lka_keeps_lane_better_than_off', () => {
+  const drift = (lka) => { const s = new Sim.DriveSim({ lka }); s.npcs = []; s.ego.v = 15; run(s, 10, (x) => { x.input.accel = 0.15; x.input.steer = 20; }); return s.report().laneKeepPct; };
+  assert.ok(drift('strong') > drift('off'));
+});

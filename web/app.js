@@ -1,6 +1,7 @@
 // 치일까봐 웹 프로토타입 — 화면·모의 차량·흐름
 import * as C from './core.js';
 import { mascot, icon, badgeArt, drivingViewArt } from './art.js';
+import * as SIM from './sim.js';
 
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -14,7 +15,7 @@ const now = () => (clockMs = Math.max(clockMs + 1, Date.now()));
 // ── 저장(기기 내, localStorage) ──────────────────────────────
 const STORE_KEY = 'chiilkkabwa.web.v1';
 const blankHistory = () => ({
-  alias: '나', sound: true, largeText: false, introSeen: false,
+  alias: '나', mode: 'practice', simReports: [], sound: true, largeText: false, introSeen: false,
   missionResults: [], parkingSimCompleted: 0, pactsMade: 0, reviewsSaved: 0, graduated: false, mentorSessions: 0,
   badges: [], reviews: [], lastNextGoal: null, pedalStds: [], firstAt: null,
 });
@@ -24,6 +25,10 @@ function loadHistory() {
 }
 function saveHistory() { try { localStorage.setItem(STORE_KEY, JSON.stringify(H)); } catch (e) { /* 무시 */ } }
 let H = loadHistory();
+// 모드: practice(연습 — 공개 SDK 범위) / eval(평가 — 가상) / coach(강습 — 제조사 협업 가정 · 가상)
+let appMode = ['practice', 'eval', 'coach'].includes(H.mode) ? H.mode : 'practice';
+let sim = null; let simReport = null;
+let simSettings = { ...SIM.PRESETS.growing, preset: 'growing' };
 
 // ── 모의 차량 ────────────────────────────────────────────────
 const SIGNALS = {
@@ -37,6 +42,7 @@ const SIGNALS = {
   wiperOn: { label: '와이퍼', init: false },
   lowBeamOn: { label: '전조등', init: false },
   steeringDeg: { label: '핸들 각도', init: -90 },
+  accelPedalPct: { label: '가속 페달', init: 0 },
   passengerOccupied: { label: '조수석 착석', init: false },
   tripDistanceKm: { label: '트립 거리', init: 1204.3 },
   tripTimeSec: { label: '트립 시간', init: 0 },
@@ -82,7 +88,7 @@ let lastGate = null;
 
 function newPrep() {
   return {
-    step: 'goal', goal: null, mode: null, missions: [], missionIdx: 0,
+    step: appMode === 'practice' ? 'goal' : 'simSetup', goal: null, mode: null, missions: [], missionIdx: 0,
     pacts: [], doneIds: [], parkingDone: false, pedalMetric: null,
   };
 }
@@ -242,6 +248,7 @@ function beginJudge(judge) {
 }
 /** 목표에 따라 단계 순서를 바꾼다: '주차'가 걱정이면 가상 주차를 페달보다 먼저(연습 전 5분 안에 핵심부터) */
 function stepOrder(p) {
+  if (appMode !== 'practice') return ['simSetup'];
   const base = p?.goal === '주차' ? ['goal', 'mission', 'parking', 'pedal', 'pact', 'go'] : ['goal', 'mission', 'pedal', 'parking', 'pact', 'go'];
   return p?.mode === 'solo' ? base.filter((x) => x !== 'pact') : base;
 }
@@ -630,9 +637,9 @@ Screens.lock = () => ({
   mount(el) {
     el.innerHTML = `<div class="screen lock">
       <div class="lock-ico">${mascot('rest', 120)}</div>
-      <p class="lock-tag">연습 중</p>
+      <p class="lock-tag">${appMode === 'eval' ? '평가 중' : '연습 중'}</p>
       <h1>화면은 잠시 쉴게요.<br>도로만 보세요.</h1>
-      <p class="sub">주차하면 오늘 연습을 함께 돌아봐요.</p>
+      <p class="sub">${appMode === 'eval' ? '센서(가상)가 상황을 기록하고 있어요. 주차하면 점수와 상황별 조언을 보여 줘요.' : '주차하면 오늘 연습을 함께 돌아봐요.'}</p>
     </div>`;
   },
 });
@@ -715,6 +722,8 @@ function historyHtml() {
     }).join('')}</div>
     <h3>살살 밟기 — 내 기록 비교 <small>흔들림(작을수록 부드러움)</small></h3>
     ${stds.length ? `<div class="bars">${stds.map((s, i) => `<div class="bar"><i style="height:${(s.std / maxStd) * 100}%"></i><b>${s.std.toFixed(1)}</b><small>${i === stds.length - 1 ? '최근' : `${stds.length - 1 - i}회 전`}</small></div>`).join('')}</div>` : '<p class="muted">아직 기록이 없어요. 페달 감각 미션을 해 보면 여기에 쌓여요.</p>'}
+    ${(H.simReports || []).length ? `<h3>가상 주행 점수 기록 <small>평가·강습 모드 · 가상 시뮬레이션</small></h3>
+      <div class="bars">${H.simReports.slice(0, 8).reverse().map((r) => `<div class="bar"><i style="height:${Math.max(4, r.score)}%"></i><b>${r.score}</b><small>${r.mode === 'eval' ? '평가' : '강습'}</small></div>`).join('')}</div>` : ''}
     <h3>최근 복기</h3>
     ${H.reviews.length ? `<ul class="rev-list">${H.reviews.slice(0, 5).map((r) => `<li><span>${new Date(r.at).toLocaleDateString('ko-KR')}</span><b>${esc(r.goal || '연습')}</b><span>${r.summary ? `${r.summary.durationMin}분` : ''}</span><span class="muted">${esc(r.learner || '')}</span><span>다음: ${esc(r.next || '-')}</span></li>`).join('')}</ul>` : '<p class="muted">주차 후 복기를 저장하면 여기에 쌓여요.</p>'}`;
 }
@@ -746,6 +755,7 @@ function introHtml() {
       <li>콘솔 맨 위 <b>‘다음 조작’</b>을 따라가면 전체 흐름을 볼 수 있어요: 안전 확인 → 목표 → 워밍업 → 페달 → 가상 주차 → 약속 → 주행 중 잠금 → 주차 후 복기.</li>
       <li>워밍업은 <b>시작한 뒤 새로 한 조작</b>만 인정해요. 이미 매고 있던 벨트는 풀었다 다시 매야 해요.</li>
       <li>기어를 D로 옮기면 화면이 조용히 잠겨요. 속도 0 → 기어 P → 주차 브레이크를 걸면 복기가 열려요.</li>
+      <li>맨 위 <b>모드</b>에서 <b>평가</b>(가상 도로 주행 → 센서 기반 점수·상황별 조언)와 <b>강습</b>(조수석 강습자가 정지 요청·최고 속도·주행보조를 조절하는 콘셉트)을 고를 수 있어요. 두 모드는 <b>가상 시뮬레이션 · 제조사 협업 가정</b>이에요.</li>
     </ol>
     <p class="caption">모든 신호는 <span class="src-chip src-MOCK">모의</span>예요. 차량 에뮬레이터·실차 신호 연결은 Android 앱에서 해요.</p>
     <div class="actions two">${btn('introDemo', `${icon('console', 22)} 자동 시연 보기(약 1분)`, 'secondary big')}${btn('introOk', '직접 해 보기', 'primary big')}</div>`;
@@ -774,10 +784,11 @@ let mounted = { key: null, screen: null };
 function screenKey() {
   switch (session.phase) {
     case C.Phase.CHECKING: case C.Phase.READY: return 'gate';
-    case C.Phase.DRIVING_LOCK: return 'lock';
-    case C.Phase.REVIEW: return 'review';
+    case C.Phase.DRIVING_LOCK: return appMode === 'coach' && sim ? 'coach' : 'lock';
+    case C.Phase.REVIEW: return appMode !== 'practice' && simReport ? 'report' : 'review';
     case C.Phase.PREPARING:
-      if (session.lockReason) return 'paused';
+      // 출발 직전(주차 브레이크를 푸는 게 다음 행동)에는 멈춤 화면으로 바꾸지 않는다
+      if (session.lockReason && !(session.lockReason === 'PARKING_BRAKE_OFF' && ['go', 'simSetup'].includes(prep.step))) return 'paused';
       if (prep.step === 'mission') return `mission:${prep.missionIdx}`;
       return prep.step;
     default: return 'gate';
@@ -806,8 +817,9 @@ let chromeKey = '';
 function renderChrome() {
   const s = snapshot();
   const ph = session.phase;
-  const pill = { CHECKING: '확인 중', READY: '정차 중', PREPARING: '정차 중 · 연습 준비', DRIVING_LOCK: '주행 중', REVIEW: '주차 후 복기' }[ph];
-  const k = [ph, prep?.step, prep?.mode, H.alias, overlay].join('|');
+  const modeName = { practice: '연습', eval: '평가', coach: '강습' }[appMode];
+  const pill = { CHECKING: '확인 중', READY: '정차 중', PREPARING: `정차 중 · ${modeName} 준비`, DRIVING_LOCK: `주행 중${appMode === 'practice' ? '' : ` · ${modeName}`}`, REVIEW: appMode === 'practice' ? '주차 후 복기' : '주행 리포트' }[ph];
+  const k = [ph, prep?.step, prep?.mode, H.alias, overlay, appMode].join('|');
   document.body.dataset.phase = ph;
   if (k !== chromeKey) {
     chromeKey = k;
@@ -815,7 +827,7 @@ function renderChrome() {
     $('#phasePill').dataset.phase = ph;
     $('#aliasLabel').textContent = H.alias;
     const st = $('#stepper');
-    if (ph === C.Phase.PREPARING && prep) {
+    if (ph === C.Phase.PREPARING && prep && appMode === 'practice') {
       const names = Object.fromEntries(STEPS);
       const list = stepOrder(prep).map((id) => [id, names[id]]);
       const cur = list.findIndex(([id]) => id === prep.step);
@@ -843,15 +855,18 @@ function syncConsole() {
   setSwitch('#c-pb', V.parkingBrakeOn.value); setSwitch('#c-belt', V.driverBeltBuckled.value); setSwitch('#c-wiper', V.wiperOn.value);
   setSwitch('#c-beam', V.lowBeamOn.value); setSwitch('#c-pass', V.passengerOccupied.value); setSwitch('#c-fast', timeScale > 1);
   $('#v-belt').textContent = V.driverBeltBuckled.value ? '체결' : '미체결';
-  const sp = $('#c-speed'); sp.value = V.speedKmh.value; sp.disabled = V.gear.value === 'P' || V.gear.value === 'N';
+  const sp = $('#c-speed'); sp.value = V.speedKmh.value; sp.disabled = appMode !== 'practice' || V.gear.value === 'P' || V.gear.value === 'N';
   $('#v-speed').textContent = Math.round(V.speedKmh.value);
+  $('#speedNote').textContent = appMode !== 'practice' ? '(가상 주행: 페달로 조절)' : '(기어 D·R에서만)';
   $('#speedNote').hidden = !sp.disabled;
+  $('#c-accel').value = V.accelPedalPct.value; $('#v-accel').textContent = Math.round(V.accelPedalPct.value);
   $('#c-brake').value = V.brakePedalPct.value; $('#v-brake').textContent = Math.round(V.brakePedalPct.value); $('#v-brakeP').textContent = V.brakePressed.value ? '밟음' : '뗌';
   $('#c-steer').value = V.steeringDeg.value; $('#v-steer').textContent = Math.abs(V.steeringDeg.value);
   $('#v-steerDir').textContent = V.steeringDeg.value > 0 ? '오른쪽' : V.steeringDeg.value < 0 ? '왼쪽' : '가운데';
 }
 function bindConsole() {
   $$('#c-gear button').forEach((b) => (b.onclick = () => {
+    if (sim && simRunning() && sim.ego.v > 0.4 && (b.dataset.v === 'P' || b.dataset.v === 'R')) { flashNote('차가 완전히 멈춘 다음 옮길 수 있어요'); return; }
     setV('gear', b.dataset.v, { onlyIfChanged: true });
     if (b.dataset.v === 'P' || b.dataset.v === 'N') { setV('speedKmh', 0); setV('uxRestricted', false, { onlyIfChanged: true }); }
     syncConsole(); tick();
@@ -891,7 +906,7 @@ function bindConsole() {
   $('#sheetHandle').onclick = () => toggleSheet(false);
 }
 
-const GUIDE_TARGETS = ['r-gear', 'r-pb', 'r-speed', 'r-fast', 'r-belt', 'r-brake', 'r-turn', 'r-wiper', 'r-beam', 'r-steer', 'r-pass'];
+const GUIDE_TARGETS = ['r-accel', 'r-gear', 'r-pb', 'r-speed', 'r-fast', 'r-belt', 'r-brake', 'r-turn', 'r-wiper', 'r-beam', 'r-steer', 'r-pass'];
 let guideKey = '';
 function guide(s) {
   if (booting) return ['차량 신호를 받는 중이에요…', null];
@@ -905,6 +920,7 @@ function guide(s) {
     return [blocked ? '‘예외 재현’에서 신호 상태를 <b>정상</b>으로 되돌리면 잠금이 풀려요.' : '기어 P와 주차 브레이크를 확인해 주세요.', blocked ? null : 'r-gear'];
   }
   if (ph === C.Phase.READY) return ['앱 화면에서 <b>[연습 시작]</b>을 눌러요.', null];
+  if (appMode !== 'practice') { const g = simGuide(); if (g) return g; }
   if (ph === C.Phase.DRIVING_LOCK) {
     if (V.speedKmh.value === 0 && V.gear.value !== 'P') {
       return session.tripStart && (V.tripTimeSec.value - (session.tripStart.tripTimeSec ?? 0)) > 60
@@ -982,6 +998,13 @@ function tick() {
 function onPhaseChange(from, to) {
   if (to === C.Phase.DRIVING_LOCK) { overlay = null; $('#toasts').innerHTML = ''; toastBusy = false; review = null; }
   if (to === C.Phase.REVIEW) review = null;
+  if (appMode !== 'practice' && to === C.Phase.DRIVING_LOCK && Math.abs(V.steeringDeg.value) > 5) { setSteer(0); flashNote('핸들을 가운데로 맞추고 출발해요'); }
+  if (appMode !== 'practice' && to === C.Phase.DRIVING_LOCK) { sim = new SIM.DriveSim(appMode === 'eval' ? { lka: 'off', acc: false, cap: null } : { ...simSettings }, (Date.now() % 997) + 1); simReport = null; }
+  if (appMode !== 'practice' && from === C.Phase.DRIVING_LOCK && to === C.Phase.REVIEW && sim) {
+    simReport = sim.report();
+    H.simReports = [{ at: Date.now(), mode: appMode, score: simReport.score, laneKeepPct: simReport.laneKeepPct, dur: simReport.durationSec }, ...(H.simReports || [])].slice(0, 20);
+    saveHistory();
+  }
   if (from === C.Phase.PREPARING && to === C.Phase.DRIVING_LOCK) judgeState = null;
 }
 function flashNote(t) {
@@ -1011,6 +1034,7 @@ function stopDemo(msg) {
 }
 async function startDemo() {
   if (demo.running) return;
+  if (appMode !== 'practice') return startSimDemo();
   if (session.phase !== C.Phase.CHECKING && session.phase !== C.Phase.READY) { location.href = `${location.pathname}?demo=1`; return; }
   demo.running = true; const tk = ++demo.token;
   $('#demoBtn').textContent = '시연 멈추기';
@@ -1077,6 +1101,342 @@ async function startDemo() {
 // 사람이 콘솔을 직접 만지면 시연을 멈춘다
 $('#console').addEventListener('pointerdown', (e) => { if (demo.running && e.isTrusted) stopDemo('콘솔을 만져서 멈췄어요'); }, true);
 
+
+// ══ 평가 모드 · 강습 모드(가상 시뮬레이션) ══════════════════════════════
+const simRunning = () => !!sim && session.phase === C.Phase.DRIVING_LOCK;
+const fmtT = (sec) => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`;
+const VIRTUAL_CHIP = (coach) => `<span class="tag virtual">${coach ? '가상 시뮬레이션 · 제조사 협업 가정' : '가상 시뮬레이션'}</span>`;
+
+function simGuide() {
+  const ph = session.phase;
+  if (ph === C.Phase.PREPARING && !session.lockReason) {
+    if (V.parkingBrakeOn.value) return ['설정을 확인하고 <b>주차 브레이크</b>를 풀어요.', 'r-pb'];
+    if (V.gear.value !== 'D') return ['기어를 <b>D</b>로 옮겨 가상 도로로 나가요.', 'r-gear'];
+  }
+  if (ph === C.Phase.DRIVING_LOCK && sim) {
+    const e = sim.ego;
+    if (V.gear.value !== 'D' && e.v < 0.3) return V.gear.value === 'P' ? ['<b>주차 브레이크</b>를 걸면 주행 리포트가 열려요.', 'r-pb'] : ['기어를 <b>D</b>로(달리기) 또는 <b>P</b>로(끝내기).', 'r-gear'];
+    if (sim.stopReq) return ['강습자가 <b>정지 요청</b>을 했어요. 앱(조수석 패널)에서 해제하면 다시 달려요.', null];
+    if (e.v < 0.5 && sim.t < 4) return ['<b>가속 페달</b>을 살살(30~50%) 밟아 출발해요 · 키보드 <b>↑</b>', 'r-accel'];
+    if (sim.t < 14) return ['차로 가운데를 지켜요. 핸들은 작게 — 키보드 <b>← →</b>', 'r-steer'];
+    if (sim.t < 30) return ['옆 차가 끼어들 수 있어요. 앞차와 <b>2초 거리</b>를 두세요(↓ 브레이크).', 'r-brake'];
+    if (sim.t < 50) return ['<b>방향지시등</b>을 켜고 핸들로 옆 차로로 옮겨 보세요. 뒤차 간격은 후방 센서가 봐요.', 'r-turn'];
+    return ['끝내려면 <b>브레이크</b>로 멈춘 뒤 기어 P + 주차 브레이크.', e.v > 0.3 ? 'r-brake' : 'r-gear'];
+  }
+  if (ph === C.Phase.REVIEW && simReport) return ['앱에서 <b>점수와 상황별 조언</b>을 확인해요.', null];
+  return null;
+}
+
+// ── 준비 화면 ──
+Screens.simSetup = () => ({
+  mount(el) {
+    const coach = appMode === 'coach';
+    const rows = Object.values(SIM.EVENTS).filter((x) => x.pts > 0).sort((a, b) => b.pts - a.pts);
+    el.innerHTML = `<div class="screen sim-setup">
+      <div class="hero"><div class="hero-m">${mascot(coach ? 'calm' : 'happy', 92)}</div><div>
+        <div class="tag-row">${VIRTUAL_CHIP(coach)}</div>
+        <h1>${coach ? '강습 모드 — 강습자가 함께 타는 차' : '평가 모드 — 가상 도로 주행'}</h1>
+        <p class="sub">${coach ? '주행 중 오른쪽 화면은 <b>조수석 강습자 패널</b>이 돼요. 정지 요청, 최고 속도 제한, 주행보조 강도를 강습자가 정해요.' : '전후방·측방 센서(가상)가 급출발·급제동·차선 유지·끼어들기·안전거리·속도를 기록해요. 주차하면 점수와 상황별 조언을 보여 줘요.'}</p>
+      </div></div>
+      ${coach ? `<section class="panel"><h2>상황별 주행보조 추천</h2><div class="preset-grid" id="presets"></div></section>
+      <section class="panel" id="coachDetail"></section>` : `<section class="panel"><h2>이럴 때 점수가 깎여요</h2><div class="rule-grid">${rows.map((r) => `<div class="rule"><b>−${r.pts}</b><span>${r.title}</span>${r.sensor ? `<em>${{ front: '전방', rear: '후방', side: '측방' }[r.sensor]} 센서</em>` : ''}</div>`).join('')}</div>
+        <p class="caption">보조 장치는 모두 끈 상태로 평가해요. 잘한 차로 변경·끼어들기 대응은 ‘잘함’으로 따로 남겨요.</p></section>`}
+      <div class="banner info">${icon('info', 22)}<span>출발: 주차 브레이크 풀기 → 기어 D → 가속 페달(콘솔 또는 키보드 ↑). 끝: 멈춤 → P → 주차 브레이크</span></div>
+      <p class="caption">화면 속 가상 시뮬레이션이에요. 실제 차량을 제어하지 않고, 실제 운전 실력 평가가 아니에요.${coach ? ' 정지 요청·속도 제한은 제조사 협업을 가정한 콘셉트예요.' : ''}</p>
+    </div>`;
+    if (coach) this.drawCoach();
+  },
+  drawCoach() {
+    $('#presets').innerHTML = Object.entries(SIM.PRESETS).map(([k, p]) => `<button type="button" class="preset${simSettings.preset === k ? ' on' : ''}" data-k="${k}"><b>${p.label}</b><small>${p.desc}</small></button>`).join('');
+    $$('#presets .preset').forEach((b) => (b.onclick = () => { simSettings = { ...SIM.PRESETS[b.dataset.k], preset: b.dataset.k }; chime('click'); this.drawCoach(); }));
+    $('#coachDetail').innerHTML = coachControls(simSettings, false);
+    bindCoachControls($('#coachDetail'), simSettings, () => { simSettings.preset = null; this.drawCoach(); });
+  },
+});
+
+function coachControls(st, live) {
+  const seg = (name, opts, cur) => `<div class="seg big" data-name="${name}">${opts.map(([v, l]) => `<button type="button" data-v="${v}" aria-checked="${String(cur) === String(v)}">${l}</button>`).join('')}</div>`;
+  return `<div class="cc-row"><span>최고 속도 제한</span>${seg('cap', [['null', '끔'], [30, '30'], [40, '40'], [50, '50'], [60, '60']], st.cap)}</div>
+    <div class="cc-row"><span>차선 유지 보조</span>${seg('lka', [['off', '끄기'], ['normal', '보통'], ['strong', '강하게']], st.lka)}</div>
+    <div class="cc-row"><span>크루즈(앞차 따라가기)</span>${seg('acc', [['false', '끔'], ['true', '켬']], st.acc)}${st.acc ? seg('accSet', [[30, '30'], [40, '40'], [50, '50'], [60, '60']], st.accSet) : ''}</div>
+    ${live ? '' : '<p class="caption">km/h · 강습자가 주행 중에도 바꿀 수 있어요</p>'}`;
+}
+function bindCoachControls(root, st, after) {
+  $$('.seg[data-name] button', root).forEach((b) => (b.onclick = () => {
+    const name = b.parentElement.dataset.name; const v = b.dataset.v;
+    st[name] = name === 'lka' ? v : v === 'null' ? null : v === 'true' ? true : v === 'false' ? false : +v;
+    chime('click'); after?.();
+  }));
+}
+
+// ── 주행 중: 조수석 강습자 패널(강습 모드) ──
+Screens.coach = () => ({
+  mount(el) {
+    el.innerHTML = `<div class="screen coach">
+      <div class="coach-head"><span class="lock-tag soft">조수석 강습자 패널</span>${VIRTUAL_CHIP(true)}</div>
+      <button type="button" class="stop-btn" id="stopBtn"></button>
+      <div class="coach-live" id="coachLive"></div>
+      <section class="panel" id="coachCtl"></section>
+      <section class="panel"><h2>센서가 본 상황 <small>최근</small></h2><ul class="ev-list" id="coachEv"></ul></section>
+      <p class="caption">운전석 화면은 주행 중 조용히 쉬어요. 이 패널은 조수석 쪽 화면을 가정했어요.</p>
+    </div>`;
+    $('#stopBtn').onclick = () => { if (!sim) return; sim.requestStop(!sim.stopReq); chime('click'); this.update(true); };
+    this.drawCtl(); this.evN = -1;
+  },
+  drawCtl() {
+    if (!sim) return;
+    $('#coachCtl').innerHTML = `<h2>주행보조 · 속도</h2>${coachControls(sim.settings, true)}`;
+    bindCoachControls($('#coachCtl'), sim.settings, () => this.drawCtl());
+  },
+  update(force) {
+    if (!sim) return;
+    const b = $('#stopBtn');
+    const k = sim.stopReq ? 'on' : 'off';
+    if (force || b.dataset.k !== k) {
+      b.dataset.k = k;
+      b.innerHTML = sim.stopReq ? `${icon('reset', 30)}<span><b>정지 해제</b><small>${sim.ego.v > 0.2 ? '멈추는 중…' : '멈췄어요. 해제하면 다시 달릴 수 있어요'}</small></span>` : `<i class="stop-ico"></i><span><b>정지 요청</b><small>누르면 차가 부드럽게 멈춰요(가상)</small></span>`;
+    }
+    const sn = sim.sensors();
+    $('#coachLive').innerHTML = `<div><b>${Math.round(sim.ego.v * 3.6)}</b><small>km/h${sim.settings.cap ? ` · 최고 ${sim.settings.cap}` : ''}</small></div>
+      <div><b>${Number.isFinite(sn.front) ? Math.round(sn.front) + 'm' : '—'}</b><small>앞차 거리${sim.ego.v > 3 && Number.isFinite(sn.front) ? ` · ${(sn.front / sim.ego.v).toFixed(1)}초` : ''}</small></div>
+      <div><b>${['왼쪽', '가운데', '오른쪽'][sim.laneOf(sim.ego.x) + 1]}</b><small>차로</small></div>
+      <div><b>${Math.max(0, 100 - sim.penalty)}</b><small>현재 점수(가상)</small></div>`;
+    if (this.evN !== sim.events.length) {
+      this.evN = sim.events.length;
+      $('#coachEv').innerHTML = sim.events.slice(-5).reverse().map(evItem).join('') || '<li class="muted">아직 없어요</li>';
+    }
+  },
+});
+
+function evItem(e) {
+  const sensor = e.sensor ? `<em class="sens">${{ front: '전방', rear: '후방', side: '측방' }[e.sensor]} 센서</em>` : '';
+  const tag = e.pts > 0 ? `<b class="pts bad">−${e.pts}</b>` : e.good ? '<b class="pts good">잘함</b>' : '<b class="pts info">기록</b>';
+  return `<li class="${e.pts > 0 ? 'bad' : e.good ? 'good' : 'info'}"><span class="t">${fmtT(e.t)}</span>${tag}<div><b>${e.title}</b> ${sensor}<small>${e.kmh}km/h · ${e.advice}</small></div></li>`;
+}
+
+// ── 주행 리포트 ──
+Screens.report = () => ({
+  mount(el) {
+    const r = simReport; const prev = (H.simReports || [])[1];
+    const coach = appMode === 'coach';
+    const grade = r.score >= 90 ? '아주 안정적이었어요' : r.score >= 75 ? '안정적이었어요. 몇 가지만 다듬어요' : r.score >= 50 ? '다음엔 아래 두 가지만 신경 써요' : '천천히, 거리 넉넉히부터 다시 해요';
+    el.innerHTML = `<div class="screen report">
+      <div class="report-top">
+        <div class="score-ring" style="--p:${r.score / 100}"><div><b>${r.score}</b><small>/100</small></div></div>
+        <div class="report-sum">
+          <div class="tag-row">${VIRTUAL_CHIP(coach)}<span class="tag soft">${coach ? '강습 모드' : '평가 모드'}</span></div>
+          <h1>${grade}</h1>
+          <p class="sub">${prev ? `지난번 ${prev.score}점 → 오늘 ${r.score}점 ${r.score > prev.score ? '— 늘었어요!' : r.score === prev.score ? '— 그대로예요' : ''}` : '첫 가상 주행 기록이에요'}</p>
+          <div class="stat-row">
+            <div><b>${fmtT(r.durationSec)}</b><small>주행 시간</small></div>
+            <div><b>${r.distanceKm.toFixed(2)}km</b><small>거리</small></div>
+            <div><b>${r.laneKeepPct ?? '—'}${r.laneKeepPct != null ? '%' : ''}</b><small>차로 가운데 유지</small></div>
+            <div><b>${r.maxKmh}</b><small>최고 km/h</small></div>
+          </div>
+        </div>
+      </div>
+      <section class="cat-grid">${r.cats.map((c) => `<div class="cat ${c.minus ? 'bad' : 'ok'}">${icon(c.icon, 26)}<b>${c.name}</b>
+        <span>${c.minus ? `−${c.minus}점 · ${c.bad}번` : '깔끔했어요'}${c.good ? ` · 잘함 ${c.good}` : ''}</span>
+        ${c.key === 'lane' && r.laneKeepPct != null ? `<div class="holdbar"><i style="width:${r.laneKeepPct}%"></i></div>` : ''}</div>`).join('')}</section>
+      ${r.advice.length ? `<section class="panel advice"><h2>다음엔 이것만</h2>${r.advice.map((a, i) => `<p><b>${i + 1}.</b> ${a.advice} <small>(${a.title})</small></p>`).join('')}</section>` : ''}
+      <section class="panel"><h2>상황별 기록 <small>${r.events.length}건 · 시간순</small></h2>
+        <ul class="ev-list">${r.events.map(evItem).join('') || '<li class="muted">기록된 상황이 없어요. 짧게 달렸거나 아주 안정적이었어요.</li>'}</ul></section>
+      <div class="actions two">
+        ${btn('histBtn', `${icon('star', 22)} 점수 기록 보기`, 'secondary big')}
+        ${btn('againBtn', '다시 달려 보기', 'primary big')}
+      </div>
+      <p class="caption">가상 시뮬레이션 점수예요. 실제 운전 실력 평가나 면허 기준이 아니에요.</p>
+    </div>`;
+    $('#againBtn').onclick = () => { session = C.onReviewDone(session); prep = newPrep(); simReport = null; sim = null; render(); };
+    $('#histBtn').onclick = () => openOverlay('history');
+  },
+});
+
+// ── 왼쪽 운전석 화면: 가상 도로 ──
+let previewSim = null;
+function drawSimView() {
+  const cv = $('#simCanvas'); if (!cv || appMode === 'practice') return;
+  const box = cv.parentElement.getBoundingClientRect(); const dpr = devicePixelRatio || 1;
+  if (cv.width !== Math.round(box.width * dpr) || cv.height !== Math.round(box.height * dpr)) { cv.width = Math.round(box.width * dpr); cv.height = Math.round(box.height * dpr); }
+  const W = cv.width, Hh = cv.height; if (!W || !Hh) return;
+  const ctx = cv.getContext('2d');
+  const sv = sim || (previewSim ||= new SIM.DriveSim({ ...simSettings }));
+  const e = sv.ego; const ppm = Math.min(W / 13.5, Hh / 24);
+  const egoY = Hh * 0.68; const X = (x) => W / 2 + x * ppm; const Y = (sw) => egoY - (sw - e.s) * ppm;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = '#0D1319'; ctx.fillRect(0, 0, W, Hh);
+  // 길가 나무(스크롤 감)
+  ctx.fillStyle = '#14202A';
+  for (let k = Math.floor((e.s - 40) / 12); k < (e.s + 120) / 12; k++) { const y = Y(k * 12); for (const side of [-1, 1]) { ctx.beginPath(); ctx.arc(X(side * (6.6 + ((k * 7) % 3) * 0.4)), y, ppm * 0.9, 0, Math.PI * 2); ctx.fill(); } }
+  ctx.fillStyle = '#1D2630'; ctx.fillRect(X(-5.25), 0, 10.5 * ppm, Hh);
+  ctx.strokeStyle = '#D8DEE6'; ctx.lineWidth = Math.max(2, ppm * 0.15);
+  for (const x of [-5.25, 5.25]) { ctx.beginPath(); ctx.moveTo(X(x), 0); ctx.lineTo(X(x), Hh); ctx.stroke(); }
+  ctx.setLineDash([3 * ppm, 6 * ppm]); ctx.lineDashOffset = -((e.s * ppm) % (9 * ppm));
+  for (const x of [-1.75, 1.75]) { ctx.beginPath(); ctx.moveTo(X(x), 0); ctx.lineTo(X(x), Hh); ctx.stroke(); }
+  ctx.setLineDash([]);
+  // 센서 범위
+  const sn = sv.sensors(); const hot = sv.flash && sv.t < sv.flash.until ? sv.flash.sensor : null;
+  const warnF = Number.isFinite(sn.front) && e.v > 2 && sn.front < e.v * 1.2 + 4;
+  const cone = (dir, len, sensor) => {
+    const y0 = dir > 0 ? Y(e.s + SIM.CAR_L / 2) : Y(e.s - SIM.CAR_L / 2); const y1 = dir > 0 ? Y(e.s + len) : Y(e.s - len);
+    const g = ctx.createLinearGradient(0, y0, 0, y1);
+    const col = hot === sensor ? '235,87,87' : sensor === 'front' && warnF ? '242,153,74' : '47,128,237';
+    g.addColorStop(0, `rgba(${col},.32)`); g.addColorStop(1, `rgba(${col},0)`);
+    ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(X(e.x - 0.7), y0); ctx.lineTo(X(e.x + 0.7), y0); ctx.lineTo(X(e.x + 1.9), y1); ctx.lineTo(X(e.x - 1.9), y1); ctx.closePath(); ctx.fill();
+  };
+  cone(1, 45, 'front'); cone(-1, 22, 'rear');
+  for (const side of [-1, 1]) {
+    const busy = side < 0 ? sn.left : sn.right; const col = hot === 'side' || busy ? 'rgba(242,153,74,.28)' : 'rgba(47,128,237,.10)';
+    ctx.fillStyle = col; ctx.fillRect(X(e.x + side * 1.1 + (side < 0 ? -2.6 : 0)), Y(e.s + 4), 2.6 * ppm, 10 * ppm);
+  }
+  // 다른 차
+  for (const n of sv.npcs) { const y = Y(n.s); if (y < -60 || y > Hh + 60) continue; carTop(ctx, X(n.x), y, ppm, n.cutter && sv.t - (sv.cutIn.at || 0) < 8 ? '#F2994A' : '#5B6878', false); }
+  carTop(ctx, X(e.x), Y(e.s), ppm, sv.stopReq ? '#C2453F' : '#2F80ED', true, sv.input.signal, sv.t);
+  // 거리 표시
+  if (Number.isFinite(sn.front) && sn.front < 45) { ctx.fillStyle = warnF ? '#F2994A' : '#A9CBFA'; ctx.font = `700 ${Math.max(11, ppm * 0.9)}px Pretendard Variable, sans-serif`; ctx.textAlign = 'center'; ctx.fillText(`${Math.round(sn.front)}m`, X(e.x), Y(e.s + SIM.CAR_L / 2 + sn.front / 2)); }
+  // HUD
+  const hud = $('#simHud');
+  const last = sv.events[sv.events.length - 1];
+  const recent = last && sv.t - last.t < 2.6 ? last : null;
+  const hk = [sv.settings.cap, sv.settings.lka, sv.settings.acc, sv.settings.accSet, sv.stopReq, recent?.t, appMode].join('|');
+  if (hud.dataset.k !== hk) {
+    hud.dataset.k = hk;
+    hud.innerHTML = `<div class="hud-top"><span class="limit">${SIM.ROAD_LIMIT_KMH}</span>
+      ${appMode === 'coach' ? `${sv.settings.cap ? `<span class="hchip cap">최고 ${sv.settings.cap}</span>` : ''}
+      <span class="hchip ${sv.settings.lka !== 'off' ? 'on' : ''}">차선 보조 ${{ off: '끔', normal: '보통', strong: '강' }[sv.settings.lka]}</span>
+      <span class="hchip ${sv.settings.acc ? 'on' : ''}">크루즈 ${sv.settings.acc ? sv.settings.accSet : '끔'}</span>` : '<span class="hchip">평가 중 · 보조 끔</span>'}</div>
+      ${sv.stopReq ? '<div class="hud-stop">강습자 정지 요청 — 천천히 멈춰요</div>' : ''}
+      ${recent ? `<div class="hud-ev ${recent.pts > 0 ? 'bad' : recent.good ? 'good' : ''}">${recent.sensor ? `${{ front: '전방', rear: '후방', side: '측방' }[recent.sensor]} 센서 · ` : ''}${recent.title}${recent.pts ? ` −${recent.pts}` : ''}</div>` : ''}`;
+  }
+}
+function carTop(ctx, cx, cy, ppm, color, ego, signal, t) {
+  const w = SIM.CAR_W * ppm, l = SIM.CAR_L * ppm, r = 0.35 * ppm;
+  ctx.fillStyle = color; roundRect(ctx, cx - w / 2, cy - l / 2, w, l, r); ctx.fill();
+  ctx.fillStyle = ego ? '#123A6B' : '#2E3946'; roundRect(ctx, cx - w / 2 + 0.2 * ppm, cy - l / 2 + l * 0.22, w - 0.4 * ppm, l * 0.17, 0.12 * ppm); ctx.fill();
+  roundRect(ctx, cx - w / 2 + 0.25 * ppm, cy + l / 2 - l * 0.24, w - 0.5 * ppm, l * 0.1, 0.1 * ppm); ctx.fill();
+  if (ego) {
+    ctx.fillStyle = '#FFF4C2'; ctx.fillRect(cx - w / 2 + 0.15 * ppm, cy - l / 2, 0.4 * ppm, 0.1 * ppm); ctx.fillRect(cx + w / 2 - 0.55 * ppm, cy - l / 2, 0.4 * ppm, 0.1 * ppm);
+    if (signal && signal !== 'NONE' && Math.floor((t || 0) * 2.5) % 2 === 0) { ctx.fillStyle = '#F2C94C'; const sx = signal === 'LEFT' ? cx - w / 2 - 0.15 * ppm : cx + w / 2 - 0.15 * ppm; ctx.fillRect(sx, cy - l / 2 + 0.1 * ppm, 0.3 * ppm, 0.5 * ppm); ctx.fillRect(sx, cy + l / 2 - 0.6 * ppm, 0.3 * ppm, 0.5 * ppm); }
+  }
+}
+
+// 시뮬레이션 루프(부드러운 화면용 — 신호 판정은 기존 tick이 그대로 한다)
+let simLast = performance.now();
+const keysDown = new Set();
+function simLoop(t) {
+  const dt = Math.min(0.06, (t - simLast) / 1000); simLast = t;
+  if (simRunning()) {
+    sim.input.accel = V.accelPedalPct.value / 100; sim.input.brake = V.brakePedalPct.value / 100;
+    sim.input.steer = V.steeringDeg.value; sim.input.signal = V.turnSignal.value; sim.input.gear = V.gear.value;
+    if (V.gear.value === 'P') sim.ego.v = 0;
+    const n = Math.max(1, Math.round(dt / 0.02)); for (let i = 0; i < n; i++) sim.step(dt / n);
+    const kmh = Math.round(sim.ego.v * 3.6);
+    if (kmh !== V.speedKmh.value) setV('speedKmh', kmh);
+    setV('uxRestricted', sim.ego.v > 0.3, { onlyIfChanged: true });
+    if (V.gear.value !== 'P') setV('tripDistanceKm', +(V.tripDistanceKm.value + (sim.ego.v * dt) / 1000).toFixed(4));
+    $('#v-speed').textContent = kmh; $('#c-speed').value = kmh;
+  }
+  if (appMode !== 'practice') drawSimView();
+  requestAnimationFrame(simLoop);
+}
+requestAnimationFrame(simLoop);
+
+// 키보드 운전(가상 주행 중): ↑ 가속 · ↓ 브레이크 · ←→ 핸들 · 스페이스 = 강습자 정지(강습 모드)
+function keyDrive(e) {
+  if (!simRunning() || overlay || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName || '')) return;
+  const down = e.type === 'keydown';
+  const map = { ArrowUp: 1, ArrowDown: 1, ArrowLeft: 1, ArrowRight: 1 };
+  if (e.key === ' ' && down && appMode === 'coach') { e.preventDefault(); sim.requestStop(!sim.stopReq); return; }
+  if (!map[e.key]) return;
+  e.preventDefault();
+  if (down) keysDown.add(e.key); else keysDown.delete(e.key);
+  setAccel(keysDown.has('ArrowUp') ? 45 : 0);
+  setBrake(keysDown.has('ArrowDown') ? 55 : 0);
+  setSteer(keysDown.has('ArrowLeft') ? -110 : keysDown.has('ArrowRight') ? 110 : 0);
+}
+addEventListener('keydown', keyDrive); addEventListener('keyup', keyDrive);
+function setAccel(v) { setV('accelPedalPct', clamp(v, 0, 100)); syncConsole(); }
+
+// ── 모드 전환 ──
+function setMode(m) {
+  if (m === appMode) return;
+  if (session.phase === C.Phase.DRIVING_LOCK || session.phase === C.Phase.REVIEW) { flashNote('주차하고 리포트를 닫은 다음 바꿀 수 있어요'); return; }
+  appMode = m; H.mode = m; saveHistory();
+  sim = null; simReport = null; previewSim = null; judgeState = null;
+  if (session.phase === C.Phase.PREPARING) prep = newPrep();
+  applyMode(); render();
+}
+function applyMode() {
+  document.body.dataset.mode = appMode;
+  $$('#modeSeg button').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.v === appMode)));
+  $('#simGroup').hidden = appMode === 'practice';
+  $('#r-fast').hidden = appMode !== 'practice';
+  $('#dvCaption').innerHTML = appMode === 'practice' ? '시스템 Driving view<br><small>앱이 가리지 않는 자리</small>' : `운전석 화면 · 가상 도로<br><small>${appMode === 'coach' ? '강습 모드(제조사 협업 가정)' : '평가 모드'} · 가상 센서</small>`;
+  chromeKey = ''; guideKey = '';
+  syncConsole();
+}
+
+// ── 자동 시연(평가·강습 모드) ──
+async function startSimDemo() {
+  if (session.phase !== C.Phase.CHECKING && session.phase !== C.Phase.READY) { location.href = `${location.pathname}?demo=1`; return; }
+  demo.running = true; const tk = ++demo.token; $('#demoBtn').textContent = '시연 멈추기';
+  const alive = () => demo.running && demo.token === tk;
+  const step = async (label, ms = 700) => { if (!alive()) throw new Error('stop'); demoBanner(label); await sleep(ms); if (!alive()) throw new Error('stop'); };
+  const click = (sel) => { const el = $(sel); if (el && !el.disabled) el.click(); };
+  const waitFor = async (cond, max = 30000) => { const t0 = performance.now(); while (!cond()) { if (performance.now() - t0 > max || !alive()) throw new Error('stop'); await sleep(60); } };
+  const ramp = async (fn, from, to, ms) => { const t0 = performance.now(); for (;;) { const k = Math.min(1, (performance.now() - t0) / ms); fn(from + (to - from) * k); if (k >= 1) break; await sleep(40); if (!alive()) throw new Error('stop'); } };
+  const steerTo = async (lane, sig) => {
+    if (sig) setV('turnSignal', sig); syncConsole();
+    const target = lane * SIM.LANE_W;
+    await waitFor(() => { const dx = target - sim.ego.x; setSteer(clamp(dx * 140, -220, 220)); return Math.abs(dx) < 0.12; }, 9000);
+    setSteer(0); setV('turnSignal', 'NONE'); syncConsole();
+  };
+  const coach = appMode === 'coach';
+  try {
+    await waitFor(() => !booting);
+    await step(coach ? '강습 모드: 강습자가 정지·속도 제한·주행보조를 조절해요(가상)' : '평가 모드: 가상 센서가 주행을 기록하고 점수를 매겨요', 2000);
+    click('#startBtn'); await sleep(500);
+    if (coach) { await step('상황별 추천: “익숙해지는 중” — 차선 보조 보통, 최고 60', 1500); $$('#presets .preset')[1]?.click(); }
+    await step('주차 브레이크를 풀고 기어 D', 900); click('#c-pb'); await sleep(300); click('#c-gear button[data-v="D"]');
+    await waitFor(() => simRunning());
+    await step('급출발 — 가속 페달을 한 번에 깊게', 300); await ramp(setAccel, 0, 100, 250);
+    await waitFor(() => sim.events.some((x) => x.code === 'HARSH_START'), 4000);
+    await step('센서가 급출발을 기록했어요(−3) → 다음부터 살살', 1400); await ramp(setAccel, 100, 35, 600);
+    await waitFor(() => sim.ego.v * 3.6 > 42, 15000); setAccel(18);
+    await step('차로 가운데 유지 중 — 왼쪽 화면에 전방·후방·측방 센서 범위', 2200);
+    await waitFor(() => sim.cutIn.done, 15000);
+    await step('옆 차가 앞으로 끼어들었어요 → 전방 센서 감지, 발을 떼고 거리 벌리기', 300);
+    setAccel(0); await ramp(setBrake, 0, 22, 400); await sleep(1600); await ramp(setBrake, 22, 0, 400); setAccel(20);
+    await waitFor(() => !sim.cutIn.watchUntil, 9000);
+    await step('끼어든 차에 잘 대응했어요(잘함)', 1500);
+    await step('방향지시등을 켜고 왼쪽 차로로 — 후방 센서가 뒤차 간격 확인', 300); await steerTo(-1, 'LEFT');
+    await step('신호 + 충분한 간격 = 차로 변경 잘함', 1500);
+    // 시나리오: 오른쪽 차로 뒤에서 빠르게 오는 차를 두고, 신호 없이 끼어들기
+    sim.npcs = sim.npcs.filter((n) => !(sim.laneOf(n.x) === 0 && Math.abs(n.s - sim.ego.s) < 40));
+    sim.npcs.push({ id: 900, s: sim.ego.s - 13, x: 0, v: sim.ego.v + 2, vd: sim.ego.v + 2 });
+    await step('이번엔 신호 없이, 뒤차가 가까운데 오른쪽으로 끼어들면…', 600); await steerTo(0, null);
+    await step('후방 센서 감지: 무리한 끼어들기(−8) + 방향지시등 없음(−3)', 2200);
+    if (coach) {
+      await step('강습자: “최고 40km/h로 제한”', 600); $$('#coachCtl .seg[data-name="cap"] button')[2]?.click(); setAccel(60);
+      await sleep(2600);
+      await step('가속 페달을 밟아도 40km/h에서 더 안 올라가요(가상)', 1600);
+      await step('강습자: 정지 요청 버튼', 600); click('#stopBtn');
+      await waitFor(() => sim.ego.v < 0.2, 12000); setAccel(0);
+      await step('차가 부드럽게 멈췄어요. 운전자 감점은 없어요', 1800);
+      click('#stopBtn'); await sleep(400);
+    } else {
+      await step('급제동 — 브레이크를 한 번에 세게', 300); setAccel(0); await ramp(setBrake, 0, 100, 150);
+      await waitFor(() => sim.ego.v < 0.3, 8000); await step('급제동 기록(−4): 멈출 곳을 미리 보고 일찍', 1500);
+    }
+    setBrake(60); await waitFor(() => sim.ego.v < 0.2, 8000); setBrake(0);
+    await step('주차: 기어 P + 주차 브레이크', 700); click('#c-gear button[data-v="P"]'); await sleep(300); click('#c-pb');
+    await waitFor(() => session.phase === C.Phase.REVIEW);
+    await step('주행 리포트: 점수 · 항목별 · 상황별 조언', 2500);
+    $('#appBody').scrollTo({ top: 400, behavior: 'smooth' }); await step('상황별 기록 — 어느 센서가 무엇을 봤는지', 2500);
+    stopDemo('끝! 이제 직접 달려 보세요(키보드 ↑↓←→)');
+  } catch (err) { if (demo.token === tk) stopDemo('멈췄어요'); }
+}
+
 // ── 시작 ─────────────────────────────────────────────────────
 $('#brandMascot').innerHTML = mascot('calm', 40);
 $('#topMascot').innerHTML = mascot('calm', 30);
@@ -1091,6 +1451,11 @@ $('#demoBtn').onclick = () => (demo.running ? stopDemo('멈췄어요') : startDe
 addEventListener('keydown', (e) => { if (e.key === 'Escape' && overlay) closeOverlay(); });
 applyPrefs();
 bindConsole(); syncConsole();
+$$('#modeSeg button').forEach((b) => (b.onclick = () => setMode(b.dataset.v)));
+$('#c-accel').oninput = (e) => { setAccel(+e.target.value); };
+(() => { const hb = $('#c-accelHold'); const on = (e) => { e.preventDefault(); setAccel(40); hb.classList.add('down'); }; const off = () => { if (!hb.classList.contains('down')) return; hb.classList.remove('down'); setAccel(0); };
+  hb.addEventListener('pointerdown', on); ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => hb.addEventListener(ev, off)); })();
+applyMode();
 render();
 setInterval(tick, 100);
 if (new URLSearchParams(location.search).has('demo')) setTimeout(startDemo, 200);
