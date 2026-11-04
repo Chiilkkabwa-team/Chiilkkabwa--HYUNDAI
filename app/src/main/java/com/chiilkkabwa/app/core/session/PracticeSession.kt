@@ -40,7 +40,8 @@ object SessionReducer {
 
             Phase.PREPARING ->
                 when {
-                    locked == null -> state
+                    // 주차 브레이크를 다시 걸어 Ready로 돌아오면 일시 정지 이유를 지운다(지우지 않으면 '멈춤'이 풀리지 않음)
+                    locked == null -> if (state.lockReason != null) state.copy(lockReason = null) else state
                     drivingLike -> state.copy(phase = Phase.DRIVING_LOCK, lockReason = locked.reason, tripStart = mark(s, nowMs), tripEnd = null)
                     // 주차 브레이크만 풀렸거나 상태 불명: 연습은 멈추고 확인 화면으로
                     else -> state.copy(lockReason = locked.reason)

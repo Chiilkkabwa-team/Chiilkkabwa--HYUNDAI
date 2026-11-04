@@ -3,6 +3,8 @@
 > P0 = 1차 시연 영상 전 / P1 = 2차 PT 전 / P2 = 여력 / ★ = 심사에서 '와' 할 만한 것. 끝나면 [x].
 
 ## P0
+- [x] B00 웹 프로토타입(`web/`) — core 로직 JS 포팅 + 화면 8개 + 가상 차량 콘솔, Vercel 배포. 모의 신호 전용(2026-11-04)
+- [ ] B00a `SessionReducer` PREPARING에서 Ready 복귀 시 lockReason 미해제 버그 — Kotlin 수정함, Gradle 테스트로 확인 필요(웹판 테스트 `preparing_pause_resumes_when_brake_reapplied`)
 - [ ] B01 mock 플레이버 컴파일 오류 수정, 디버그 패널로 전 흐름 1회
 - [ ] B02 단위 테스트를 Gradle에서 실행(16개) — CI(GitHub Actions)로 자동화하면 가산점에 도움
 - [ ] B03 에뮬레이터 설치, vehicle 플레이버 설치, AAOS 지원 속성 목록 로그 → docs/03 갱신

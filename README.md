@@ -24,6 +24,10 @@
 - AAOS: CarUxRestrictionsManager, CarPropertyManager(GEAR_SELECTION, PARKING_BRAKE_ON, *_PEDAL_COMPRESSION_PERCENTAGE)
 - Pleos Vehicle SDK(조회): Seat, Brake, TurnSignal, Wiper, Light, SteeringWheel, Odometer, CarInfo
 
+## 웹 프로토타입
+브라우저에서 바로 전체 흐름을 볼 수 있는 웹판이 `web/`에 있습니다(모의 신호 전용, 차량 신호 연결은 Android 앱에서).
+자세한 내용은 [`web/README.md`](web/README.md).
+
 ## 데모 영상
 [준비 중]
 
