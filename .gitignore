@@ -1,0 +1,12 @@
+.gradle/
+build/
+local.properties
+.idea/
+*.iml
+captures/
+.DS_Store
+apk/*.apk
+!apk/.gitkeep
+
+# 팀 내부 자료(실명·회의 내용 포함) — 공개 금지
+docs/reference/
