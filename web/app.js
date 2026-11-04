@@ -193,7 +193,7 @@ Screens.goal = () => ({
         ${btn('soloBtn', '혼자 연습', 'secondary big', 'disabled')}
         ${btn('mentorBtn', `${icon('mentor', 22)} 멘토와 함께`, 'primary big', 'disabled')}
       </div>
-      <p class="caption" id="soloNote">혼자 연습은 정차 중 워밍업까지예요. 실제 도로 연습은 동승자와 함께 하세요.</p>
+      <p class="caption" id="soloNote">필수 워밍업 3개 + 원하면 선택 미션 · 약 5분. 실제 도로 연습은 동승자와 함께 하세요.</p>
     </div>`;
     rebindChipsSimple(el, 'goal', options, () => prep.goal, (v) => { prep.goal = v; }, { after: () => this.update() });
     const pick = (mode) => { prep.mode = mode; startWarmup(); render(); };
@@ -240,12 +240,15 @@ function beginJudge(judge) {
   judge.start(snapshot(), now());
   judgeState = { judge, progress: null, doneAt: null, recorded: false };
 }
+/** 목표에 따라 단계 순서를 바꾼다: '주차'가 걱정이면 가상 주차를 페달보다 먼저(연습 전 5분 안에 핵심부터) */
+function stepOrder(p) {
+  const base = p?.goal === '주차' ? ['goal', 'mission', 'parking', 'pedal', 'pact', 'go'] : ['goal', 'mission', 'pedal', 'parking', 'pact', 'go'];
+  return p?.mode === 'solo' ? base.filter((x) => x !== 'pact') : base;
+}
 function nextPrepStep() {
   judgeState = null;
-  const order = ['goal', 'mission', 'pedal', 'parking', 'pact', 'go'];
-  let i = order.indexOf(prep.step) + 1;
-  if (order[i] === 'pact' && prep.mode !== 'mentor') i++;
-  prep.step = order[i];
+  const order = stepOrder(prep);
+  prep.step = order[order.indexOf(prep.step) + 1];
   if (prep.step === 'pedal') beginJudge(C.pedalHoldJudge('brakePedalPct'));
   render();
 }
@@ -292,7 +295,7 @@ Screens.mission = () => ({
       st.innerHTML = `${p.total > 1 ? `<div class="m-steps">${Array.from({ length: p.total }, (_, i) => `<i class="${i < p.step - 1 ? 'd' : i === p.step - 1 ? 'c' : ''}"></i>`).join('')}<span>${p.step}/${p.total} 단계</span></div>` : ''}
         <p class="hint">${p.hint}</p>${p.retry ? `<p class="retry">${p.retry}</p>` : ''}
         ${p.holdRatio != null ? `<div class="holdbar"><i style="width:${Math.min(100, p.holdRatio * 100)}%"></i></div>` : ''}`;
-      act.innerHTML = meta.optional ? btn('skipBtn', '이건 다음에 할게요', 'ghost') : '';
+      act.innerHTML = meta.optional ? btn('skipBtn', '이건 다음에 할게요', 'ghost') + btn('skipAllBtn', '선택 미션은 모두 다음에', 'ghost') : '';
       $('#mIll').classList.remove('ok');
     } else if (p.kind === 'done') {
       st.innerHTML = `<div class="praise">${mascot('happy', 72)}<div><p class="praise-t">${p.praise}</p><p class="caption">${srcChip(p.source)} 으로 확인했어요</p></div></div>`;
@@ -310,6 +313,7 @@ Screens.mission = () => ({
     };
     $('#nextBtn') && ($('#nextBtn').onclick = go);
     $('#skipBtn') && ($('#skipBtn').onclick = go);
+    $('#skipAllBtn') && ($('#skipAllBtn').onclick = () => { prep.missionIdx = prep.missions.length; nextPrepStep(); });
   },
 });
 
@@ -364,7 +368,8 @@ Screens.pedal = () => ({
       const prev = H.pedalStds.length >= 2 ? H.pedalStds[H.pedalStds.length - 2].std : null;
       const cmp = prev != null ? (p.metric <= prev ? `지난번(${prev.toFixed(1)}%p)보다 부드러웠어요` : `지난번은 ${prev.toFixed(1)}%p였어요. 다음에 또 비교해 봐요`) : '다음 연습 때 오늘 기록과 비교해 드릴게요';
       $('#pState').innerHTML = `<div class="praise">${mascot('happy', 64)}<div><p class="praise-t">${p.praise}</p><p class="caption">흔들림 ${p.metric.toFixed(1)}%p · ${cmp}</p></div></div>`;
-      $('#pActions').innerHTML = btn('nextBtn', '다음: 가상 주차', 'primary big');
+      const nx = stepOrder(prep)[stepOrder(prep).indexOf('pedal') + 1];
+      $('#pActions').innerHTML = btn('nextBtn', `다음: ${{ parking: '가상 주차', pact: '멘토 약속', go: '출발 준비' }[nx]}`, 'primary big');
       $('#nextBtn').onclick = () => nextPrepStep();
     } else if (p.kind === 'unavailable') {
       $('#pState').innerHTML = `<div class="banner warn">${icon('info', 22)}<span>${STATUS_HELP[p.status]} 이 단계는 건너뛸게요.</span></div>`;
@@ -461,7 +466,8 @@ Screens.parking = () => ({
   },
   updateActions() {
     const a = $('#pkActions'); if (!a) return;
-    a.innerHTML = this.done ? btn('pkNext', prep.mode === 'mentor' ? '다음: 멘토 약속' : '다음: 출발 준비', 'primary big') : '';
+    const nx = stepOrder(prep)[stepOrder(prep).indexOf('parking') + 1];
+    a.innerHTML = this.done ? btn('pkNext', `다음: ${{ pedal: '페달 감각', pact: '멘토 약속', go: '출발 준비' }[nx]}`, 'primary big') : '';
     if (this.done) { $('#pkNext').onclick = () => nextPrepStep(); setTimeout(() => $('#pkNext')?.focus(), 50); }
     $('#pkReset').innerHTML = `${icon('reset', 18)} ${this.done ? '한 번 더' : '처음부터'}`;
   },
@@ -742,7 +748,7 @@ function introHtml() {
       <li>기어를 D로 옮기면 화면이 조용히 잠겨요. 속도 0 → 기어 P → 주차 브레이크를 걸면 복기가 열려요.</li>
     </ol>
     <p class="caption">모든 신호는 <span class="src-chip src-MOCK">모의</span>예요. 차량 에뮬레이터·실차 신호 연결은 Android 앱에서 해요.</p>
-    <div class="actions">${btn('introOk', '시작하기', 'primary big')}</div>`;
+    <div class="actions two">${btn('introDemo', `${icon('console', 22)} 자동 시연 보기(약 1분)`, 'secondary big')}${btn('introOk', '직접 해 보기', 'primary big')}</div>`;
 }
 function bindOverlay(root) {
   if (overlay === 'profile') {
@@ -756,7 +762,10 @@ function bindOverlay(root) {
       const keep = { introSeen: true }; H = { ...blankHistory(), ...keep }; saveHistory(); applyPrefs(); closeOverlay(); render();
     };
   }
-  if (overlay === 'intro') $('#introOk').onclick = () => { H.introSeen = true; saveHistory(); closeOverlay(); };
+  if (overlay === 'intro') {
+    $('#introOk').onclick = () => { H.introSeen = true; saveHistory(); closeOverlay(); };
+    $('#introDemo').onclick = () => { H.introSeen = true; saveHistory(); closeOverlay(); startDemo(); };
+  }
 }
 function applyPrefs() { document.documentElement.classList.toggle('large', !!H.largeText); }
 
@@ -807,7 +816,8 @@ function renderChrome() {
     $('#aliasLabel').textContent = H.alias;
     const st = $('#stepper');
     if (ph === C.Phase.PREPARING && prep) {
-      const list = STEPS.filter(([id]) => id !== 'pact' || prep.mode !== 'solo');
+      const names = Object.fromEntries(STEPS);
+      const list = stepOrder(prep).map((id) => [id, names[id]]);
       const cur = list.findIndex(([id]) => id === prep.step);
       st.innerHTML = list.map(([id, l], i) => `<span class="${i < cur ? 'd' : i === cur ? 'c' : ''}">${i < cur ? icon('check', 14) : `<i>${i + 1}</i>`}${l}</span>`).join('');
       st.hidden = false;
@@ -979,6 +989,94 @@ function flashNote(t) {
   setTimeout(() => el.remove(), 1600);
 }
 
+
+// ── 자동 시연(심사·영상용) ───────────────────────────────────
+// 콘솔·앱 버튼을 실제로 눌러 가며 전체 흐름을 약 1분에 보여 준다. 사람이 콘솔을 만지면 바로 멈춘다.
+const demo = { running: false, token: 0 };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+function demoBanner(text) {
+  let el = $('#demoBanner');
+  if (!el) { el = document.createElement('div'); el.id = 'demoBanner'; el.className = 'demo-banner'; document.body.appendChild(el); }
+  el.innerHTML = text ? `<b>자동 시연</b><span>${text}</span><button type="button" class="mini" id="demoStop">멈추기</button>` : '';
+  el.hidden = !text;
+  $('#demoStop') && ($('#demoStop').onclick = () => stopDemo('멈췄어요'));
+}
+function stopDemo(msg) {
+  if (!demo.running) return;
+  demo.running = false; demo.token++;
+  const sc = mounted.screen; if (sc && 'move' in sc) sc.move = 0;
+  $('#demoBtn').textContent = '자동 시연';
+  demoBanner('');
+  if (msg) flashNote(`자동 시연 — ${msg}`);
+}
+async function startDemo() {
+  if (demo.running) return;
+  if (session.phase !== C.Phase.CHECKING && session.phase !== C.Phase.READY) { location.href = `${location.pathname}?demo=1`; return; }
+  demo.running = true; const tk = ++demo.token;
+  $('#demoBtn').textContent = '시연 멈추기';
+  const alive = () => demo.running && demo.token === tk;
+  const step = async (label, ms = 700) => { if (!alive()) throw new Error('stop'); demoBanner(label); await sleep(ms); if (!alive()) throw new Error('stop'); };
+  const click = (sel) => { const el = $(sel); if (el && !el.disabled) el.click(); };
+  const ramp = async (fn, from, to, ms) => { const t0 = performance.now(); for (;;) { const k = Math.min(1, (performance.now() - t0) / ms); fn(from + (to - from) * k); tick(); if (k >= 1) break; await sleep(40); if (!alive()) throw new Error('stop'); } };
+  const waitFor = async (cond, max = 15000) => { const t0 = performance.now(); while (!cond()) { if (performance.now() - t0 > max || !alive()) throw new Error('stop'); await sleep(80); } };
+  const setGear = (g) => click(`#c-gear button[data-v="${g}"]`);
+  try {
+    syncConsole();
+    await waitFor(() => !booting);
+    await step('차가 기어 P·주차 브레이크·주행 제한을 직접 확인해요', 1600);
+    click('#startBtn');
+    await step('조수석에 멘토가 앉으면 차가 알아봐요', 900); click('#c-pass');
+    await step('오늘 걱정되는 것: 주차', 900); click('.chips[data-group="goal"] .chip[data-v="주차"]');
+    await step('멘토와 함께 시작', 800); click('#mentorBtn');
+    await step('이미 매고 있던 벨트는 인정하지 않아요 → 풀었다가', 1300); click('#c-belt');
+    await step('다시 ‘딸깍’', 800); click('#c-belt');
+    await step('차가 확인했어요', 1500); click('#nextBtn');
+    await step('브레이크를 끝까지 꾹', 600); await ramp(setBrake, 0, 100, 500);
+    await step('천천히 떼기', 400); await ramp(setBrake, 100, 0, 900);
+    await step('끝까지 꾹, 그리고 천천히 — 확인!', 1400); click('#nextBtn');
+    await step('방향지시등 왼쪽', 700); click('#c-turn button[data-v="LEFT"]');
+    await step('오른쪽', 700); click('#c-turn button[data-v="RIGHT"]');
+    await step('끄기', 700); click('#c-turn button[data-v="NONE"]');
+    await step('깜빡이 완료', 1300); click('#nextBtn');
+    await step('선택 미션은 오늘은 넘어가요(5분 안에 핵심만)', 1300); click('#skipAllBtn');
+    await waitFor(() => prep?.step === 'parking');
+    const sc = () => mounted.screen;
+    await step('내 차 크기로 하는 가상 주차 — 기준선까지 살짝 앞으로', 900);
+    setSteer(0); sc().move = 1; sc().dir = 1; await sleep(700); sc().move = 0;
+    await step('뒷바퀴가 옆 차 범퍼를 지났어요 → 핸들을 끝까지', 900); await ramp(setSteer, 0, 540, 700);
+    await step('후진하면 화면 속 바퀴가 핸들을 따라 꺾여요', 200);
+    sc().dir = -1; sc().move = -1;
+    await waitFor(() => Math.abs(Math.sin(sc().pose.heading)) < 0.02 || sc().done || sc().bump > 0);
+    sc().move = 0;
+    await step('차가 섰어요 → 핸들을 풀고 쭉 후진', 700); await ramp(setSteer, 540, 0, 600);
+    sc().move = -1; await waitFor(() => sc().done || sc().bump > 0, 9000); sc().move = 0;
+    await step(sc().done ? '칸 안에 들어왔어요!' : '거의 다 왔어요', 1600); click('#pkNext');
+    await step('페달 감각: 초록 칸 안에서 2초', 500); await ramp(setBrake, 0, 27, 700);
+    await waitFor(() => judgeState?.progress?.kind === 'done', 5000); await step('부드러웠어요', 1300); await ramp(setBrake, 27, 0, 300); click('#nextBtn');
+    await step('멘토와 오늘의 약속', 700);
+    $$('.chips[data-group="pact"] .chip')[0]?.click(); await sleep(400); $$('.chips[data-group="pact"] .chip')[3]?.click();
+    await step('둘 다 약속했어요', 900); click('#pactBtn');
+    await step('출발 준비 완료 — 주차 브레이크를 풀고 D', 1600); click('#c-pb'); await sleep(400); setGear('D');
+    await step('화면은 조용히 잠겨요. 소리·애니메이션·버튼 없음', 900);
+    if (timeScale === 1) click('#c-fast');
+    await ramp((v) => { setV('speedKmh', Math.round(v)); setV('uxRestricted', v > 0, { onlyIfChanged: true }); syncConsole(); }, 0, 38, 900);
+    await step('(시간 빨리 감기 ×30으로 14분 주행을 몇 초에)', 4200);
+    await ramp((v) => { setV('speedKmh', Math.round(v)); setV('uxRestricted', v > 0, { onlyIfChanged: true }); syncConsole(); }, 38, 0, 700);
+    await step('주차: 기어 P + 주차 브레이크', 600); setGear('P'); await sleep(300); click('#c-pb');
+    if (timeScale > 1) click('#c-fast');
+    await waitFor(() => session.phase === C.Phase.REVIEW);
+    await step('트립으로 오늘 연습을 돌아봐요', 1500);
+    $$('.chips[data-group="learner"] .chip')[0]?.click(); await step('오늘 어땠어요?', 700);
+    $$('.chips[data-group="mentor"] .chip')[1]?.click(); await step('멘토 한마디', 700);
+    $$('.chips[data-group="next"] .chip')[0]?.click(); await step('다음 목표 하나', 900);
+    click('#saveBtn');
+    await step('저장 — 다음 연습은 ‘지난번 목표’에서 이어져요', 2200);
+    stopDemo('끝! 이제 직접 해 보세요');
+  } catch (e) { if (demo.token === tk) stopDemo('멈췄어요'); }
+}
+// 사람이 콘솔을 직접 만지면 시연을 멈춘다
+$('#console').addEventListener('pointerdown', (e) => { if (demo.running && e.isTrusted) stopDemo('콘솔을 만져서 멈췄어요'); }, true);
+
 // ── 시작 ─────────────────────────────────────────────────────
 $('#brandMascot').innerHTML = mascot('calm', 40);
 $('#topMascot').innerHTML = mascot('calm', 30);
@@ -989,9 +1087,11 @@ $('#consoleFab .fab-ico').innerHTML = icon('console', 22);
 $('#historyBtn').onclick = () => openOverlay('history');
 $('#profileBtn').onclick = () => openOverlay('profile');
 $('#helpBtn').onclick = () => openOverlay('intro');
+$('#demoBtn').onclick = () => (demo.running ? stopDemo('멈췄어요') : startDemo());
 addEventListener('keydown', (e) => { if (e.key === 'Escape' && overlay) closeOverlay(); });
 applyPrefs();
 bindConsole(); syncConsole();
 render();
 setInterval(tick, 100);
-if (!H.introSeen) setTimeout(() => openOverlay('intro'), 300);
+if (new URLSearchParams(location.search).has('demo')) setTimeout(startDemo, 200);
+else if (!H.introSeen) setTimeout(() => openOverlay('intro'), 300);

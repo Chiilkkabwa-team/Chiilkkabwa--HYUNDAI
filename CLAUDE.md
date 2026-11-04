@@ -55,6 +55,8 @@ adb logcat -s AaosVehicleSource PleosVehicleSource   # 지원 속성 목록·실
 | `docs/08_SUBMISSION_CHECKLIST.md` | GitHub·APK·README·블라인드 점검 |
 | `docs/09_BACKLOG.md` | 할 일 목록(우선순위) |
 | `docs/10_CREATIVE_BRIEF.md` | **한 장 기획안 + 자유 영역 + 아이디어 창고** |
+| `docs/11_SERVICE_FLOW_UX_REVIEW.md` | 서비스 플로우, 화면별 흐름표, 여정, 장단점, 개선 우선순위 |
+| `web/` | 웹 프로토타입(모의 신호 전용) — 흐름·문구를 브라우저에서 먼저 시험 |
 | `docs/reference/` | 기획서 완성본(HTML), 별지, 근거 대장 — 제품 의도 확인용 |
 
 ## 7. 작업 방식

@@ -4,6 +4,8 @@
 
 ## P0
 - [x] B00 웹 프로토타입(`web/`) — core 로직 JS 포팅 + 화면 8개 + 가상 차량 콘솔, Vercel 배포. 모의 신호 전용(2026-11-04)
+- [x] B00b 웹판 개선: 목표별 단계 순서, 선택 미션 한 번에 넘기기, 자동 시연(약 1분) — docs/11 §5
+- [ ] B00c 목표별 미션 추천 확장, 첫 연습 '새 관측' 설명 1줄, 가상 주차 속도 2단·탭 이동, 복기 '오늘 한 것' 요약 — docs/11 §5
 - [ ] B00a `SessionReducer` PREPARING에서 Ready 복귀 시 lockReason 미해제 버그 — Kotlin 수정함, Gradle 테스트로 확인 필요(웹판 테스트 `preparing_pause_resumes_when_brake_reapplied`)
 - [ ] B01 mock 플레이버 컴파일 오류 수정, 디버그 패널로 전 흐름 1회
 - [ ] B02 단위 테스트를 Gradle에서 실행(16개) — CI(GitHub Actions)로 자동화하면 가산점에 도움
