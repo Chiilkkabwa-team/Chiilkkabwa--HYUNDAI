@@ -26,8 +26,8 @@
         <!-- distractionOptimized 를 선언하지 않는다(정차 전용 앱). 주행 중에는 플랫폼이 사용을 제한한다. -->
         <activity
             android:name=".MainActivity"
-            android:exported="true"
-            android:screenOrientation="landscape">
+            android:exported="true">
+            <!-- 방향을 고정하지 않는다: Pleos 화면은 세로 1창 / 가로 2창으로 바뀔 수 있다(docs/03 §6) -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

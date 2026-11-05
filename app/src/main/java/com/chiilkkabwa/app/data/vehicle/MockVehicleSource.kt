@@ -41,6 +41,7 @@ class MockVehicleSource(private val overrideOnly: Boolean = false) : VehicleSour
     fun setBelt(on: Boolean) = sink?.update { it.copy(driverBeltBuckled = ok(on)) }
     fun setBrake(pressed: Boolean) = sink?.update { it.copy(brakePressed = ok(pressed), brakePedalPct = ok(if (pressed) 80f else 0f)) }
     fun setAccelPct(p: Float) = sink?.update { it.copy(accelPedalPct = ok(p)) }
+    fun setBrakePct(p: Float) = sink?.update { it.copy(brakePedalPct = ok(p), brakePressed = ok(p > 5f)) }
     fun setTurn(t: TurnSignalState) = sink?.update { it.copy(turnSignal = ok(t)) }
     fun setWiper(on: Boolean) = sink?.update { it.copy(wiperOn = ok(on)) }
     fun setLowBeam(on: Boolean) = sink?.update { it.copy(lowBeamOn = ok(on)) }

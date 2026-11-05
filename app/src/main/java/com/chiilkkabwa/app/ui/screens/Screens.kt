@@ -245,9 +245,9 @@ fun ParkingSimScreen(ui: UiState, onDone: () -> Unit) {
 // ── A-4 페달 감각(조건부) ─────────────────────────────────
 @Composable
 fun PedalScreen(ui: UiState, onDone: () -> Unit) {
-    val pct = ui.snapshot.accelPedalPct.value ?: 0f
+    val pct = ui.snapshot.brakePedalPct.value ?: 0f   // 브레이크 페달 압력(가속 페달은 실차에서 열지 않음)
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) { Title("살살 밟기"); Spacer(Modifier.width(12.dp)); SourceBadge(ui.snapshot.accelPedalPct.source) }
+        Row(verticalAlignment = Alignment.CenterVertically) { Title("살살 밟기"); Spacer(Modifier.width(12.dp)); SourceBadge(ui.snapshot.brakePedalPct.source) }
         Body("초록 칸 안에서 2초 버티기 · 지금 ${pct.toInt()}%")
         Canvas(Modifier.fillMaxWidth().height(36.dp)) {
             drawRect(Tokens.Surface2, size = size)
@@ -257,7 +257,7 @@ fun PedalScreen(ui: UiState, onDone: () -> Unit) {
         when (val p = ui.pedal) {
             is Progress.Done -> { Body(p.praise, Tokens.SuccessText); BigButton("다음", onClick = onDone) }
             is Progress.Unavailable -> { Body("이 차에서는 페달 값을 받을 수 없어요"); BigButton("건너뛰기", ghost = true, onClick = onDone) }
-            else -> Body("이 값은 연습용이며 실제 운전 기준이 아니에요")
+            else -> Body("브레이크 페달로 해요. 이 값은 연습용이며 실제 운전 기준이 아니에요")
         }
     }
 }
@@ -342,7 +342,7 @@ fun DebugPanel(vm: ChiilViewModel, ui: UiState, modifier: Modifier) {
             Dbg("◀") { m.setTurn(TurnSignalState.LEFT) }; Dbg("▶") { m.setTurn(TurnSignalState.RIGHT) }; Dbg("깜빡이 끔") { m.setTurn(TurnSignalState.NONE) }
             Dbg("와이퍼") { m.setWiper(s.wiperOn.value != true) }; Dbg("전조등") { m.setLowBeam(s.lowBeamOn.value != true) }
             Dbg("핸들 0") { m.setSteering(0f) }; Dbg("핸들 -540") { m.setSteering(-540f) }; Dbg("핸들 +540") { m.setSteering(540f) }
-            Dbg("가속 27%") { m.setAccelPct(27f) }; Dbg("가속 0") { m.setAccelPct(0f) }
+            Dbg("브레이크 27%") { m.setBrakePct(27f) }; Dbg("브레이크 0") { m.setBrakePct(0f) }
             Dbg("주행 +3.2km/14분") { m.addTrip(3.2f, 840) }
             Dbg("브레이크 미지원") { m.breakSignal(SignalStatus.UNSUPPORTED) }
         }

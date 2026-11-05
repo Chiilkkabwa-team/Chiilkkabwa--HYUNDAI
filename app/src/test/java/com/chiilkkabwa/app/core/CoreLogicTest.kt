@@ -153,6 +153,18 @@ class CoreLogicTest {
         assertTrue(kotlin.math.abs(sum.distanceKm!! - 3.2f) < 0.01f)
     }
 
+    /** 준비 중 주차 브레이크를 풀었다가 다시 걸면 일시 정지가 풀려야 한다(2026-11-04 수정, web 테스트와 같은 시나리오) */
+    @Test fun preparing_pause_resumes_when_brake_reapplied() {
+        var st = SessionState(phase = Phase.PREPARING, lockReason = null)
+        val off = parked().copy(parkingBrakeOn = ok(false, 1))
+        st = SessionReducer.onGate(st, SafetyGate.evaluate(off), off, 1)
+        assertEquals(Phase.PREPARING, st.phase)
+        assertEquals(LockReason.PARKING_BRAKE_OFF, st.lockReason)
+        st = SessionReducer.onGate(st, SafetyGate.evaluate(parked(2)), parked(2), 2)
+        assertEquals(Phase.PREPARING, st.phase)
+        assertEquals(null, st.lockReason)
+    }
+
     @Test fun summary_falls_back_to_wall_clock() {
         var st = SessionState(phase = Phase.PREPARING)
         val d = parked().copy(uxRestricted = ok(true, 1))

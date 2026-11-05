@@ -66,8 +66,17 @@
 - Motion: 기어, 브레이크, 스티어링 각도, 주행거리 / ADAS: 크루즈 / Convenience: 도어·창문·시트·조명·와이퍼 / Safety: 주차브레이크, 안전벨트, 경고등 / Energy / Climate
 - **콘솔에서 값을 바꿀 수 있다는 것 ≠ 앱이 그 필드를 받을 수 있다는 것.** 반드시 앱 로그로 확인
 
+## 5-1. AAOS 권한 등급 (Android Car 레퍼런스, 2026-11-05 확인)
+| 권한 | 등급 | 의미 |
+|---|---|---|
+| android.car.permission.CAR_POWERTRAIN | Normal | 기어·주차 브레이크 — 설치만으로 허용 |
+| android.car.permission.READ_CAR_PEDALS | Dangerous | 페달 압력 — 사용자 허용 필요 |
+| android.car.permission.CAR_SPEED | Dangerous | 속도 — 사용자 허용 필요 |
+| android.car.permission.READ_ADAS_STATES / READ_ADAS_SETTINGS | **Signature\|Privileged** | 차선이탈·전방충돌·후측방 경고 상태 — **서드파티 앱 불가** |
+| android.car.permission.READ_DRIVER_MONITORING_STATES | **Signature\|Privileged** | 운전자 모니터링 — 서드파티 앱 불가 |
+
 ## 6. 규정 요약(코드에 영향)
-- DO(distractionOptimized) 미선언 앱 = 주행 중 사용 불가 → 선언하지 않는다
+- DO(distractionOptimized) 미선언 앱 = 주행 중 사용 불가 → 선언하지 않는다. 주행 중에는 **시스템이 앱 화면을 가릴 가능성이 크다**(앱 잠금 화면이 보이는지 Day1 확인, B37)
 - CarUxRestrictions 기준 제한, 속도 0 ≠ 주차
 - 미디어·게임은 정차 중에만, 주행 시 일시정지·숨김
 - 백그라운드: 갱신·애니메이션·센서 수집 중단, 복귀 시 상태 복원

@@ -294,7 +294,8 @@ Screens.mission = () => ({
     const j = judgeState.judge; const meta = C.MISSION_META[j.id];
     // 차가 읽은 값
     const s = snapshot(); const sig = s[meta.signal];
-    $('#mLive').innerHTML = liveReadout(j.id, sig, s);
+    const live = liveReadout(j.id, sig, s); const ml = $('#mLive');
+    if (ml.dataset.h !== live) { ml.innerHTML = live; ml.dataset.h = live; }
     const key = p.kind + (p.kind === 'progress' ? p.step + p.hint + (p.retry || '') + Math.round((p.holdRatio || 0) * 10) : '');
     if (key === this.key) return; this.key = key;
     const st = $('#mState'), act = $('#mActions');
@@ -695,7 +696,7 @@ function renderOverlay() {
   if (!overlay || session.phase === C.Phase.DRIVING_LOCK) { root.innerHTML = ''; root.classList.remove('open'); return; }
   root.classList.add('open');
   const body = { history: historyHtml, profile: profileHtml, cert: certHtml, intro: introHtml }[overlay]();
-  root.innerHTML = `<div class="modal-scrim" data-close></div><div class="modal" role="dialog" aria-modal="true">
+  root.innerHTML = `<div class="modal-scrim" data-close></div><div class="modal" role="dialog" aria-modal="true" aria-label="${{ history: '내 기록', profile: '설정', cert: '수료 카드', intro: '사용법' }[overlay]}" tabindex="-1">
     <button type="button" class="icon-btn modal-x" data-close aria-label="닫기">${icon('close', 22)}</button>${body}</div>`;
   $$('[data-close]', root).forEach((b) => (b.onclick = () => { if (overlay === 'intro') { H.introSeen = true; saveHistory(); } closeOverlay(); }));
   bindOverlay(root);
@@ -733,8 +734,8 @@ function profileHtml() {
     <h3>별칭 <small>이 기기에만 저장돼요</small></h3>
     <div>${chipGroup('alias', aliases, H.alias)}</div>
     <h3>화면</h3>
-    <div class="set-row">${icon('sound', 22)}<span>정차 중 효과음</span><button type="button" class="switch" id="setSound" role="switch" aria-checked="${H.sound}"><span></span></button></div>
-    <div class="set-row">${icon('text', 22)}<span>큰 글씨</span><button type="button" class="switch" id="setLarge" role="switch" aria-checked="${H.largeText}"><span></span></button></div>
+    <div class="set-row">${icon('sound', 22)}<span>정차 중 효과음</span><button type="button" class="switch" id="setSound" role="switch" aria-label="정차 중 효과음" aria-checked="${H.sound}"><span></span></button></div>
+    <div class="set-row">${icon('text', 22)}<span>큰 글씨</span><button type="button" class="switch" id="setLarge" role="switch" aria-label="큰 글씨" aria-checked="${H.largeText}"><span></span></button></div>
     <h3>기록</h3>
     <button type="button" class="btn danger" id="delBtn">${icon('trash', 20)} 이 기기의 기록 모두 지우기</button>
     <p class="caption">서버·계정·위치·차대번호를 쓰지 않아요. 기록은 이 브라우저에만 있어요.</p>`;
@@ -1019,7 +1020,7 @@ const demo = { running: false, token: 0 };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 function demoBanner(text) {
   let el = $('#demoBanner');
-  if (!el) { el = document.createElement('div'); el.id = 'demoBanner'; el.className = 'demo-banner'; document.body.appendChild(el); }
+  if (!el) { el = document.createElement('div'); el.id = 'demoBanner'; el.className = 'demo-banner'; el.setAttribute('role', 'status'); document.body.appendChild(el); }
   el.innerHTML = text ? `<b>자동 시연</b><span>${text}</span><button type="button" class="mini" id="demoStop">멈추기</button>` : '';
   el.hidden = !text;
   $('#demoStop') && ($('#demoStop').onclick = () => stopDemo('멈췄어요'));
@@ -1155,7 +1156,7 @@ Screens.simSetup = () => ({
 });
 
 function coachControls(st, live) {
-  const seg = (name, opts, cur) => `<div class="seg big" data-name="${name}">${opts.map(([v, l]) => `<button type="button" data-v="${v}" aria-checked="${String(cur) === String(v)}">${l}</button>`).join('')}</div>`;
+  const seg = (name, opts, cur) => `<div class="seg big" role="radiogroup" data-name="${name}">${opts.map(([v, l]) => `<button type="button" role="radio" data-v="${v}" aria-checked="${String(cur) === String(v)}">${l}</button>`).join('')}</div>`;
   return `<div class="cc-row"><span>최고 속도 제한</span>${seg('cap', [['null', '끔'], [30, '30'], [40, '40'], [50, '50'], [60, '60']], st.cap)}</div>
     <div class="cc-row"><span>차선 유지 보조</span>${seg('lka', [['off', '끄기'], ['normal', '보통'], ['strong', '강하게']], st.lka)}</div>
     <div class="cc-row"><span>크루즈(앞차 따라가기)</span>${seg('acc', [['false', '끔'], ['true', '켬']], st.acc)}${st.acc ? seg('accSet', [[30, '30'], [40, '40'], [50, '50'], [60, '60']], st.accSet) : ''}</div>
@@ -1173,6 +1174,7 @@ function bindCoachControls(root, st, after) {
 Screens.coach = () => ({
   mount(el) {
     el.innerHTML = `<div class="screen coach">
+      <h1 class="sr-only">조수석 강습자 패널</h1>
       <div class="coach-head"><span class="lock-tag soft">조수석 강습자 패널</span>${VIRTUAL_CHIP(true)}</div>
       <button type="button" class="stop-btn" id="stopBtn"></button>
       <div class="coach-live" id="coachLive"></div>
@@ -1322,8 +1324,11 @@ function carTop(ctx, cx, cy, ppm, color, ego, signal, t) {
 
 // 시뮬레이션 루프(부드러운 화면용 — 신호 판정은 기존 tick이 그대로 한다)
 let simLast = performance.now();
+let simLoopOn = false; let lastIdleDraw = 0;
 const keysDown = new Set();
+function startSimLoop() { if (simLoopOn) return; simLoopOn = true; simLast = performance.now(); requestAnimationFrame(simLoop); }
 function simLoop(t) {
+  if (appMode === 'practice' && !simRunning()) { simLoopOn = false; return; } // 연습 모드에서는 루프를 멈춘다(성능)
   const dt = Math.min(0.06, (t - simLast) / 1000); simLast = t;
   if (simRunning()) {
     sim.input.accel = V.accelPedalPct.value / 100; sim.input.brake = V.brakePedalPct.value / 100;
@@ -1336,10 +1341,11 @@ function simLoop(t) {
     if (V.gear.value !== 'P') setV('tripDistanceKm', +(V.tripDistanceKm.value + (sim.ego.v * dt) / 1000).toFixed(4));
     $('#v-speed').textContent = kmh; $('#c-speed').value = kmh;
   }
-  if (appMode !== 'practice') drawSimView();
+  // 주행 중이 아니면 도로 미리보기는 0.4초에 한 번만 그린다(정차 중 CPU 절약)
+  if (appMode !== 'practice' && (simRunning() || t - lastIdleDraw > 400)) { drawSimView(); lastIdleDraw = t; }
   requestAnimationFrame(simLoop);
 }
-requestAnimationFrame(simLoop);
+startSimLoop();
 
 // 키보드 운전(가상 주행 중): ↑ 가속 · ↓ 브레이크 · ←→ 핸들 · 스페이스 = 강습자 정지(강습 모드)
 function keyDrive(e) {
@@ -1374,6 +1380,7 @@ function applyMode() {
   $('#dvCaption').innerHTML = appMode === 'practice' ? '시스템 Driving view<br><small>앱이 가리지 않는 자리</small>' : `운전석 화면 · 가상 도로<br><small>${appMode === 'coach' ? '강습 모드(제조사 협업 가정)' : '평가 모드'} · 가상 센서</small>`;
   chromeKey = ''; guideKey = '';
   syncConsole();
+  startSimLoop();
 }
 
 // ── 자동 시연(평가·강습 모드) ──

@@ -78,7 +78,8 @@ class ChiilViewModel(app: Application) : AndroidViewModel(app) {
     init {
         repo.start()
         viewModelScope.launch { repo.snapshot.collect { onSnapshot(it) } }
-        viewModelScope.launch { while (true) { delay(200); onSnapshot(repo.snapshot.value) } }
+        // 시간 기반 판정(2초 유지)은 준비 단계에서만 필요하다 → 그 외(특히 주행 중)에는 틱을 돌리지 않는다(CPU 규정)
+        viewModelScope.launch { while (true) { delay(200); if (_ui.value.session.phase == Phase.PREPARING) onSnapshot(repo.snapshot.value) } }
     }
 
     private fun onSnapshot(s: VehicleSnapshot) {
@@ -124,9 +125,10 @@ class ChiilViewModel(app: Application) : AndroidViewModel(app) {
 
     fun parkingDone() {
         updateProfile { p -> p.copy(history = p.history.copy(parkingSimCompleted = p.history.parkingSimCompleted + 1)) }
-        val pedalAvailable = repo.snapshot.value.accelPedalPct.status == SignalStatus.OK
+        // 페달 감각은 브레이크 페달 압력으로 한다(PRD F5: 가속 페달은 '차가 구동되지 않는 조건' 확인 전 실차에서 열지 않음)
+        val pedalAvailable = repo.snapshot.value.brakePedalPct.status == SignalStatus.OK
         if (pedalAvailable) {
-            pedalJudge = PedalHoldJudge({ it.accelPedalPct }).also { it.start(repo.snapshot.value, System.currentTimeMillis()) }
+            pedalJudge = PedalHoldJudge({ it.brakePedalPct }).also { it.start(repo.snapshot.value, System.currentTimeMillis()) }
             _ui.update { it.copy(step = PrepStep.PEDAL, pedal = null) }
         } else _ui.update { it.copy(step = if (it.mentorMode) PrepStep.PACT else PrepStep.READY_TO_GO) }
     }

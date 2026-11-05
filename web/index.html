@@ -15,7 +15,7 @@
   <div class="brand"><span id="brandMascot"></span><div><b>치일까봐</b><small>확인은 차가, 판단은 사람이.</small></div></div>
   <div class="site-tags"><span class="tag">웹 프로토타입</span><span class="tag tag-mock">모의 차량 신호</span></div>
   <div class="mode-seg" id="modeSeg" role="radiogroup" aria-label="모드">
-    <button type="button" data-v="practice">연습</button><button type="button" data-v="eval">평가</button><button type="button" data-v="coach">강습</button>
+    <button type="button" role="radio" data-v="practice">연습</button><button type="button" role="radio" data-v="eval">평가</button><button type="button" role="radio" data-v="coach">강습</button>
   </div>
   <button class="ghost" id="demoBtn" type="button">자동 시연</button>
   <button class="ghost" id="helpBtn" type="button">사용법</button>
@@ -67,17 +67,17 @@
       <legend>주행</legend>
       <div class="c-row" id="r-gear"><span class="c-lab">기어</span>
         <div class="seg" id="c-gear" role="radiogroup" aria-label="기어">
-          <button type="button" data-v="P">P</button><button type="button" data-v="R">R</button><button type="button" data-v="N">N</button><button type="button" data-v="D">D</button>
+          <button type="button" role="radio" data-v="P">P</button><button type="button" role="radio" data-v="R">R</button><button type="button" role="radio" data-v="N">N</button><button type="button" role="radio" data-v="D">D</button>
         </div>
       </div>
       <div class="c-row" id="r-pb"><span class="c-lab">주차 브레이크</span>
-        <button type="button" class="switch" id="c-pb" role="switch" aria-checked="true"><span></span></button>
+        <button type="button" class="switch" id="c-pb" role="switch" aria-label="주차 브레이크" aria-checked="true"><span></span></button>
       </div>
       <div class="c-row c-col" id="r-speed"><span class="c-lab">속도 <b id="v-speed">0</b> km/h <small id="speedNote">(기어 D·R에서만)</small></span>
         <input type="range" id="c-speed" min="0" max="80" step="1" value="0" aria-label="속도">
       </div>
       <div class="c-row" id="r-fast"><span class="c-lab">시간 빨리 감기 ×30 <small>(트립 쌓기)</small></span>
-        <button type="button" class="switch" id="c-fast" role="switch" aria-checked="false"><span></span></button>
+        <button type="button" class="switch" id="c-fast" role="switch" aria-label="시간 빨리 감기" aria-checked="false"><span></span></button>
       </div>
     </fieldset>
 
@@ -92,7 +92,7 @@
     <fieldset class="c-group">
       <legend>운전석</legend>
       <div class="c-row" id="r-belt"><span class="c-lab">안전벨트 <small id="v-belt">체결</small></span>
-        <button type="button" class="switch" id="c-belt" role="switch" aria-checked="true"><span></span></button>
+        <button type="button" class="switch" id="c-belt" role="switch" aria-label="안전벨트" aria-checked="true"><span></span></button>
       </div>
       <div class="c-row c-col" id="r-brake"><span class="c-lab">브레이크 페달 <b id="v-brake">0</b>% <small id="v-brakeP">뗌</small></span>
         <div class="c-inline"><input type="range" id="c-brake" min="0" max="100" step="1" value="0" aria-label="브레이크 페달">
@@ -100,14 +100,14 @@
       </div>
       <div class="c-row" id="r-turn"><span class="c-lab">방향지시등</span>
         <div class="seg" id="c-turn" role="radiogroup" aria-label="방향지시등">
-          <button type="button" data-v="LEFT">◀ 왼쪽</button><button type="button" data-v="NONE">끔</button><button type="button" data-v="RIGHT">오른쪽 ▶</button>
+          <button type="button" role="radio" data-v="LEFT">◀ 왼쪽</button><button type="button" role="radio" data-v="NONE">끔</button><button type="button" role="radio" data-v="RIGHT">오른쪽 ▶</button>
         </div>
       </div>
       <div class="c-row" id="r-wiper"><span class="c-lab">와이퍼</span>
-        <button type="button" class="switch" id="c-wiper" role="switch" aria-checked="false"><span></span></button>
+        <button type="button" class="switch" id="c-wiper" role="switch" aria-label="와이퍼" aria-checked="false"><span></span></button>
       </div>
       <div class="c-row" id="r-beam"><span class="c-lab">전조등</span>
-        <button type="button" class="switch" id="c-beam" role="switch" aria-checked="false"><span></span></button>
+        <button type="button" class="switch" id="c-beam" role="switch" aria-label="전조등" aria-checked="false"><span></span></button>
       </div>
       <div class="c-row c-col" id="r-steer"><span class="c-lab">핸들 <b id="v-steer">0</b>° <small id="v-steerDir"></small></span>
         <div class="c-inline"><input type="range" id="c-steer" min="-540" max="540" step="5" value="0" aria-label="핸들 각도">
@@ -118,7 +118,7 @@
     <fieldset class="c-group">
       <legend>좌석</legend>
       <div class="c-row" id="r-pass"><span class="c-lab">조수석에 사람 있음</span>
-        <button type="button" class="switch" id="c-pass" role="switch" aria-checked="false"><span></span></button>
+        <button type="button" class="switch" id="c-pass" role="switch" aria-label="조수석에 사람 있음" aria-checked="false"><span></span></button>
       </div>
     </fieldset>
 
