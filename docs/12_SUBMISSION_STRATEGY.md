@@ -275,3 +275,23 @@
 
 ### 11-1. 네트워크 허용이 필요한 곳 (클라우드에서 계속하려면)
 `dl.google.com`(Android SDK), `nexus-playground.pleos.ai`(Pleos SDK), `appdevchallenge.auto-hmg.io`(공지), `document.pleos.ai`(최신 문서). 로컬 PC에서 개발한다면 필요 없다.
+
+---
+
+## 12. 직접 실행 점검 (11/5 오후 2차) — 명령·브라우저로 실제 확인
+
+| # | 한 일 | 결과 |
+|---|---|---|
+| 1 | **`data/` 차량 신호 계층 컴파일 검증** — android.jar(API 34) + 직접 만든 `android.car` 스텁 + kotlinx-coroutines로 JVM 컴파일 | **성공, 경고 0건** (core 포함 66개 클래스). `AaosVehicleSource`·`PleosVehicleSource`·`MockVehicleSource`·`VehicleRepository`·`PracticeStore`가 처음으로 컴파일됨 |
+| 2 | **Android 전체 빌드 가능성 확정** | **불가.** `maven.google.com`이 `dl.google.com`으로 302 리다이렉트되는데 그 호스트가 차단 → AGP·androidx·Compose를 받을 수 없음. `ui/` 컴파일은 로컬 PC에서만 가능 |
+| 3 | **키보드 포커스 버그 발견·수정** | 칩(목표·약속·복기)을 고르면 목록을 다시 그리면서 **포커스가 사라짐**. 차량 조그 다이얼·키보드 조작에서 치명적. 강습 패널의 프리셋·주행보조 버튼도 같은 문제 → 셋 다 수정하고 키보드로 확인 |
+| 4 | **README 공식 4요소 완성** | ① 앱 이름·한 줄 소개 ② 실행 방법 ③ **테스트 환경·필요한 설정**(에뮬레이터 설치 절차, Virtual Console, 권한, SDK 저장소) ④ **APK 위치** — ③④가 비어 있던 것을 채움 |
+| 5 | 전체 회귀 | 웹 단위 테스트 22개, 연습·평가·강습 자동 시연, 가상 주차, 접근성 7개 화면 — 모두 통과·위반 0 |
+| 6 | 배포 확인 | 운영 주소는 커밋 `e85132e`에서 빌드된 것이 Vercel API로 확인됨(Git 배포라 파일 직접 열람은 불가) |
+
+### 12-1. 이 환경에서 확인된 네트워크 상태 (2026-11-05)
+| 열림 | 막힘 |
+|---|---|
+| github.com, raw.githubusercontent.com, developer.android.com, repo1.maven.org(Maven Central), plugins.gradle.org, registry.npmjs.org | **dl.google.com**(= maven.google.com 실제 목적지), **nexus-playground.pleos.ai**(Pleos SDK), **appdevchallenge.auto-hmg.io**(공지), **document.pleos.ai**, **vercel.app**(배포본 직접 접속), cdn.jsdelivr.net, apps.apple.com |
+
+→ **Android 빌드·APK는 로컬 PC에서 해야 한다**(docs/12 §8 일정의 11/6 Day1). 클라우드에서 하려면 위 4개 호스트 허용이 필요하다.

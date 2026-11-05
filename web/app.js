@@ -230,12 +230,16 @@ function bindChips(root, group, onPick, { multi = false, max = Infinity, selecte
 }
 function rebindChipsSimple(root, group, options, getSel, setSel, opts = {}) {
   const box = $(`.chips[data-group="${group}"]`, root).parentElement;
-  const redraw = () => {
+  /** keepFocus: 다시 그린 뒤 방금 고른 칩으로 포커스를 되돌린다(키보드·조그 다이얼 조작에서 포커스가 날아가지 않게) */
+  const redraw = (keepFocus = null) => {
     box.innerHTML = chipGroup(group, options, getSel(), opts);
-    bindChips(root, group, (v) => { setSel(v); redraw(); opts.after?.(); }, { ...opts, selected: getSel });
+    bindChips(root, group, (v) => { setSel(v); redraw(v); opts.after?.(); }, { ...opts, selected: getSel });
+    if (keepFocus != null) $(`.chips[data-group="${group}"] .chip[data-v="${cssEsc(keepFocus)}"]`, root)?.focus();
   };
   redraw();
 }
+/** 선택자에 쓸 값 이스케이프(칩 문구에 따옴표·공백이 들어간다) */
+const cssEsc = (v) => (window.CSS?.escape ? CSS.escape(v) : String(v).replace(/["\\]/g, '\\$&'));
 
 function startWarmup() {
   prep.missions = [...C.MissionCatalog.required(), ...C.MissionCatalog.optional()];
@@ -1149,7 +1153,11 @@ Screens.simSetup = () => ({
   },
   drawCoach() {
     $('#presets').innerHTML = Object.entries(SIM.PRESETS).map(([k, p]) => `<button type="button" class="preset${simSettings.preset === k ? ' on' : ''}" data-k="${k}"><b>${p.label}</b><small>${p.desc}</small></button>`).join('');
-    $$('#presets .preset').forEach((b) => (b.onclick = () => { simSettings = { ...SIM.PRESETS[b.dataset.k], preset: b.dataset.k }; chime('click'); this.drawCoach(); }));
+    $$('#presets .preset').forEach((b) => (b.onclick = () => {
+      const k = b.dataset.k;
+      simSettings = { ...SIM.PRESETS[k], preset: k }; chime('click'); this.drawCoach();
+      $(`#presets .preset[data-k="${k}"]`)?.focus();
+    }));
     $('#coachDetail').innerHTML = coachControls(simSettings, false);
     bindCoachControls($('#coachDetail'), simSettings, () => { simSettings.preset = null; this.drawCoach(); });
   },
@@ -1167,6 +1175,8 @@ function bindCoachControls(root, st, after) {
     const name = b.parentElement.dataset.name; const v = b.dataset.v;
     st[name] = name === 'lka' ? v : v === 'null' ? null : v === 'true' ? true : v === 'false' ? false : +v;
     chime('click'); after?.();
+    // 다시 그린 뒤 같은 버튼으로 포커스를 되돌린다(키보드·조그 다이얼)
+    $(`.seg[data-name="${name}"] button[data-v="${cssEsc(v)}"]`, root)?.focus();
   }));
 }
 

@@ -15,7 +15,7 @@
 
 ## 3. 지금 상태
 - `core/`(순수 Kotlin): 안전 게이트, 미션 판정 7종, 미션 러너, 세션 상태 기계, 요약, 배지, 가상 주차 물리 — **단위 테스트 17개 통과**(2026-11-05, JVM Gradle로 core만 실행. Android 빌드는 아직 안 돌려봄)
-- `data/`: AaosVehicleSource(실제 AAOS API), PleosVehicleSource(**TODO(sdk) 의사코드**), MockVehicleSource, PracticeStore(SharedPreferences JSON)
+- `data/`: AaosVehicleSource(실제 AAOS API), PleosVehicleSource(**TODO(sdk) 의사코드**), MockVehicleSource, PracticeStore(SharedPreferences JSON) — **컴파일 검증 완료**(2026-11-05, android.jar+AAOS 스텁 기준)
 - `ui/`: Compose 화면 8개 + 디버그 패널(mock 전용). **한 번도 컴파일 안 됨** → 첫 작업은 빌드 오류 수정
 - Gradle wrapper 8.10.2, AGP 8.8.2, Kotlin 2.0.0, compileSdk 35, targetSdk 34, minSdk 28
 
