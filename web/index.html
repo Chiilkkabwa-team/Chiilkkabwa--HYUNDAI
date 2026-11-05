@@ -23,6 +23,13 @@
 
 <main class="stage">
   <div class="display" id="display" aria-label="차량 디스플레이 미리보기">
+    <!-- Pleos Connect 화면 구성 흉내: 상태 표시줄 + (Driving view | 앱 영역) + 하단 바 -->
+    <div class="pleos-status" aria-hidden="true">
+      <span class="ps-left"><b id="psOut">18°</b><span>외기</span></span>
+      <span class="ps-mid" id="psTime">10:24</span>
+      <span class="ps-right"><i class="ps-dot"></i>연결됨</span>
+    </div>
+    <div class="display-main">
     <aside class="driving-view" aria-label="시스템 Driving view">
       <div class="dv-art" id="dvArt"></div>
       <canvas class="sim-canvas" id="simCanvas" aria-label="가상 도로 주행 화면"></canvas>
@@ -33,6 +40,8 @@
         <div class="dv-gear" id="dvGear" aria-label="기어">P</div>
         <div class="dv-pb" id="dvPb">주차 브레이크</div>
       </div>
+      <!-- Telltale(계기 표시등): Pleos Driving view의 Indicator 영역을 흉내 낸 것 -->
+      <div class="dv-tell" id="dvTell" aria-label="계기 표시등"></div>
     </aside>
     <section class="app" id="app">
       <div class="app-top">
@@ -47,6 +56,16 @@
       <div class="app-body" id="appBody"></div>
       <div class="toasts" id="toasts" aria-live="polite"></div>
     </section>
+    </div>
+    <!-- 하단 바(GNB): 실제 Pleos Connect에서는 시스템이 제공한다. 여기서는 앱이 어디에 놓이는지 보여 주는 장식이다. -->
+    <nav class="pleos-gnb" aria-label="시스템 하단 바(장식)">
+      <span class="gnb-item" data-ico="home">홈</span>
+      <span class="gnb-item" data-ico="road">내비</span>
+      <span class="gnb-item" data-ico="sound">미디어</span>
+      <span class="gnb-item" data-ico="gear">차량</span>
+      <span class="gnb-item on" data-ico="belt">치일까봐</span>
+      <span class="gnb-item" data-ico="user">프로필</span>
+    </nav>
   </div>
 
   <aside class="console" id="console" aria-label="가상 차량 콘솔">

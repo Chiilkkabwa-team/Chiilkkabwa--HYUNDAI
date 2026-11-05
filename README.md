@@ -41,12 +41,19 @@ adb install -r app/build/outputs/apk/mock/debug/app-mock-debug.apk
 | 실행 대상 | **Pleos Connect Emulator v2.1.0 (Automotive, API 34)** 또는 Pleos Connect 탑재 차량 |
 | 화면 | 가로 기준, 세로 1창 / 가로 2창 모두 동작 |
 
-**에뮬레이터 설치**
-1. Android Studio → Tools → SDK Manager → SDK Update Sites → `+`
+**에뮬레이터 설치** (공식 문서 *Pleos Connect Emulator 설치 및 실행* 기준)
+
+> 이전 버전의 Pleos Connect Emulator가 설치돼 있으면 **먼저 삭제**한 뒤 진행합니다.
+
+1. Android Studio → Tools → **SDK Manager** → **SDK Update Sites** 탭 → 좌측 상단 `+`
+   - Name: `Pleos Connect System Image`
    - Windows/Linux: `https://nexus-playground.pleos.ai/repository/raw-releases/connect-avd/2.x/crp-sys-img.xml`
    - macOS: `https://nexus-playground.pleos.ai/repository/raw-releases/connect-avd/2.x/crp-arm64-sys-img.xml`
-2. SDK Platforms → API 34 → *Show Package Details* → **Pleos Connect system Image** 체크
-3. Device Manager → Create device → Automotive → Pleos Connect v2.1.0 → Advanced: **Cold boot**, RAM 4GB
+2. **SDK Platforms** 탭 → 하단 **Show Package Details** 체크 → Android API Level 34 아래 **Pleos Connect system Image** 체크 → OK → 설치 후 **Android Studio 재시작**
+3. Tools → **Device Manager** → **Create device** → Form Factor **Automotive** → **Pleos Connect v2.1.0** → Next
+4. **Advanced Settings** 탭 → Startup > Default boot = **Cold** / Emulated Performance > **RAM 4 GB**
+   - 구버전 Android Studio: Graphics = Hardware, Boot option = Cold boot
+5. 다시 **Device** 탭 → Select system image > API **34** → 하단 표의 **Pleos Connect v2.1.0 APIs** 선택 → Finish
 
 **Pleos Vehicle SDK**: `settings.gradle.kts`에 저장소가 이미 들어 있습니다.
 `maven { url = uri("https://nexus-playground.pleos.ai/repository/maven-releases/") }` → `ai.pleos.playground:Vehicle:2.3.2`

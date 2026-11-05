@@ -3,6 +3,8 @@
 > P0 = 1차 시연 영상 전 / P1 = 2차 PT 전 / P2 = 여력 / ★ = 심사에서 '와' 할 만한 것. 끝나면 [x].
 
 ## P0
+- [x] B40 웹 프로토타입을 Pleos Connect 화면 구성(상태 표시줄·Driving view Telltale·하단 바)처럼 보이게 — docs/04 §0
+- [x] B41 에뮬레이터 설치 절차를 공식 문서 원문대로 정정(docs/03 §4, README)
 - [x] B38 웹: 칩·강습 패널에서 선택 후 키보드 포커스 유지(조그 다이얼 대비) — docs/12 §12-3
 - [x] B39 README 공식 4요소 완성(테스트 환경·필요한 설정, APK 위치)
 - [ ] B30 (docs/12) 신규 조회 미션 4개: 출발 전 자세 점검(Seat·SideMirror), 경고등 통역(Safety·Tire), 비 오는 날(Wiper·Light·HVAC 제상), 주행보조 익히기(DrivingMode 크루즈)

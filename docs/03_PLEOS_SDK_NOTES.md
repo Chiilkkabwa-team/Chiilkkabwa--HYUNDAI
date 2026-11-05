@@ -52,14 +52,24 @@
 - AAOS VehiclePropertyIds: https://developer.android.com/reference/android/car/VehiclePropertyIds
 - 공모전 개발 환경: https://appdevchallenge.auto-hmg.io/guide/development
 
-## 4. 에뮬레이터 설치 (Pleos Connect Emulator v2.1.0)
-1. Android Studio > Tools > SDK Manager > SDK Update Sites > + 
-   - Name: Pleos Connect System Image
+## 4. 에뮬레이터 설치 (Pleos Connect Emulator v2.1.0) — 공식 문서 원문 기준
+> 출처: document.pleos.ai › 개발 환경 구성 › *Pleos Connect Emulator 설치 및 실행* (2026-11-05 원문 재확인)
+
+**소프트웨어 요구사항**: Android API **28 이상**(차량 사이버 보안 요건 — 사이닝 키 로테이션·리니지), Gradle **8.0 이상**, Java 또는 Kotlin, Emulator **v2.1.0**(Virtual Console 지원 최소 버전도 2.1.0).
+
+**이전 버전이 설치돼 있으면 삭제 후 진행한다.**
+
+1. Tools → SDK Manager → **SDK Update Sites** → `+`
+   - Name: `Pleos Connect System Image`
    - Windows/Linux: `https://nexus-playground.pleos.ai/repository/raw-releases/connect-avd/2.x/crp-sys-img.xml`
    - Mac: `https://nexus-playground.pleos.ai/repository/raw-releases/connect-avd/2.x/crp-arm64-sys-img.xml`
-2. SDK Platforms > API 34 > Pleos Connect system Image 체크(Show Package Details)
-3. Device Manager > Create device > Automotive > Pleos Connect v2.1.0 > Advanced: Cold boot, RAM 4GB
-4. 이전 버전이 있으면 삭제 후 설치
+2. **SDK Platforms** 탭 → **Show Package Details** 체크 → API Level 34의 **Pleos Connect system Image** 체크 → OK → 설치 완료 후 **Android Studio 재시작**
+3. Tools → **Device Manager** → Create device → Form Factor **Automotive** → **Pleos Connect v2.1.0** → Next
+4. **Advanced Settings** → Startup > Default boot **Cold** / **RAM 4 GB** (구버전: Graphics Hardware + Cold boot)
+5. **Device 탭으로 돌아가** Select system image > API **34** → 표의 **Pleos Connect v2.1.0 APIs** 선택 → Finish
+6. Device Manager에서 생성한 AVD 실행
+
+문제가 생기면 Android Emulator / Android Studio·AGP의 알려진 이슈 문서를 먼저 확인한다.
 
 ## 5. Virtual Console (시연 핵심 도구)
 - `adb forward tcp:8088 tcp:8088` → 브라우저 `http://127.0.0.1:8088/`

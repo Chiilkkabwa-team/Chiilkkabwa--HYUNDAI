@@ -295,3 +295,17 @@
 | github.com, raw.githubusercontent.com, developer.android.com, repo1.maven.org(Maven Central), plugins.gradle.org, registry.npmjs.org | **dl.google.com**(= maven.google.com 실제 목적지), **nexus-playground.pleos.ai**(Pleos SDK), **appdevchallenge.auto-hmg.io**(공지), **document.pleos.ai**, **vercel.app**(배포본 직접 접속), cdn.jsdelivr.net, apps.apple.com |
 
 → **Android 빌드·APK는 로컬 PC에서 해야 한다**(docs/12 §8 일정의 11/6 Day1). 클라우드에서 하려면 위 4개 호스트 허용이 필요하다.
+
+---
+
+## 13. Pleos 공식 문서 재검토 반영 (11/5 저녁)
+
+**에뮬레이터 설치 절차**를 공식 문서 원문(*Pleos Connect Emulator 설치 및 실행*)과 대조해 정정했다(docs/03 §4, README).
+빠져 있던 것: ① 이전 버전이 있으면 **삭제 후** 진행 ② **Show Package Details**를 켜야 이미지가 보임 ③ 설치 후 **Android Studio 재시작** ④ Advanced 설정 뒤 **Device 탭으로 돌아가** API 34 → *Pleos Connect v2.1.0 APIs* 선택 ⑤ minSdk 28의 이유(**차량 사이버 보안 — 사이닝 키 로테이션·리니지**).
+→ 기획서 5번에 "minSdk 28은 차량 사이버 보안 요건" 한 줄을 넣으면 규정을 읽었다는 신호가 된다.
+
+**디자인 가이드 준수**를 docs/04 §0 표로 명시했다(Easy & Safe / Glanceability 1~2초 / 응답 0.25초 / 주행 중 애니메이션 금지 / Consistency / **CCP 조그 다이얼 포커스** / 폼팩터 Connect-S·W / 하드웨어 직접 접근 금지).
+→ 조그 다이얼 포커스 요구가 §12에서 고친 포커스 버그와 정확히 일치한다. **"조그 다이얼로도 끝까지 조작된다"는 2차 PT에서 보여 줄 장면**이다.
+
+**웹 프로토타입을 Pleos Connect 화면처럼** 바꿨다: 상단 상태 표시줄, 왼쪽 Driving view에 **Telltale(계기 표시등)** 영역, 하단 시스템 바. 심사위원이 링크를 열었을 때 "차 안 화면"으로 보이는 것이 목표다.
+⚠️ 하단 바·상태 표시줄은 **시스템이 그리는 영역**이므로 실제 앱은 이를 직접 그리지 않는다. 웹판에만 있는 장식임을 화면에 표시해 두었다(`aria-label`에 '장식').

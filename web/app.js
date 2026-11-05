@@ -841,7 +841,20 @@ function renderChrome() {
     } else st.hidden = true;
     renderOverlay();
   }
-  // Driving view
+  // Driving view — Telltale(계기 표시등): 차가 이미 켜는 표시등을 그대로 보여 준다
+  const tells = [
+    ['belt', '벨트', s.driverBeltBuckled.status === 'OK' ? (s.driverBeltBuckled.value ? 'ok' : 'on') : ''],
+    ['pbrake', 'P', s.parkingBrakeOn.status === 'OK' && s.parkingBrakeOn.value ? 'on' : ''],
+    ['beam', '전조등', s.lowBeamOn.value ? 'ok' : ''],
+    ['wiper', '와이퍼', s.wiperOn.value ? 'ok' : ''],
+    ['turn', s.turnSignal.value === 'LEFT' ? '◀' : s.turnSignal.value === 'RIGHT' ? '▶' : '깜빡이', s.turnSignal.value && s.turnSignal.value !== 'NONE' ? 'ok' : ''],
+  ];
+  const tellKey = tells.map((t) => t[1] + t[2]).join('|');
+  const tellEl = $('#dvTell');
+  if (tellEl.dataset.k !== tellKey) {
+    tellEl.dataset.k = tellKey;
+    tellEl.innerHTML = tells.map(([ico, label, cls]) => `<span class="tell ${cls}">${icon(ico, 14)}${label}</span>`).join('');
+  }
   $('#dvSpeed').textContent = Math.round(V.speedKmh.value);
   $('#dvGear').textContent = s.gear.status === 'OK' ? s.gear.value : '–';
   $('#dvPb').classList.toggle('on', s.parkingBrakeOn.value === true);
@@ -1458,6 +1471,10 @@ async function startSimDemo() {
 $('#brandMascot').innerHTML = mascot('calm', 40);
 $('#topMascot').innerHTML = mascot('calm', 30);
 $('#dvArt').innerHTML = drivingViewArt();
+$$('.gnb-item').forEach((el) => el.insertAdjacentHTML('afterbegin', icon(el.dataset.ico, 22)));
+// 상태 표시줄 시계(장식)
+const tickClock = () => { const d = new Date(); $('#psTime').textContent = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
+tickClock(); setInterval(tickClock, 20000);
 $('#historyBtn .ib-ico').innerHTML = icon('star', 22);
 $('#profileBtn .ib-ico').innerHTML = icon('user', 22);
 $('#consoleFab .fab-ico').innerHTML = icon('console', 22);

@@ -67,6 +67,7 @@ const P = {
   arrowDown: `<path d="M24 10v28M12 26l12 12 12-12"/>`,
   reset: `<path d="M10 24a14 14 0 1 0 4-10"/><path d="M10 8v8h8"/>`,
   info: `<circle cx="24" cy="24" r="17"/><path d="M24 22v11M24 15v1"/>`,
+  home: `<path d="M7 22 24 8l17 14"/><path d="M12 20v20h24V20"/><path d="M20 40V28h8v12"/>`,
 };
 
 export function icon(name, size = 24, cls = '') {
