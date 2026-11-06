@@ -1,5 +1,23 @@
 # 04. UI 스펙 — 화면 8개 · 문구 · 디자인 토큰
 
+## 0-1. Pleos Connect 화면 구성 (공식 디자인 가이드 원문, 2026-11-06 확인)
+> 출처: document.pleos.ai › 디자인 가이드 › Getting Started › Display Layout / Status bar / GNB, Foundations › Typography
+
+**화면 구성 요소** — 앱은 Application window 안에만 그린다. 나머지는 **시스템 UI**이고 앱보다 상위 레이어라 일시적으로 앱을 가릴 수 있다.
+
+| 영역 | 담는 것 | 우리 앱 |
+|---|---|---|
+| Status bar | SP0 Static(도어락·검색) · SP0 Dynamic(알림센터·통화·프라이버시) · **40dp safe bounds** · SP1 Dynamic(다운로드·업데이트·WPC·하이패스·사운드) · SP1 Static(프로필·블루투스·네트워크) · Time(12/24h) · PAB · More | 그리지 않음 |
+| **Driving view** | **Telltale, 속도, 차량 상태** 등 주행·안전 정보 | 가리지 않음. 우리 미션은 이 정보를 **읽기만** 한다 |
+| GNB | ①운전석 공조(차량설정·Climate·FR/RR Def·편집 슬롯) ②앱 조작(고정 앱 Navigation·편집 슬롯 3·App library·최근 앱 2) ③조수석 공조 | 편집 슬롯에 들어가는 앱 중 하나가 되는 것이 목표 |
+| Application window | 앱 1개 또는 2개 | **Landscape·Portrait 모두** 대응(방향 고정 금지) |
+
+**화면 유형**: Connect-S(17 / 14.6 / 12.9인치) · Connect-W(와이드, Extended는 세로 확장) · Connect-WF(워터폴, 작은 해상도).
+→ 웹 프로토타입을 390 / 768 / 1440 / 1920 폭에서 가로 넘침 없이 확인했다(2026-11-06).
+
+**폰트**: 시스템 UI 폰트는 **Asta Sans**(한국어·영어). 가이드는 "브랜드가 폰트를 지정할 수 있으나 **캐릭터가 강조된 폰트는 지양**", **최소 12sp**, 줄 높이 1.5배 이상(실제 18px 이상)을 요구한다.
+→ **앱에서 커스텀 서체를 지정하지 않는다.** 그래야 차량에서 시스템 폰트(Asta Sans)를 그대로 쓴다. Asta Sans는 Playground 회원 약관에 묶인 Design Asset이라 공개 웹 프로토타입에는 넣지 않고, 중립 서체로 대체했다.
+
 ## 0. Pleos Connect 디자인 가이드 준수 (2026-11-05 반영)
 > 출처: document.pleos.ai › 디자인 가이드(foundations/components/experiences), 주행 안전을 고려한 설계
 

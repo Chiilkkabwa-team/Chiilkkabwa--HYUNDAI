@@ -1471,7 +1471,7 @@ async function startSimDemo() {
 $('#brandMascot').innerHTML = mascot('calm', 40);
 $('#topMascot').innerHTML = mascot('calm', 30);
 $('#dvArt').innerHTML = drivingViewArt();
-$$('.gnb-item').forEach((el) => el.insertAdjacentHTML('afterbegin', icon(el.dataset.ico, 22)));
+$$('.gnb-app, .gnb-ico, .ps-ico').forEach((el) => el.insertAdjacentHTML('afterbegin', icon(el.dataset.ico, 21)));
 // 상태 표시줄 시계(장식)
 const tickClock = () => { const d = new Date(); $('#psTime').textContent = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
 tickClock(); setInterval(tickClock, 20000);

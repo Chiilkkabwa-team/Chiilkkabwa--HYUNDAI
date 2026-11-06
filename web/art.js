@@ -67,6 +67,16 @@ const P = {
   arrowDown: `<path d="M24 10v28M12 26l12 12 12-12"/>`,
   reset: `<path d="M10 24a14 14 0 1 0 4-10"/><path d="M10 8v8h8"/>`,
   info: `<circle cx="24" cy="24" r="17"/><path d="M24 22v11M24 15v1"/>`,
+  climate: `<path d="M24 6v36M10 15l28 18M38 15 10 33"/><path d="M24 6l-4 5M24 6l4 5M24 42l-4-5M24 42l4-5"/>`,
+  defrost: `<path d="M8 32c0-10 7-16 16-16s16 6 16 16"/><path d="M14 40q3-5 6 0t6 0 6 0 6 0"/>`,
+  seatHeat: `<path d="M16 8h9a3 3 0 0 1 3 3l-2 15H15l-2-15a3 3 0 0 1 3-3z"/><path d="M12 28h20l2 7H10z"/><path d="M36 10q-3 4 0 8t0 8"/>`,
+  grid: `<rect x="7" y="7" width="14" height="14" rx="3"/><rect x="27" y="7" width="14" height="14" rx="3"/><rect x="7" y="27" width="14" height="14" rx="3"/><rect x="27" y="27" width="14" height="14" rx="3"/>`,
+  phone: `<path d="M14 7h7l3 9-5 3q3 7 10 10l3-5 9 3v7a4 4 0 0 1-4 4C21 38 10 27 10 11a4 4 0 0 1 4-4z"/>`,
+  music: `<path d="M18 36V12l20-4v24"/><circle cx="13" cy="36" r="5"/><circle cx="33" cy="32" r="5"/>`,
+  search: `<circle cx="21" cy="21" r="12"/><path d="M30 30l10 10"/>`,
+  bt: `<path d="M18 14l12 10-12 10V8l12 10-12 10"/>`,
+  wifi: `<path d="M8 19a24 24 0 0 1 32 0"/><path d="M15 26a14 14 0 0 1 18 0"/><circle cx="24" cy="34" r="2.5"/>`,
+  bell: `<path d="M24 8a10 10 0 0 1 10 10v8l3 6H11l3-6v-8A10 10 0 0 1 24 8z"/><path d="M20 36a4 4 0 0 0 8 0"/>`,
   home: `<path d="M7 22 24 8l17 14"/><path d="M12 20v20h24V20"/><path d="M20 40V28h8v12"/>`,
 };
 

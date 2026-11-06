@@ -24,10 +24,13 @@
 <main class="stage">
   <div class="display" id="display" aria-label="차량 디스플레이 미리보기">
     <!-- Pleos Connect 화면 구성 흉내: 상태 표시줄 + (Driving view | 앱 영역) + 하단 바 -->
+    <!-- Status bar — Pleos 해부도: SP0(도어락·검색) · SP0 dynamic(알림) · 40dp safe bounds · SP1 dynamic(사운드) · SP1 static(프로필·BT·네트워크) · Time -->
     <div class="pleos-status" aria-hidden="true">
-      <span class="ps-left"><b id="psOut">18°</b><span>외기</span></span>
-      <span class="ps-mid" id="psTime">10:24</span>
-      <span class="ps-right"><i class="ps-dot"></i>연결됨</span>
+      <span class="ps-grp ps-sp0"><b id="psRange">412km</b><span class="ps-ico" data-ico="lock"></span><span class="ps-ico" data-ico="search"></span></span>
+      <span class="ps-grp ps-sp0d"><span class="ps-ico" data-ico="bell"></span></span>
+      <span class="ps-safe"></span>
+      <span class="ps-grp ps-sp1"><span class="ps-ico" data-ico="sound"></span><span class="ps-ico" data-ico="bt"></span><span class="ps-ico" data-ico="wifi"></span><span class="ps-ico" data-ico="user"></span></span>
+      <span class="ps-time" id="psTime">10:24</span>
     </div>
     <div class="display-main">
     <aside class="driving-view" aria-label="시스템 Driving view">
@@ -58,13 +61,26 @@
     </section>
     </div>
     <!-- 하단 바(GNB): 실제 Pleos Connect에서는 시스템이 제공한다. 여기서는 앱이 어디에 놓이는지 보여 주는 장식이다. -->
+    <!-- GNB — Pleos 해부도: ①운전석 공조 ②앱 조작(고정 내비·편집 슬롯·앱 라이브러리·최근 앱) ③조수석 공조. 시스템이 그리는 영역이라 앱은 직접 그리지 않는다(웹판 장식). -->
     <nav class="pleos-gnb" aria-label="시스템 하단 바(장식)">
-      <span class="gnb-item" data-ico="home">홈</span>
-      <span class="gnb-item" data-ico="road">내비</span>
-      <span class="gnb-item" data-ico="sound">미디어</span>
-      <span class="gnb-item" data-ico="gear">차량</span>
-      <span class="gnb-item on" data-ico="belt">치일까봐</span>
-      <span class="gnb-item" data-ico="user">프로필</span>
+      <div class="gnb-zone gnb-drv">
+        <span class="gnb-ico" data-ico="gear" title="차량 설정"></span>
+        <span class="gnb-climate"><span class="gc-minus">−</span><b>22.5</b><span class="gc-plus">+</span></span>
+        <span class="gnb-ico" data-ico="defrost" title="앞유리 서리 제거"></span>
+        <span class="gnb-ico" data-ico="seatHeat" title="운전석 시트 열선"></span>
+      </div>
+      <div class="gnb-zone gnb-apps">
+        <span class="gnb-app" data-ico="road">내비</span>
+        <span class="gnb-app" data-ico="music">미디어</span>
+        <span class="gnb-app" data-ico="phone">전화</span>
+        <span class="gnb-app on" data-ico="belt">치일까봐</span>
+        <span class="gnb-ico lib" data-ico="grid" title="앱 라이브러리"></span>
+        <span class="gnb-recent"><span class="gnb-app sm" data-ico="home">홈</span></span>
+      </div>
+      <div class="gnb-zone gnb-pass">
+        <span class="gnb-ico" data-ico="seatHeat" title="조수석 시트"></span>
+        <span class="gnb-climate"><span class="gc-minus">−</span><b>22.5</b><span class="gc-plus">+</span></span>
+      </div>
     </nav>
   </div>
 
