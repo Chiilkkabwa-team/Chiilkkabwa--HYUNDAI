@@ -15,9 +15,12 @@
 
 ## 3. 지금 상태
 - `core/`(순수 Kotlin): 안전 게이트, 미션 판정 7종, 미션 러너, 세션 상태 기계, 요약, 배지, 가상 주차 물리 — **단위 테스트 17개 통과**(2026-11-05, JVM Gradle로 core만 실행. Android 빌드는 아직 안 돌려봄)
-- `data/`: AaosVehicleSource(실제 AAOS API), PleosVehicleSource(**TODO(sdk) 의사코드**), MockVehicleSource, PracticeStore(SharedPreferences JSON) — **컴파일 검증 완료**(2026-11-05, android.jar+AAOS 스텁 기준)
-- `ui/`: Compose 화면 8개 + 디버그 패널(mock 전용). **한 번도 컴파일 안 됨** → 첫 작업은 빌드 오류 수정
+- `data/`: AaosVehicleSource(실제 AAOS API), PleosVehicleSource(**TODO(sdk) 의사코드**), MockVehicleSource, PracticeStore(SharedPreferences JSON)
+- `ui/`: Compose 화면 9개(+리플레이) + 디버그 패널(mock 전용)
+- **2026-11-08: APK 빌드 성공.** `:app:assembleMockDebug`·`:app:assembleVehicleDebug` 모두 BUILD SUCCESSFUL, `:app:testMockDebugUnitTest` **17/17 통과**(Gradle 실행). 에뮬레이터·실차에 설치해 본 것은 아니다(Day1).
+  - 고친 것: `VehiclePropertyIds.{BRAKE,ACCELERATOR}_PEDAL_COMPRESSION_PERCENTAGE`가 **공개 `android.car.jar` stub에 없어** 컴파일되지 않았다 → 숫자 ID를 지어내지 않고 **리플렉션으로 찾고 없으면 UNSUPPORTED**로 둔다(docs/03 §5-1a)
 - Gradle wrapper 8.10.2, AGP 8.8.2, Kotlin 2.0.0, compileSdk 35, targetSdk 34, minSdk 28
+- 빌드 환경: Android SDK `platforms;android-35` + `build-tools;35.0.0` + `platform-tools`, JDK 21, `local.properties`에 `sdk.dir`
 
 ## 4. 명령
 ```bash
@@ -33,7 +36,9 @@ adb logcat -s AaosVehicleSource PleosVehicleSource   # 지원 속성 목록·실
 1. **모르면 잠근다.** 기어 P + 주차 브레이크 + 주행 제한 없음이 모두 OK일 때만 미션을 연다. 속도 0만으로 주차라고 보지 않는다.
 2. **미션은 시작 이후의 새 관측만 성공으로 센다.** 이미 밟힌 브레이크·이전 세션 값으로 완료되면 버그.
 3. **출처 라벨**: 실차 신호 / 에뮬레이터 신호 / 모의 — 화면·기록·배지에서 섞지 않는다.
-4. **주행 중 화면은 정적**: 애니메이션·소리·알림·입력 없음. `distractionOptimized` 선언 금지.
+4. **주행 중 화면은 정적**: 영상·애니메이션·화면 전환·터치 입력 없음. `distractionOptimized` 선언 금지.
+   - **소리는 예외**: 공식 문서상 주행 중 금지는 '영상'이고 오디오는 **오디오 포커스 정책을 지키면 허용**된다(docs/13 §1).
+   - 음성 길잡이는 목표 1개에 대해서만, 최소 간격 45초·주행당 최대 5회·한 문장 2.5초 이내, 내비·통화·경고음에 즉시 양보. 멘토 동승 시 기본 꺼짐.
 5. **차량 제어 API 호출 금지**(Door/Seat/Wiper set 등 CONTROL_CAR_* 권한 선언 금지). 화면 제동 버튼·출력 제한은 **구현하지 않는다**(제조사 협업 제안일 뿐). 가짜 제동 API·패킷을 만들지 않는다.
 6. **Pleos SDK 시그니처를 지어내지 않는다.** Gradle Sync 후 자동완성·공식 문서로 확인한 것만 쓰고, 확인 전에는 TODO(sdk)로 둔다.
 7. 개인정보: 서버·계정·위치·VIN 없음. 기기 내 저장만. 실명·학교를 코드·README·커밋·스크린샷에 넣지 않는다(공모전 블라인드).
@@ -57,6 +62,7 @@ adb logcat -s AaosVehicleSource PleosVehicleSource   # 지원 속성 목록·실
 | `docs/10_CREATIVE_BRIEF.md` | **한 장 기획안 + 자유 영역 + 아이디어 창고** |
 | `docs/11_SERVICE_FLOW_UX_REVIEW.md` | 서비스 플로우, 화면별 흐름표, 여정, 장단점, 개선 우선순위 |
 | `docs/12_SUBMISSION_STRATEGY.md` | 심사위원 관점 전면 점검, 힘줄 곳, 아이디어 평가, 논리 점검, D-10 일정, 팀 결정 사항 |
+| `docs/13_MEETING_2026-11-08.md` | **11/8 회의 반영** — 주행 중 음성 길잡이(규정 근거), 타깃 확장, 리플레이, 보고서 문구 교체 |
 | `web/` | 웹 프로토타입(모의 신호 전용) — 흐름·문구를 브라우저에서 먼저 시험 |
 | `docs/reference/` | 기획서 완성본(HTML), 별지, 근거 대장 — 제품 의도 확인용 |
 

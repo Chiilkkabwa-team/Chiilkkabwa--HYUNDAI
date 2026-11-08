@@ -25,9 +25,30 @@
 > 초대에는 **GitHub 아이디**가 필요하다(이메일 초대도 가능하지만 상대가 가입해야 함). 아이디를 모으면 한 번에 초대한다.
 > 블라인드 주의: 아이디·프로필에 실명·학교가 드러나면 심사에서 노출될 수 있다. 팀 전용 계정을 권장.
 
-## 2. APK
-- `./gradlew :app:assembleVehicleRelease`(서명 필요) 또는 공지 기준
+## 2. APK — **2026-11-08 빌드 성공**
+빌드가 실제로 되는 것을 확인했다. 그 전까지 `ui/`는 한 번도 컴파일되지 않았다.
+
+| 산출물 | 명령 | 상태 |
+|---|---|---|
+| 모의 차량(전 흐름 시연) | `./gradlew :app:assembleMockDebug` | ✅ BUILD SUCCESSFUL |
+| 실제 신호(에뮬레이터) | `./gradlew :app:assembleVehicleDebug` | ✅ BUILD SUCCESSFUL |
+| 제출용 release | `./gradlew :app:assembleRelease` | ✅ BUILD SUCCESSFUL |
+| 단위 테스트 | `./gradlew :app:testMockDebugUnitTest` | ✅ **17/17 통과** |
+
+**빌드에 필요한 것**(처음 빌드하는 사람용)
+1. Android Studio 또는 commandline tools + **Android SDK `platforms;android-35`, `build-tools;35.0.0`, `platform-tools`**, JDK 17 이상(검증은 21)
+2. 저장소 루트 `local.properties`에 `sdk.dir=<SDK 경로>` (이 파일은 `.gitignore`에 있다)
+3. 네트워크: `dl.google.com`(Google Maven), `repo.maven.apache.org`, `nexus-playground.pleos.ai`(Pleos SDK)
+
+**서명**
+- 기본값은 **디버그 키**다 → 설치는 되지만 스토어 배포용은 아니다. 공모전 제출(설치·실행 확인)에는 충분하다
+- 자기 키로 서명하려면 루트에 `keystore.properties`(storeFile/storePassword/keyAlias/keyPassword) → `.gitignore`에 이미 들어 있다
+- **키스토어·비밀번호를 저장소에 커밋하지 않는다**
+
+**제출 시**
 - 시연용은 vehicle 플레이버. mock 플레이버는 별도 표기(applicationId `.mock`)
+- 28MB APK를 git에 커밋하지 않는다(`apk/*.apk`가 `.gitignore`) → **GitHub Release**로 올리고 README에 링크(공식 4요소 ④)
+- ⚠️ **빌드된다 ≠ 차에서 동작한다.** 에뮬레이터 설치·신호 수신은 아직 **미시험**이다. 보고서·README에 "빌드·단위 테스트 통과"까지만 쓴다(허위 기재 시 선정 취소)
 - 에뮬레이터 v2.1.0에서 설치·실행 확인 영상
 
 ## 3. 블라인드 점검

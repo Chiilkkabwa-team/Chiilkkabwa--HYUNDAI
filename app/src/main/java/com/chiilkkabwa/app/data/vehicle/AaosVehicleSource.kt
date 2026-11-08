@@ -42,9 +42,9 @@ class AaosVehicleSource(private val context: Context) : VehicleSource {
                     VehiclePropertyIds.PARKING_BRAKE_ON ->
                         // 표준 데이터는 AAOS 우선(Pleos SDK API 정책). Pleos Brake의 주차 브레이크는 AAOS 미지원 시 대체로만 사용
                         s.copy(parkingBrakeOn = if (okStatus) Signal.ok(v.value as Boolean, label, at) else Signal.failed(SignalStatus.STALE, label, at))
-                    VehiclePropertyIds.BRAKE_PEDAL_COMPRESSION_PERCENTAGE ->
+                    PROP_BRAKE_PEDAL ->
                         s.copy(brakePedalPct = if (okStatus) Signal.ok((v.value as Float), label, at) else Signal.failed(SignalStatus.STALE, label, at))
-                    VehiclePropertyIds.ACCELERATOR_PEDAL_COMPRESSION_PERCENTAGE ->
+                    PROP_ACCEL_PEDAL ->
                         s.copy(accelPedalPct = if (okStatus) Signal.ok((v.value as Float), label, at) else Signal.failed(SignalStatus.STALE, label, at))
                     else -> s
                 }
@@ -85,10 +85,18 @@ class AaosVehicleSource(private val context: Context) : VehicleSource {
         subscribe(VehiclePropertyIds.GEAR_SELECTION, CarPropertyManager.SENSOR_RATE_ONCHANGE) { s, st -> s.copy(gear = Signal.failed(st, label, now())) }
         subscribe(VehiclePropertyIds.PARKING_BRAKE_ON, CarPropertyManager.SENSOR_RATE_ONCHANGE) { s, st -> if (s.parkingBrakeOn.isUsable) s /* Pleos 대체값 유지 */ else s.copy(parkingBrakeOn = Signal.failed(st, label, now())) }
 
-        // 페달 압력: 위험 권한. 권한이 없으면 PERMISSION_DENIED로 표시(UI가 '모의 연습' 제안)
-        if (hasPedalPermission()) {
-            subscribe(VehiclePropertyIds.BRAKE_PEDAL_COMPRESSION_PERCENTAGE, 10f) { s, st -> s.copy(brakePedalPct = Signal.failed(st, label, now())) }
-            subscribe(VehiclePropertyIds.ACCELERATOR_PEDAL_COMPRESSION_PERCENTAGE, 10f) { s, st -> s.copy(accelPedalPct = Signal.failed(st, label, now())) }
+        // 페달 압력: 위험 권한 + 이 SDK에 상수가 있는지도 확인해야 한다(아래 PROP_* 주석 참고)
+        if (PROP_BRAKE_PEDAL == null && PROP_ACCEL_PEDAL == null) {
+            Log.w(TAG, "pedal compression properties not in this SDK/platform - skipping pedal missions")
+            sink.update { it.copy(
+                brakePedalPct = Signal.failed(SignalStatus.UNSUPPORTED, label, now()),
+                accelPedalPct = Signal.failed(SignalStatus.UNSUPPORTED, label, now()),
+            ) }
+        } else if (hasPedalPermission()) {
+            PROP_BRAKE_PEDAL?.let { id -> subscribe(id, 10f) { s, st -> s.copy(brakePedalPct = Signal.failed(st, label, now())) } }
+                ?: sink.update { it.copy(brakePedalPct = Signal.failed(SignalStatus.UNSUPPORTED, label, now())) }
+            PROP_ACCEL_PEDAL?.let { id -> subscribe(id, 10f) { s, st -> s.copy(accelPedalPct = Signal.failed(st, label, now())) } }
+                ?: sink.update { it.copy(accelPedalPct = Signal.failed(SignalStatus.UNSUPPORTED, label, now())) }
         } else {
             sink.update { it.copy(
                 brakePedalPct = Signal.failed(SignalStatus.PERMISSION_DENIED, label, now()),
@@ -143,5 +151,31 @@ class AaosVehicleSource(private val context: Context) : VehicleSource {
     companion object {
         private const val TAG = "AaosVehicleSource"
         const val PEDAL_PERMISSION = "android.car.permission.READ_CAR_PEDALS"
+
+        /**
+         * 페달 압력 속성 ID를 **실행 중에** 찾는다.
+         *
+         * 공식 문서(developer.android.com/reference/android/car/VehiclePropertyIds)에는
+         * `BRAKE_PEDAL_COMPRESSION_PERCENTAGE` · `ACCELERATOR_PEDAL_COMPRESSION_PERCENTAGE`가
+         * API 35로 적혀 있다. 그런데 **2026-11-08 기준 Android SDK 35의 공개 `android.car.jar` stub에는
+         * 이 두 상수가 들어 있지 않다**(`javap`로 확인: GEAR_SELECTION·PARKING_BRAKE_ON·PERF_VEHICLE_SPEED는 있음).
+         * 그래서 이름으로 참조하면 컴파일되지 않는다.
+         *
+         * 숫자 ID를 직접 적으면 확인하지 않은 값을 지어내는 것이 되므로(CLAUDE.md §6) 그렇게 하지 않는다.
+         * 대신 리플렉션으로 찾고, 없으면 해당 미션을 `UNSUPPORTED`로 두고 건너뛴다(F5의 '미지원 → 자동 생략' 경로).
+         * 차량·에뮬레이터의 실제 `android.car` 구현에 상수가 있으면 그대로 동작한다.
+         *
+         * TODO(day1): 에뮬레이터에서 `logSupportedProperties()` 로그로 실제 ID를 확인하고
+         *   결과를 docs/03 §1 표의 '에뮬레이터 수신' 열에 적는다(B03).
+         */
+        private fun propIdOrNull(name: String): Int? = try {
+            VehiclePropertyIds::class.java.getField(name).getInt(null)
+        } catch (e: Throwable) {
+            Log.i(TAG, "VehiclePropertyIds.$name not available in this platform")
+            null
+        }
+
+        private val PROP_BRAKE_PEDAL: Int? = propIdOrNull("BRAKE_PEDAL_COMPRESSION_PERCENTAGE")
+        private val PROP_ACCEL_PEDAL: Int? = propIdOrNull("ACCELERATOR_PEDAL_COMPRESSION_PERCENTAGE")
     }
 }

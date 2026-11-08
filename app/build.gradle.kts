@@ -1,3 +1,6 @@
+// Kotlin DSL에서 `java.util.Properties`를 그대로 쓰면 `java`가 Gradle의 java 확장으로 잡혀 깨진다 → import로 받는다
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -27,8 +30,36 @@ android {
     // AAOS Car API(CarUxRestrictionsManager, CarPropertyManager)
     useLibrary("android.car")
 
+    /**
+     * release 서명.
+     *
+     * 기본값은 **디버그 키**다. 공모전 제출 APK는 설치만 되면 되고(스토어 배포가 아니다),
+     * 서명 키스토어를 저장소에 넣으면 그게 더 큰 문제이기 때문이다.
+     * 자기 키로 서명하려면 저장소 루트에 `keystore.properties`를 만들고(`.gitignore`에 이미 있다):
+     *   storeFile=../my-release.jks
+     *   storePassword=…
+     *   keyAlias=…
+     *   keyPassword=…
+     * Pleos는 minSdk 28을 요구한다(사이닝 키 로테이션·리니지) → 실제 스토어 배포 때는 키 로테이션을 지원하는 v3 서명을 쓴다.
+     */
+    val keystoreProps = rootProject.file("keystore.properties")
+    if (keystoreProps.exists()) {
+        val p = Properties()
+        keystoreProps.inputStream().use { stream -> p.load(stream) }
+        signingConfigs.create("release") {
+            storeFile = rootProject.file(p.getProperty("storeFile"))
+            storePassword = p.getProperty("storePassword")
+            keyAlias = p.getProperty("keyAlias")
+            keyPassword = p.getProperty("keyPassword")
+        }
+    }
+
     buildTypes {
-        release { isMinifyEnabled = false; proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro") }
+        release {
+            isMinifyEnabled = false
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
+        }
     }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget = "17" }

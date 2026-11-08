@@ -150,6 +150,16 @@
       </div>
     </fieldset>
 
+    <fieldset class="c-group" id="voiceGroup">
+      <legend>주행 중 음성 길잡이 <small>F12</small></legend>
+      <p class="c-note">주행 중 금지는 ‘영상’이고 오디오는 정책을 지키면 허용돼요. 여기 계기는 <b>프로토타입 계측</b>이고, 차량 앱 화면에는 나오지 않아요.</p>
+      <div class="voice-meter" id="voiceMeter" aria-live="polite"></div>
+      <div class="c-btns">
+        <button type="button" class="mini" id="c-voiceTest">소리 확인</button>
+        <button type="button" class="mini" id="c-navDuck" title="내비 안내가 끼어든 상황을 만들어 봐요">내비 안내 끼어들기</button>
+      </div>
+    </fieldset>
+
     <fieldset class="c-group">
       <legend>좌석</legend>
       <div class="c-row" id="r-pass"><span class="c-lab">조수석에 사람 있음</span>

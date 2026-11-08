@@ -10,3 +10,6 @@ apk/*.apk
 
 # 팀 내부 자료(실명·회의 내용 포함) — 공개 금지
 docs/reference/
+keystore.properties
+*.jks
+*.keystore

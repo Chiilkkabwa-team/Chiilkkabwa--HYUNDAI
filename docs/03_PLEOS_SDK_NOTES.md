@@ -76,6 +76,38 @@
 - Motion: 기어, 브레이크, 스티어링 각도, 주행거리 / ADAS: 크루즈 / Convenience: 도어·창문·시트·조명·와이퍼 / Safety: 주차브레이크, 안전벨트, 경고등 / Energy / Climate
 - **콘솔에서 값을 바꿀 수 있다는 것 ≠ 앱이 그 필드를 받을 수 있다는 것.** 반드시 앱 로그로 확인
 
+## 5-0. TTS·오디오 포커스 (F12 음성 길잡이 근거, 2026-11-08 확인)
+> 출처: document.pleos.ai › 앱 기획 가이드 › *주행 안전을 고려한 설계* / 개발 가이드 › *오디오 포커스* / Connect SDK › TextToSpeech
+
+**핵심 원문 3개** — 주행 중 소리가 금지가 아니라는 근거다.
+| 원문 | 뜻 |
+|---|---|
+| "주행 규제 상태에서 **영상 재생**을 시작하거나 재개하지 않도록 처리하고, **오디오 재생은 오디오 포커스 개발 가이드에 정의된 정책을 준수**합니다." | 영상 금지, 오디오는 정책 준수 시 허용 |
+| "터치스크린 조작을 최소화하고, **음성 명령이나 물리 버튼** 등 차량에서 제공하는 입력 방식과 연계한 인터랙션을 **지원합니다**." | 음성은 권장 |
+| "운전에 중요한 **오디오 안내**가 재생될 때는 오디오 포커스 정책에 따라 미디어 재생을 일시 중지하거나 볼륨을 조정" | 주행 중 오디오 안내는 플랫폼이 인정하는 패턴 |
+
+**TTS**
+- `ai.pleos.playground.tts.TextToSpeech(context, Mode.ON_DEVICE)` — **ON_DEVICE는 앱 등록 신청 없이 사용 가능**(SERVER 모드는 신청 필요)
+- `setAudioAttributes(...)`, `setAudioZoneId(...)` 제공 → 운전석 구역만 재생 가능 여부 Day1 확인
+- 미지원 시 Android 기본 `android.speech.tts.TextToSpeech`로 대체
+
+**오디오 포커스 (지키지 않으면 심사 탈락 사유)**
+| 단계 | 할 일 |
+|---|---|
+| 재생 전 | `AudioAttributes`(usage = ASSISTANCE_NAVIGATION_GUIDANCE 또는 ASSISTANT) + `AudioFocusRequest` 요청 |
+| 포커스 종류 | 음악과 공존해야 하므로 **`AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK`** (음악을 끄지 않고 볼륨만 낮춤) |
+| `AUDIOFOCUS_LOSS` | 즉시 중단, 재시도 안 함 |
+| `AUDIOFOCUS_LOSS_TRANSIENT` | 그 발화를 **버린다**(나중에 다시 말하지 않음) |
+| `AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK` | 그 발화 생략 |
+| 재생 후 | `abandonAudioFocusRequest` 반드시 호출 |
+
+- CarAudioContext 우선순위: MUSIC / NAVIGATION / VOICE_COMMAND / CALL / ALARM / NOTIFICATION / SYSTEM_SOUND / EMERGENCY / SAFETY / VEHICLE_STATUS / ANNOUNCEMENT — 우선순위는 **R(운전 관련) > E(긴급) > C(기타)**
+- 내비·통화·경고음은 우리보다 상위 → 우리가 양보하는 쪽이다
+
+**NaviHelper** (신청 없이 사용 가능)
+- `onCurrentRoadSpeedLimit`(제한 속도), `onCameraAlert`, `onTBTInfo`, `requestRouteWithWaypoints`
+- 제한 속도 초과 음성은 **기본 꺼짐**(내비가 이미 안내 → 중복·잔소리). 설정으로만 켤 수 있게 둔다
+
 ## 5-1. AAOS 권한 등급 (Android Car 레퍼런스, 2026-11-05 확인)
 | 권한 | 등급 | 의미 |
 |---|---|---|
@@ -85,8 +117,35 @@
 | android.car.permission.READ_ADAS_STATES / READ_ADAS_SETTINGS | **Signature\|Privileged** | 차선이탈·전방충돌·후측방 경고 상태 — **서드파티 앱 불가** |
 | android.car.permission.READ_DRIVER_MONITORING_STATES | **Signature\|Privileged** | 운전자 모니터링 — 서드파티 앱 불가 |
 
+## 5-1a. ⚠️ 페달 압력 상수가 공개 SDK stub에 없다 (2026-11-08, 실제 빌드로 확인)
+
+공식 레퍼런스(developer.android.com/reference/android/car/VehiclePropertyIds)에는 API 35로 적혀 있는데, **실제 Android SDK 35의 `platforms/android-35/optional/android.car.jar`에는 두 상수가 export돼 있지 않다.**
+
+```
+$ javap -p android/car/VehiclePropertyIds.class | grep -i "PEDAL\|GEAR_SEL\|PARKING_BRAKE\|PERF_VEHICLE"
+  public static final int GEAR_SELECTION;          ← 있음
+  public static final int PARKING_BRAKE_AUTO_APPLY; ← 있음
+  public static final int PARKING_BRAKE_ON;         ← 있음
+  public static final int PERF_VEHICLE_SPEED;       ← 있음
+  public static final int PERF_VEHICLE_SPEED_DISPLAY;
+  (BRAKE_PEDAL_COMPRESSION_PERCENTAGE / ACCELERATOR_PEDAL_COMPRESSION_PERCENTAGE 없음)
+```
+
+이름으로 참조하면 `Unresolved reference`로 컴파일이 깨진다(이것이 11/8까지 앱이 한 번도 빌드되지 않은 원인 중 하나였다).
+
+**대응(`AaosVehicleSource.kt` companion object)**
+- 숫자 ID를 직접 적지 않는다 — 확인하지 않은 값을 쓰는 것이 되므로(CLAUDE.md §6)
+- `VehiclePropertyIds::class.java.getField(name).getInt(null)`로 **실행 중에** 찾는다
+- 못 찾으면 `brakePedalPct`·`accelPedalPct`를 `UNSUPPORTED`로 두고 페달 미션을 자동 생략한다(F5가 이미 가진 경로)
+- 차량·에뮬레이터의 실제 `android.car` 구현에 상수가 있으면 그대로 동작한다
+
+**Day1 할 일(B03)**: 에뮬레이터에서 `adb logcat -s AaosVehicleSource`로 `Supported AAOS properties:` 로그를 받아
+① 페달 속성이 목록에 있는지 ② 있으면 리플렉션이 ID를 찾는지 확인하고 §1 표의 '에뮬레이터 수신' 열을 채운다.
+없으면 **페달 미션의 기본은 Pleos Brake SDK `current-brake-pedal-status`**로 간다(이미 그렇게 바꿔 뒀다, docs/01 F5).
+
 ## 6. 규정 요약(코드에 영향)
-- DO(distractionOptimized) 미선언 앱 = 주행 중 사용 불가 → 선언하지 않는다. 주행 중에는 **시스템이 앱 화면을 가릴 가능성이 크다**(앱 잠금 화면이 보이는지 Day1 확인, B37)
+- DO(distractionOptimized) 미선언 앱 = 주행 중 **화면** 사용 불가 → 선언하지 않는다. 주행 중에는 **시스템이 앱 화면을 가릴 가능성이 크다**(앱 잠금 화면이 보이는지 Day1 확인, B37)
+- **DO 미선언은 오디오를 막지 않는다.** 주행 중 음성 길잡이(F12)는 §5-0 오디오 포커스 정책을 지키는 한 허용된다. 화면은 건드리지 않으므로 Activity는 그대로 DO 미선언으로 둔다
 - CarUxRestrictions 기준 제한, 속도 0 ≠ 주차
 - 미디어·게임은 정차 중에만, 주행 시 일시정지·숨김
 - 백그라운드: 갱신·애니메이션·센서 수집 중단, 복귀 시 상태 복원
