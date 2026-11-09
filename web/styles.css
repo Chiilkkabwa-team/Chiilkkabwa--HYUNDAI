@@ -649,3 +649,51 @@ body:not([data-mode="practice"]) .display-main { grid-template-columns: minmax(3
   .how-two { grid-template-columns: 1fr; }
   .rp { grid-template-columns: 46px 1fr; gap: 10px; padding: 12px; }
 }
+
+/* ════════════════════════════════════════════════════════════════
+   드라이빙 뷰 쌓기 (2026-11-09)
+
+   전에는 설명·HUD·표시등·계기가 전부 absolute라 top/bottom 숫자가 어긋나면 겹쳤다
+   (1024~1920px에서 19건 검출). 숫자를 조정하는 대신 **일반 흐름으로 쌓아**
+   구조적으로 겹칠 수 없게 만든다. 순서는 DOM 순서 그대로:
+     설명 → HUD(평가·강습) → 표시등 → 계기
+   1020px 이하의 연습 모드만 예외다(계기가 한 줄 막대로 바뀌는 별도 레이아웃).
+
+   ※ 아래 선택자는 앞쪽 `body:not([data-mode="practice"]) .sim-hud` 규칙과
+     특이성을 맞춰야 position이 덮인다. 모드별로 나눠 쓴 이유가 이것이다.
+   ════════════════════════════════════════════════════════════════ */
+.driving-view {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+}
+/* 배경(그림·캔버스)은 absolute 그대로 깔린다 — flex 흐름에서 빠진다 */
+body[data-mode="practice"] .dv-caption,
+body[data-mode="practice"] .dv-tell,
+body[data-mode="practice"] .dv-cluster,
+body:not([data-mode="practice"]) .dv-caption,
+body:not([data-mode="practice"]) .sim-hud,
+body:not([data-mode="practice"]) .dv-tell,
+body:not([data-mode="practice"]) .dv-cluster {
+  /* static이 아니라 relative여야 한다: 같은 쌓임 맥락에서 절대배치된 캔버스는
+     흐름 속 요소보다 위에 그려지므로, static으로 두면 도로 그림 뒤로 숨는다. */
+  position: relative;
+  z-index: 1;
+  inset: auto;
+  margin: 0;
+  flex: 0 0 auto;
+}
+.dv-caption { max-width: 28rem; }
+/* 설명(연습) 또는 HUD(평가·강습) 아래 남는 공간을 먹어 계기를 바닥으로 민다 */
+body[data-mode="practice"] .dv-caption { margin-bottom: auto; }
+body:not([data-mode="practice"]) .sim-hud { margin-bottom: auto; }
+.hud-top { padding: 0; }
+.hud-stop,
+.hud-ev { margin: 8px 0 0; }
+
+/* 1020px 이하 연습 모드: 계기가 드라이빙 뷰 전체를 채우는 한 줄 막대 — 예전 레이아웃 유지 */
+@media (max-width: 1020px) {
+  body[data-mode="practice"] .driving-view { display: block; padding: 0; }
+  body[data-mode="practice"] .dv-cluster { position: absolute; inset: 0; }
+}

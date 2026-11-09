@@ -36,15 +36,17 @@
     <aside class="driving-view" aria-label="시스템 Driving view">
       <div class="dv-art" id="dvArt"></div>
       <canvas class="sim-canvas" id="simCanvas" aria-label="가상 도로 주행 화면"></canvas>
-      <div class="sim-hud" id="simHud"></div>
+      <!-- 읽는 순서 = 보이는 순서: 설명 → HUD → 표시등 → 계기.
+           평가·강습 모드에서는 이 넷이 일반 흐름(flex)으로 쌓여 서로 겹칠 수 없다(styles.css '드라이빙 뷰 쌓기'). -->
       <div class="dv-caption" id="dvCaption">시스템 Driving view<br><small>앱이 가리지 않는 자리</small></div>
+      <div class="sim-hud" id="simHud"></div>
+      <!-- Telltale(계기 표시등): Pleos Driving view의 Indicator 영역을 흉내 낸 것 -->
+      <div class="dv-tell" id="dvTell" aria-label="계기 표시등"></div>
       <div class="dv-cluster">
         <div class="dv-speed"><b id="dvSpeed">0</b><small>km/h</small></div>
         <div class="dv-gear" id="dvGear" aria-label="기어">P</div>
         <div class="dv-pb" id="dvPb">주차 브레이크</div>
       </div>
-      <!-- Telltale(계기 표시등): Pleos Driving view의 Indicator 영역을 흉내 낸 것 -->
-      <div class="dv-tell" id="dvTell" aria-label="계기 표시등"></div>
     </aside>
     <section class="app" id="app">
       <div class="app-top">
