@@ -3,6 +3,8 @@
 > Claude Code가 이 저장소에서 일할 때 가장 먼저 읽는 파일. 길게 설명하지 말고 이 규칙대로 움직인다.
 > 사용자: 한국어, TL;DR 먼저, 전문 용어는 쉬운 말로, 담백한 문체. 결론부터.
 
+> **저장소 주소 (2026-11-09 변경)**: `IOMINTIAIO/Chiilkkabwa--HYUNDAI` → **`Chiilkkabwa-team/Chiilkkabwa--HYUNDAI`**(조직으로 이전). 옛 주소는 더 이상 쓰지 않는다(404). Vercel 배포 연결도 새 조직 레포로 다시 잡아야 한다(GitHub App "Vercel"을 Chiilkkabwa-team에 설치했는지 확인).
+
 ## 1. 무엇을 만드나 (한 문장)
 면허는 있지만 운전이 두려운 초보·장롱면허 운전자가 **주차된 차 안에서** 조작을 차량 신호로 확인받고(연습 전 5분),
 **주행 중에는 화면이 잠기고**(0터치), **다시 주차하면** 오늘 연습을 돌아보는(연습 후 3분) Pleos Connect(AAOS) 앱.
@@ -21,6 +23,7 @@
   - 고친 것: `VehiclePropertyIds.{BRAKE,ACCELERATOR}_PEDAL_COMPRESSION_PERCENTAGE`가 **공개 `android.car.jar` stub에 없어** 컴파일되지 않았다 → 숫자 ID를 지어내지 않고 **리플렉션으로 찾고 없으면 UNSUPPORTED**로 둔다(docs/03 §5-1a)
 - Gradle wrapper 8.10.2, AGP 8.8.2, Kotlin 2.0.0, compileSdk 35, targetSdk 34, minSdk 28
 - 빌드 환경: Android SDK `platforms;android-35` + `build-tools;35.0.0` + `platform-tools`, JDK 21, `local.properties`에 `sdk.dir`
+- `web/`(웹 프로토타입, 2026-11-09 추가 작업): 다크/라이트 테마(`theme.js`, 기본값 라이트), 온보딩 5단계(`onboarding.js`), 자동 시연에 속도 조절(0.5~3배)과 **중단 지점부터 이어가기** 추가, 주행 중 음성 안내 가상 도로 화면에 3D 원근 시점 적용. 겹침 버그(모바일 좁은 폭에서 버튼 겹침) 수정 완료
 
 ## 4. 명령
 ```bash
