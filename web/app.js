@@ -3,6 +3,13 @@ import * as C from './core.js';
 import { mascot, icon, badgeArt, drivingViewArt } from './art.js';
 import * as SIM from './sim.js';
 import * as VOICE from './voice.js';
+import * as THEME from './theme.js';
+import * as OB from './onboarding.js';
+
+// 캔버스에서 쓰는 색은 리터럴을 적지 않고 CSS 토큰에서 읽는다(테마를 따라가도록).
+// styles.css 의 :root / :root[data-theme="light"] 가 유일한 색 정의 자리다.
+const T = THEME.c;
+const TA = THEME.alpha;
 
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -173,6 +180,7 @@ let session = C.initialSession();
 let prep = null; // 준비 단계 상태
 let review = null; // 복기 초안
 let overlay = null; // 'history' | 'profile' | 'cert' | 'intro'
+let obStep = 0;     // 온보딩 단계
 let judgeState = null; // { judge, progress, doneAt }
 let lastGate = null;
 
@@ -606,42 +614,42 @@ Screens.parking = () => ({
     const { ctx, cv, sim, slot } = this; if (!ctx || !cv.width) return;
     const W = cv.width, S = W / 18; const X = (x) => (x + 9) * S, Y = (y) => (y - WORLD_TOP) * S;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.fillStyle = '#18202A'; ctx.fillRect(0, 0, W, cv.height);
+    ctx.fillStyle = T('--pk-bg'); ctx.fillRect(0, 0, W, cv.height);
     // 통로
-    ctx.fillStyle = '#1C2531'; ctx.fillRect(0, 0, W, Y(-2.5));
-    ctx.strokeStyle = '#2E3A4A'; ctx.setLineDash([S * 0.8, S * 0.6]); ctx.lineWidth = S * 0.08;
+    ctx.fillStyle = T('--pk-curb'); ctx.fillRect(0, 0, W, Y(-2.5));
+    ctx.strokeStyle = T('--pk-dash'); ctx.setLineDash([S * 0.8, S * 0.6]); ctx.lineWidth = S * 0.08;
     ctx.beginPath(); ctx.moveTo(0, Y(-7.2)); ctx.lineTo(W, Y(-7.2)); ctx.stroke(); ctx.setLineDash([]);
     // 주차선
-    ctx.strokeStyle = '#C9D3DF'; ctx.lineWidth = S * 0.1;
+    ctx.strokeStyle = T('--pk-line'); ctx.lineWidth = S * 0.1;
     for (const x of [-6.25, -3.75, -1.25, 1.25, 3.75, 6.25]) { ctx.beginPath(); ctx.moveTo(X(x), Y(-2.5)); ctx.lineTo(X(x), Y(2.5)); ctx.stroke(); }
     ctx.beginPath(); ctx.moveTo(X(-6.25), Y(2.5)); ctx.lineTo(X(6.25), Y(2.5)); ctx.stroke();
     // 목표 칸
     const parked = this.done;
-    ctx.fillStyle = parked ? 'rgba(39,174,96,.28)' : 'rgba(47,128,237,.16)';
+    ctx.fillStyle = parked ? TA('--success', 0.28) : TA('--primary', 0.16);
     ctx.fillRect(X(slot.cx - 1.25) + 2, Y(-2.5), (2.5 * S) - 4, 5 * S);
-    ctx.strokeStyle = parked ? '#27AE60' : '#2F80ED'; ctx.setLineDash([S * 0.25, S * 0.2]); ctx.lineWidth = S * 0.06;
+    ctx.strokeStyle = parked ? T('--success') : T('--primary'); ctx.setLineDash([S * 0.25, S * 0.2]); ctx.lineWidth = S * 0.06;
     ctx.strokeRect(X(slot.cx - 1.1), Y(-2.35), 2.2 * S, 4.7 * S); ctx.setLineDash([]);
-    ctx.fillStyle = parked ? '#7EE2A8' : '#8DB8F5'; ctx.font = `700 ${S * 0.55}px Pretendard Variable, sans-serif`; ctx.textAlign = 'center';
+    ctx.fillStyle = parked ? T('--success-text') : T('--primary-text'); ctx.font = `700 ${S * 0.55}px Pretendard Variable, sans-serif`; ctx.textAlign = 'center';
     ctx.fillText(parked ? '도착!' : '여기', X(slot.cx), Y(0.2));
     // 옆 차
-    for (const n of this.neighbors) drawCar(ctx, S, X, Y, n.poly, { body: this.bump > 0 && Math.abs(n.cx) === 2.5 ? '#6B4F12' : '#3A4757', glass: '#25303D' });
+    for (const n of this.neighbors) drawCar(ctx, S, X, Y, n.poly, { body: this.bump > 0 && Math.abs(n.cx) === 2.5 ? T('--warn') : T('--car-npc'), glass: T('--car-glass-npc') });
     // 기준선(뒷바퀴가 여기 오면 핸들 끝까지)
-    ctx.strokeStyle = '#FFD66B'; ctx.lineWidth = S * 0.07; ctx.setLineDash([S * 0.3, S * 0.2]);
+    ctx.strokeStyle = T('--yellow'); ctx.lineWidth = S * 0.07; ctx.setLineDash([S * 0.3, S * 0.2]);
     ctx.beginPath(); ctx.moveTo(X(this.refX), Y(-8.6)); ctx.lineTo(X(this.refX), Y(-2.6)); ctx.stroke(); ctx.setLineDash([]);
-    ctx.fillStyle = '#FFD66B'; ctx.font = `700 ${S * 0.42}px Pretendard Variable, sans-serif`; ctx.fillText('기준선', X(this.refX), Y(-8.8));
+    ctx.fillStyle = T('--yellow'); ctx.font = `700 ${S * 0.42}px Pretendard Variable, sans-serif`; ctx.fillText('기준선', X(this.refX), Y(-8.8));
     // 궤적 미리보기(뒤축 중심)
     if (!parked) {
       let p = { ...this.pose }; const dir = this.dir || -1; const deg = this.steering();
-      ctx.strokeStyle = dir < 0 ? 'rgba(255,214,107,.75)' : 'rgba(141,184,245,.75)'; ctx.lineWidth = S * 0.06; ctx.setLineDash([S * 0.12, S * 0.18]);
+      ctx.strokeStyle = dir < 0 ? TA('--yellow', 0.75) : TA('--primary-text', 0.75); ctx.lineWidth = S * 0.06; ctx.setLineDash([S * 0.12, S * 0.18]);
       ctx.beginPath(); ctx.moveTo(X(p.x), Y(p.y));
       for (let i = 0; i < 40; i++) { p = sim.step(p, deg, dir, 0.1); ctx.lineTo(X(p.x), Y(p.y)); }
       ctx.stroke(); ctx.setLineDash([]);
-      ctx.globalAlpha = 0.18; drawCar(ctx, S, X, Y, sim.corners(p), { body: '#8DB8F5', glass: '#8DB8F5', outlineOnly: true }); ctx.globalAlpha = 1;
+      ctx.globalAlpha = 0.18; drawCar(ctx, S, X, Y, sim.corners(p), { body: T('--primary-text'), glass: T('--primary-text'), outlineOnly: true }); ctx.globalAlpha = 1;
     }
     // 내 차
     drawMyCar(ctx, S, X, Y, sim, this.pose, this.steering(), parked);
     // 축척
-    ctx.fillStyle = '#7F8C9D'; ctx.font = `500 ${S * 0.36}px Pretendard Variable, sans-serif`; ctx.textAlign = 'left';
+    ctx.fillStyle = T('--pk-note'); ctx.font = `500 ${S * 0.36}px Pretendard Variable, sans-serif`; ctx.textAlign = 'left';
     ctx.fillRect(X(-8.6), Y(2.75), 2 * S, S * 0.06); ctx.fillText('2m', X(-8.6), Y(2.6));
   },
 });
@@ -664,27 +672,27 @@ function drawMyCar(ctx, S, X, Y, sim, pose, steeringDeg, parked) {
   const L = sim.length * S, Wd = sim.width * S, wb = sim.wheelbase * S;
   const wheel = sim.wheelAngleRad(steeringDeg);
   // 바퀴
-  const tw = 0.24 * S, tl = 0.68 * S; ctx.fillStyle = '#0B0F14';
+  const tw = 0.24 * S, tl = 0.68 * S; ctx.fillStyle = T('--car-tyre');
   const wheelAt = (x, y, ang) => { ctx.save(); ctx.translate(x, y); ctx.rotate(ang); ctx.fillRect(-tw / 2, -tl / 2, tw, tl); ctx.restore(); };
   const fy = -wb / 2, ry = wb / 2, wx = Wd / 2 - tw * 0.2;
   wheelAt(-wx, fy, wheel); wheelAt(wx, fy, wheel); wheelAt(-wx, ry, 0); wheelAt(wx, ry, 0);
   // 차체
   const r = 0.35 * S;
-  ctx.fillStyle = parked ? '#27AE60' : '#2F80ED';
+  ctx.fillStyle = parked ? T('--success') : T('--primary');
   roundRect(ctx, -Wd / 2, -L / 2, Wd, L, r); ctx.fill();
-  ctx.fillStyle = 'rgba(255,255,255,.12)'; roundRect(ctx, -Wd / 2 + 0.12 * S, -L / 2 + 0.12 * S, Wd - 0.24 * S, L * 0.18, r * 0.7); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.12)'; // 하이라이트: 두 테마 모두 흰 반투명 roundRect(ctx, -Wd / 2 + 0.12 * S, -L / 2 + 0.12 * S, Wd - 0.24 * S, L * 0.18, r * 0.7); ctx.fill();
   // 유리
-  ctx.fillStyle = '#123A6B'; roundRect(ctx, -Wd / 2 + 0.2 * S, -L / 2 + L * 0.24, Wd - 0.4 * S, L * 0.16, 0.15 * S); ctx.fill();
+  ctx.fillStyle = T('--car-glass'); roundRect(ctx, -Wd / 2 + 0.2 * S, -L / 2 + L * 0.24, Wd - 0.4 * S, L * 0.16, 0.15 * S); ctx.fill();
   roundRect(ctx, -Wd / 2 + 0.25 * S, L / 2 - L * 0.22, Wd - 0.5 * S, L * 0.1, 0.12 * S); ctx.fill();
   // 지붕
-  ctx.fillStyle = parked ? '#2FC46E' : '#4A93F0'; roundRect(ctx, -Wd / 2 + 0.22 * S, -L / 2 + L * 0.41, Wd - 0.44 * S, L * 0.34, 0.2 * S); ctx.fill();
+  ctx.fillStyle = parked ? T('--success-2') : T('--car-glass-2'); roundRect(ctx, -Wd / 2 + 0.22 * S, -L / 2 + L * 0.41, Wd - 0.44 * S, L * 0.34, 0.2 * S); ctx.fill();
   // 사이드미러
-  ctx.fillStyle = parked ? '#27AE60' : '#2F80ED'; ctx.fillRect(-Wd / 2 - 0.16 * S, -L / 2 + L * 0.3, 0.18 * S, 0.12 * S); ctx.fillRect(Wd / 2 - 0.02 * S, -L / 2 + L * 0.3, 0.18 * S, 0.12 * S);
+  ctx.fillStyle = parked ? T('--success') : T('--primary'); ctx.fillRect(-Wd / 2 - 0.16 * S, -L / 2 + L * 0.3, 0.18 * S, 0.12 * S); ctx.fillRect(Wd / 2 - 0.02 * S, -L / 2 + L * 0.3, 0.18 * S, 0.12 * S);
   // 전조등·후미등
-  ctx.fillStyle = '#FFF4C2'; ctx.fillRect(-Wd / 2 + 0.15 * S, -L / 2 + 0.02 * S, 0.4 * S, 0.1 * S); ctx.fillRect(Wd / 2 - 0.55 * S, -L / 2 + 0.02 * S, 0.4 * S, 0.1 * S);
-  ctx.fillStyle = '#FF6B6B'; ctx.fillRect(-Wd / 2 + 0.15 * S, L / 2 - 0.12 * S, 0.4 * S, 0.1 * S); ctx.fillRect(Wd / 2 - 0.55 * S, L / 2 - 0.12 * S, 0.4 * S, 0.1 * S);
+  ctx.fillStyle = T('--car-head'); ctx.fillRect(-Wd / 2 + 0.15 * S, -L / 2 + 0.02 * S, 0.4 * S, 0.1 * S); ctx.fillRect(Wd / 2 - 0.55 * S, -L / 2 + 0.02 * S, 0.4 * S, 0.1 * S);
+  ctx.fillStyle = T('--car-tail'); ctx.fillRect(-Wd / 2 + 0.15 * S, L / 2 - 0.12 * S, 0.4 * S, 0.1 * S); ctx.fillRect(Wd / 2 - 0.55 * S, L / 2 - 0.12 * S, 0.4 * S, 0.1 * S);
   // 뒷바퀴 표시
-  ctx.fillStyle = '#FFD66B'; [-1, 1].forEach((s) => { ctx.beginPath(); ctx.arc(s * (Wd / 2 + 0.28 * S), ry, 0.12 * S, 0, Math.PI * 2); ctx.fill(); });
+  ctx.fillStyle = T('--yellow'); [-1, 1].forEach((s) => { ctx.beginPath(); ctx.arc(s * (Wd / 2 + 0.28 * S), ry, 0.12 * S, 0, Math.PI * 2); ctx.fill(); });
   ctx.restore();
 }
 function roundRect(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
@@ -831,7 +839,7 @@ function renderOverlay() {
   if (!overlay || session.phase === C.Phase.DRIVING_LOCK) { root.innerHTML = ''; root.classList.remove('open'); return; }
   root.classList.add('open');
   const body = { history: historyHtml, profile: profileHtml, cert: certHtml, intro: introHtml }[overlay]();
-  root.innerHTML = `<div class="modal-scrim" data-close></div><div class="modal" role="dialog" aria-modal="true" aria-label="${{ history: '내 기록', profile: '설정', cert: '수료 카드', intro: '사용법' }[overlay]}" tabindex="-1">
+  root.innerHTML = `<div class="modal-scrim" data-close></div><div class="modal${overlay === 'intro' ? ' modal-ob' : ''}" role="dialog" aria-modal="true" aria-label="${{ history: '내 기록', profile: '설정', cert: '수료 카드', intro: '치일까봐 둘러보기' }[overlay]}" tabindex="-1">
     <button type="button" class="icon-btn modal-x" data-close aria-label="닫기">${icon('close', 22)}</button>${body}</div>`;
   $$('[data-close]', root).forEach((b) => (b.onclick = () => { if (overlay === 'intro') { H.introSeen = true; saveHistory(); } closeOverlay(); }));
   bindOverlay(root);
@@ -889,18 +897,7 @@ function certHtml() {
     <p class="cert-note">운전 실력 인증이 아니라, 이어 온 연습의 기록이에요.<br>도로에서는 언제나 천천히, 안전하게.</p>
   </div>`;
 }
-function introHtml() {
-  return `<h2 class="m-title">${icon('info', 24)} 이렇게 써 보세요</h2>
-    <ol class="intro">
-      <li><b>왼쪽은 차량 화면</b>, 오른쪽(휴대폰은 아래 버튼)은 <b>가상 차량 콘솔</b>이에요. 콘솔에서 조작하면 앱이 신호를 ‘읽어서’ 확인해요.</li>
-      <li>콘솔 맨 위 <b>‘다음 조작’</b>을 따라가면 전체 흐름을 볼 수 있어요: 안전 확인 → 목표 → 워밍업 → 페달 → 가상 주차 → 약속 → 주행 중 잠금 → 주차 후 복기.</li>
-      <li>워밍업은 <b>시작한 뒤 새로 한 조작</b>만 인정해요. 이미 매고 있던 벨트는 풀었다 다시 매야 해요.</li>
-      <li>기어를 D로 옮기면 화면이 조용히 잠겨요. 속도 0 → 기어 P → 주차 브레이크를 걸면 복기가 열려요.</li>
-      <li>맨 위 <b>모드</b>에서 <b>평가</b>(가상 도로 주행 → 센서 기반 점수·상황별 조언)와 <b>강습</b>(조수석 강습자가 정지 요청·최고 속도·주행보조를 조절하는 콘셉트)을 고를 수 있어요. 두 모드는 <b>가상 시뮬레이션 · 제조사 협업 가정</b>이에요.</li>
-    </ol>
-    <p class="caption">모든 신호는 <span class="src-chip src-MOCK">모의</span>예요. 차량 에뮬레이터·실차 신호 연결은 Android 앱에서 해요.</p>
-    <div class="actions two">${btn('introDemo', `${icon('console', 22)} 자동 시연 보기(약 1분)`, 'secondary big')}${btn('introOk', '직접 해 보기', 'primary big')}</div>`;
-}
+function introHtml() { return OB.html(obStep); }
 function bindOverlay(root) {
   if (overlay === 'profile') {
     const aliases = ['나', '연습생', '새내기 운전자', '주말 드라이버'];
@@ -930,11 +927,49 @@ function bindOverlay(root) {
     };
   }
   if (overlay === 'intro') {
-    $('#introOk').onclick = () => { H.introSeen = true; saveHistory(); closeOverlay(); };
-    $('#introDemo').onclick = () => { H.introSeen = true; saveHistory(); closeOverlay(); startDemo(); };
+    const finish = (then) => { H.introSeen = true; saveHistory(); closeOverlay(); then?.(); };
+    const go = (k) => {
+      obStep = Math.max(0, Math.min(OB.STEPS.length - 1, k));
+      renderOverlay();
+      // 단계를 바꿔도 읽는 자리를 잃지 않게 제목으로 포커스를 옮긴다
+      setTimeout(() => $('.ob-title', $('#modalRoot'))?.focus?.(), 0);
+    };
+    $$('[data-ob]', root).forEach((b) => (b.onclick = () => ({
+      prev: () => go(obStep - 1),
+      next: () => go(obStep + 1),
+      skip: () => finish(),
+      done: () => finish(),
+      demo: () => finish(startDemo),
+    }[b.dataset.ob]())));
+    $$('[data-go]', root).forEach((b) => (b.onclick = () => go(+b.dataset.go)));
+    // ← → 로도 넘긴다(차량 조그 다이얼처럼 좌우 이동이 기본 동작이다)
+    $('.ob', root)?.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight') { e.preventDefault(); go(obStep + 1); }
+      if (e.key === 'ArrowLeft') { e.preventDefault(); go(obStep - 1); }
+    });
   }
 }
 function applyPrefs() { document.documentElement.classList.toggle('large', !!H.largeText); }
+
+// ── 테마(다크 ↔ 라이트) ─────────────────────────────────────
+// Pleos Connect는 다크를 기본으로 라이트 변경을 지원한다(현대차그룹 공식 소개) → 그대로 따른다.
+function syncThemeBtn() {
+  const light = THEME.current() === 'light';
+  const b = $('#themeBtn'); if (!b) return;
+  $('#themeIco').innerHTML = icon(light ? 'moon' : 'sun', 20);
+  $('#themeLabel').textContent = light ? '어둡게' : '밝게';
+  b.setAttribute('aria-label', light ? '어두운 화면으로 바꾸기' : '밝은 화면으로 바꾸기');
+}
+/** 테마가 바뀌면 캔버스는 스스로 다시 그리지 않으므로 강제로 한 번 그린다 */
+function repaintForTheme() {
+  syncThemeBtn();
+  chromeKey = ''; guideKey = '';          // 캐시된 HTML을 다시 만들게
+  const hud = $('#simHud'); if (hud) hud.dataset.k = '';
+  renderChrome();
+  mounted.screen?.draw?.();               // 가상 주차 화면
+  lastIdleDraw = 0; drawSimView();        // 가상 도로
+  renderVoiceMeter();
+}
 
 // ── 공통 렌더 ────────────────────────────────────────────────
 let mounted = { key: null, screen: null };
@@ -1482,12 +1517,12 @@ function drawSimView() {
   const e = sv.ego; const ppm = Math.min(W / 13.5, Hh / 24);
   const egoY = Hh * 0.68; const X = (x) => W / 2 + x * ppm; const Y = (sw) => egoY - (sw - e.s) * ppm;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.fillStyle = '#0D1319'; ctx.fillRect(0, 0, W, Hh);
+  ctx.fillStyle = T('--road-bg'); ctx.fillRect(0, 0, W, Hh);
   // 길가 나무(스크롤 감)
-  ctx.fillStyle = '#14202A';
+  ctx.fillStyle = T('--road-side');
   for (let k = Math.floor((e.s - 40) / 12); k < (e.s + 120) / 12; k++) { const y = Y(k * 12); for (const side of [-1, 1]) { ctx.beginPath(); ctx.arc(X(side * (6.6 + ((k * 7) % 3) * 0.4)), y, ppm * 0.9, 0, Math.PI * 2); ctx.fill(); } }
-  ctx.fillStyle = '#1D2630'; ctx.fillRect(X(-5.25), 0, 10.5 * ppm, Hh);
-  ctx.strokeStyle = '#D8DEE6'; ctx.lineWidth = Math.max(2, ppm * 0.15);
+  ctx.fillStyle = T('--road-asphalt'); ctx.fillRect(X(-5.25), 0, 10.5 * ppm, Hh);
+  ctx.strokeStyle = T('--road-line'); ctx.lineWidth = Math.max(2, ppm * 0.15);
   for (const x of [-5.25, 5.25]) { ctx.beginPath(); ctx.moveTo(X(x), 0); ctx.lineTo(X(x), Hh); ctx.stroke(); }
   ctx.setLineDash([3 * ppm, 6 * ppm]); ctx.lineDashOffset = -((e.s * ppm) % (9 * ppm));
   for (const x of [-1.75, 1.75]) { ctx.beginPath(); ctx.moveTo(X(x), 0); ctx.lineTo(X(x), Hh); ctx.stroke(); }
@@ -1504,14 +1539,14 @@ function drawSimView() {
   };
   cone(1, 45, 'front'); cone(-1, 22, 'rear');
   for (const side of [-1, 1]) {
-    const busy = side < 0 ? sn.left : sn.right; const col = hot === 'side' || busy ? 'rgba(242,153,74,.28)' : 'rgba(47,128,237,.10)';
+    const busy = side < 0 ? sn.left : sn.right; const col = hot === 'side' || busy ? TA('--warn-orange', 0.28) : 'rgba(47,128,237,.10)';
     ctx.fillStyle = col; ctx.fillRect(X(e.x + side * 1.1 + (side < 0 ? -2.6 : 0)), Y(e.s + 4), 2.6 * ppm, 10 * ppm);
   }
   // 다른 차
-  for (const n of sv.npcs) { const y = Y(n.s); if (y < -60 || y > Hh + 60) continue; carTop(ctx, X(n.x), y, ppm, n.cutter && sv.t - (sv.cutIn.at || 0) < 8 ? '#F2994A' : '#5B6878', false); }
-  carTop(ctx, X(e.x), Y(e.s), ppm, sv.stopReq ? '#C2453F' : '#2F80ED', true, sv.input.signal, sv.t);
+  for (const n of sv.npcs) { const y = Y(n.s); if (y < -60 || y > Hh + 60) continue; carTop(ctx, X(n.x), y, ppm, n.cutter && sv.t - (sv.cutIn.at || 0) < 8 ? T('--warn-orange') : T('--car-npc'), false); }
+  carTop(ctx, X(e.x), Y(e.s), ppm, sv.stopReq ? T('--danger-2') : T('--primary'), true, sv.input.signal, sv.t);
   // 거리 표시
-  if (Number.isFinite(sn.front) && sn.front < 45) { ctx.fillStyle = warnF ? '#F2994A' : '#A9CBFA'; ctx.font = `700 ${Math.max(11, ppm * 0.9)}px Pretendard Variable, sans-serif`; ctx.textAlign = 'center'; ctx.fillText(`${Math.round(sn.front)}m`, X(e.x), Y(e.s + SIM.CAR_L / 2 + sn.front / 2)); }
+  if (Number.isFinite(sn.front) && sn.front < 45) { ctx.fillStyle = warnF ? T('--warn-orange') : T('--primary-text'); ctx.font = `700 ${Math.max(11, ppm * 0.9)}px Pretendard Variable, sans-serif`; ctx.textAlign = 'center'; ctx.fillText(`${Math.round(sn.front)}m`, X(e.x), Y(e.s + SIM.CAR_L / 2 + sn.front / 2)); }
   // HUD
   const hud = $('#simHud');
   const last = sv.events[sv.events.length - 1];
@@ -1530,11 +1565,11 @@ function drawSimView() {
 function carTop(ctx, cx, cy, ppm, color, ego, signal, t) {
   const w = SIM.CAR_W * ppm, l = SIM.CAR_L * ppm, r = 0.35 * ppm;
   ctx.fillStyle = color; roundRect(ctx, cx - w / 2, cy - l / 2, w, l, r); ctx.fill();
-  ctx.fillStyle = ego ? '#123A6B' : '#2E3946'; roundRect(ctx, cx - w / 2 + 0.2 * ppm, cy - l / 2 + l * 0.22, w - 0.4 * ppm, l * 0.17, 0.12 * ppm); ctx.fill();
+  ctx.fillStyle = ego ? T('--car-glass') : T('--car-glass-npc'); roundRect(ctx, cx - w / 2 + 0.2 * ppm, cy - l / 2 + l * 0.22, w - 0.4 * ppm, l * 0.17, 0.12 * ppm); ctx.fill();
   roundRect(ctx, cx - w / 2 + 0.25 * ppm, cy + l / 2 - l * 0.24, w - 0.5 * ppm, l * 0.1, 0.1 * ppm); ctx.fill();
   if (ego) {
-    ctx.fillStyle = '#FFF4C2'; ctx.fillRect(cx - w / 2 + 0.15 * ppm, cy - l / 2, 0.4 * ppm, 0.1 * ppm); ctx.fillRect(cx + w / 2 - 0.55 * ppm, cy - l / 2, 0.4 * ppm, 0.1 * ppm);
-    if (signal && signal !== 'NONE' && Math.floor((t || 0) * 2.5) % 2 === 0) { ctx.fillStyle = '#F2C94C'; const sx = signal === 'LEFT' ? cx - w / 2 - 0.15 * ppm : cx + w / 2 - 0.15 * ppm; ctx.fillRect(sx, cy - l / 2 + 0.1 * ppm, 0.3 * ppm, 0.5 * ppm); ctx.fillRect(sx, cy + l / 2 - 0.6 * ppm, 0.3 * ppm, 0.5 * ppm); }
+    ctx.fillStyle = T('--car-head'); ctx.fillRect(cx - w / 2 + 0.15 * ppm, cy - l / 2, 0.4 * ppm, 0.1 * ppm); ctx.fillRect(cx + w / 2 - 0.55 * ppm, cy - l / 2, 0.4 * ppm, 0.1 * ppm);
+    if (signal && signal !== 'NONE' && Math.floor((t || 0) * 2.5) % 2 === 0) { ctx.fillStyle = T('--car-signal'); const sx = signal === 'LEFT' ? cx - w / 2 - 0.15 * ppm : cx + w / 2 - 0.15 * ppm; ctx.fillRect(sx, cy - l / 2 + 0.1 * ppm, 0.3 * ppm, 0.5 * ppm); ctx.fillRect(sx, cy + l / 2 - 0.6 * ppm, 0.3 * ppm, 0.5 * ppm); }
   }
 }
 
@@ -1719,10 +1754,14 @@ $('#profileBtn .ib-ico').innerHTML = icon('user', 22);
 $('#consoleFab .fab-ico').innerHTML = icon('console', 22);
 $('#historyBtn').onclick = () => openOverlay('history');
 $('#profileBtn').onclick = () => openOverlay('profile');
-$('#helpBtn').onclick = () => openOverlay('intro');
+$('#helpBtn').onclick = () => { obStep = 0; openOverlay('intro'); };
 $('#demoBtn').onclick = () => (demo.running ? stopDemo('멈췄어요') : startDemo());
 addEventListener('keydown', (e) => { if (e.key === 'Escape' && overlay) closeOverlay(); });
+THEME.init();
+THEME.onChange(repaintForTheme);
 applyPrefs();
+syncThemeBtn();
+$('#themeBtn').onclick = () => THEME.toggle();
 bindConsole(); syncConsole();
 $$('#modeSeg button').forEach((b) => (b.onclick = () => setMode(b.dataset.v)));
 $('#c-accel').oninput = (e) => { setAccel(+e.target.value); };
@@ -1732,4 +1771,4 @@ applyMode();
 render();
 setInterval(tick, 100);
 if (new URLSearchParams(location.search).has('demo')) setTimeout(startDemo, 200);
-else if (!H.introSeen) setTimeout(() => openOverlay('intro'), 300);
+else if (!H.introSeen) setTimeout(() => { obStep = 0; openOverlay('intro'); }, 300);

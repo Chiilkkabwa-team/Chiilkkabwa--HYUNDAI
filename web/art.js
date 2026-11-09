@@ -1,6 +1,8 @@
 // 치일까봐 웹 프로토타입 — 그림(독자 디자인 SVG). 외부 캐릭터·로고 사용 없음.
 
 /** 마스코트 '콩콩이': 노란 콩 모양, 작은 핸들을 쥐고 있다. mood: calm | happy | worried | rest */
+// 마스코트(레몬)의 색은 캐릭터 고유색이라 테마를 따라가지 않는다.
+// 노란 몸 위의 짙은 눈·입은 밝은 테마에서도 그대로 읽힌다.
 export function mascot(mood = 'calm', size = 96) {
   const eyes = {
     calm: `<ellipse cx="47" cy="56" rx="4.6" ry="6" fill="#1B2430"/><ellipse cx="73" cy="56" rx="4.6" ry="6" fill="#1B2430"/>
@@ -62,6 +64,9 @@ const P = {
   sound: `<path d="M8 19h7l9-7v24l-9-7H8z"/><path d="M31 18a8 8 0 0 1 0 12M35 13a14 14 0 0 1 0 22"/>`,
   text: `<path d="M8 38 17 10h2l9 28M11 29h14"/><path d="M30 38l5-14h1l5 14M32 33h8"/>`,
   trash: `<path d="M10 13h28M19 13V8h10v5M14 13l2 27h16l2-27"/>`,
+  // 테마 전환 아이콘(다크 ↔ 라이트)
+  sun: `<circle cx="24" cy="24" r="9"/><path d="M24 4v6M24 38v6M4 24h6M38 24h6M10 10l4 4M34 34l4 4M38 10l-4 4M14 34l-4 4"/>`,
+  moon: `<path d="M38 28a15 15 0 1 1-18-19 12 12 0 0 0 18 19z"/>`,
   console: `<rect x="6" y="10" width="36" height="28" rx="5"/><circle cx="17" cy="24" r="5"/><path d="M28 19h8M28 24h8M28 29h5"/>`,
   arrowUp: `<path d="M24 38V10M12 22l12-12 12 12"/>`,
   arrowDown: `<path d="M24 10v28M12 26l12 12 12-12"/>`,
@@ -90,8 +95,8 @@ export function badgeArt(b, earned, size = 72) {
   const id = 'g' + Math.random().toString(36).slice(2, 8);
   if (!earned) {
     return `<svg width="${size}" height="${size}" viewBox="0 0 72 72" aria-hidden="true">
-      <circle cx="36" cy="34" r="27" fill="#18202A" stroke="#3B4656" stroke-width="2.5" stroke-dasharray="5 5"/>
-      <g transform="translate(22 20) scale(.58)" stroke="#5A6779" fill="none" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round">${P[b.icon]}</g>
+      <circle cx="36" cy="34" r="27" fill="var(--surface2)" stroke="var(--emu)" stroke-width="2.5" stroke-dasharray="5 5"/>
+      <g transform="translate(22 20) scale(.58)" stroke="var(--muted)" fill="none" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round">${P[b.icon]}</g>
     </svg>`;
   }
   return `<svg width="${size}" height="${size}" viewBox="0 0 72 72" aria-hidden="true">
@@ -107,13 +112,13 @@ export function badgeArt(b, earned, size = 72) {
 /** 시스템 Driving view 자리(앱 영역 아님) — 지도 느낌의 정적 그림 */
 export function drivingViewArt() {
   return `<svg class="dv-map" viewBox="0 0 300 420" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-    <rect width="300" height="420" fill="#121A23"/>
-    <g stroke="#1E2935" stroke-width="18" fill="none" stroke-linecap="round">
+    <rect width="300" height="420" fill="var(--panel)"/>
+    <g stroke="var(--line)" stroke-width="18" fill="none" stroke-linecap="round">
       <path d="M-20 90h360M-20 300h360M70 -20v460M230 -20v460"/>
     </g>
-    <g stroke="#26374A" stroke-width="30" fill="none" stroke-linecap="round"><path d="M150 460V250q0-40 40-60l140-70"/></g>
+    <g stroke="var(--surface3)" stroke-width="30" fill="none" stroke-linecap="round"><path d="M150 460V250q0-40 40-60l140-70"/></g>
     <path d="M150 460V250q0-40 40-60l140-70" stroke="#2F80ED" stroke-width="8" fill="none" stroke-linecap="round" opacity=".9"/>
-    <g fill="#18222E"><rect x="88" y="110" width="50" height="60" rx="6"/><rect x="250" y="210" width="40" height="70" rx="6"/><rect x="10" y="320" width="45" height="60" rx="6"/><rect x="170" y="20" width="45" height="50" rx="6"/></g>
-    <path d="M150 352l-14 30 14-8 14 8z" fill="#E9EEF5"/>
+    <g fill="var(--surface-2d)"><rect x="88" y="110" width="50" height="60" rx="6"/><rect x="250" y="210" width="40" height="70" rx="6"/><rect x="10" y="320" width="45" height="60" rx="6"/><rect x="170" y="20" width="45" height="50" rx="6"/></g>
+    <path d="M150 352l-14 30 14-8 14 8z" fill="var(--text)"/>
   </svg>`;
 }
