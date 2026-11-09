@@ -3,7 +3,7 @@
 > Claude Code가 이 저장소에서 일할 때 가장 먼저 읽는 파일. 길게 설명하지 말고 이 규칙대로 움직인다.
 > 사용자: 한국어, TL;DR 먼저, 전문 용어는 쉬운 말로, 담백한 문체. 결론부터.
 
-> **저장소 주소 (2026-11-09 변경)**: `IOMINTIAIO/Chiilkkabwa--HYUNDAI` → **`Chiilkkabwa-team/Chiilkkabwa--HYUNDAI`**(조직으로 이전). 옛 주소는 더 이상 쓰지 않는다(404). Vercel 배포 연결도 새 조직 레포로 다시 잡아야 한다(GitHub App "Vercel"을 Chiilkkabwa-team에 설치했는지 확인).
+> **저장소 주소 (2026-11-09 변경)**: 개인 계정 → **`Chiilkkabwa-team/Chiilkkabwa--HYUNDAI`**(조직으로 이전). 옛 주소는 더 이상 쓰지 않는다. Vercel 배포 연결도 새 조직 레포로 다시 잡아야 한다(GitHub App "Vercel"을 Chiilkkabwa-team에 설치했는지 확인).
 
 ## 1. 무엇을 만드나 (한 문장)
 면허는 있지만 운전이 두려운 초보·장롱면허 운전자가 **주차된 차 안에서** 조작을 차량 신호로 확인받고(연습 전 5분),
@@ -65,6 +65,7 @@ adb logcat -s AaosVehicleSource PleosVehicleSource   # 지원 속성 목록·실
 | `docs/10_CREATIVE_BRIEF.md` | **한 장 기획안 + 자유 영역 + 아이디어 창고** |
 | `docs/11_SERVICE_FLOW_UX_REVIEW.md` | 서비스 플로우, 화면별 흐름표, 여정, 장단점, 개선 우선순위 |
 | `docs/12_SUBMISSION_STRATEGY.md` | 심사위원 관점 전면 점검, 힘줄 곳, 아이디어 평가, 논리 점검, D-10 일정, 팀 결정 사항 |
+| `docs/14_HANDOFF_2026-11-10.md` | **인수인계** — 레포·배포·빌드·웹 상태·남은 일 한 장 요약 |
 | `docs/13_MEETING_2026-11-08.md` | **11/8 회의 반영** — 주행 중 음성 길잡이(규정 근거), 타깃 확장, 리플레이, 보고서 문구 교체 |
 | `web/` | 웹 프로토타입(모의 신호 전용) — 흐름·문구를 브라우저에서 먼저 시험 |
 | `docs/reference/` | 기획서 완성본(HTML), 별지, 근거 대장 — 제품 의도 확인용 |
