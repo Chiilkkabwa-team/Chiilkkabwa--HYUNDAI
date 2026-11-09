@@ -72,9 +72,8 @@ export function alpha(name, a) {
   return v;
 }
 
-/** 첫 로드에 저장값을 적용한다(저장값이 없으면 다크 그대로 둔다) */
+/** 첫 로드: 저장값이 없으면 **라이트**(2026-11-09 팀 결정. 실차 Pleos 기본은 다크) */
 export function init() {
-  const v = saved();
-  if (v) apply(v, false);
+  apply(saved() || 'light', false);
   return current();
 }

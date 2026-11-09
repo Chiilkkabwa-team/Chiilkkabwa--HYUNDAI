@@ -56,7 +56,9 @@ let seenSimEvents = 0;     // 평가·강습 모드에서 이미 처리한 sim �
 let voiceSec = 0;
 let voiceRealSec = 0;
 
-function voicePrefOn(mode) { return H.voiceOn == null ? mode !== 'mentor' : !!H.voiceOn; }
+// 2026-11-09 팀 요청: 기본은 모드와 상관없이 켜짐. 끄면 끈 상태가 저장된다.
+function voicePrefOn() { return H.voiceOn == null ? true : !!H.voiceOn; }
+const voiceCap = () => H.voiceCap || VOICE.RULES.maxPerDrive;
 
 /** 주행에 들어갈 때 음성·리플레이를 새로 시작한다 */
 function startVoiceDrive(mode) {
@@ -69,6 +71,7 @@ function startVoiceDrive(mode) {
     mode,
     enabled: voicePrefOn(mode),
     speedLimitOn: !!H.speedLimitVoice,
+    maxPerDrive: voiceCap(),
   });
   renderVoiceMeter();
 }
@@ -109,7 +112,7 @@ function renderVoiceMeter() {
   const spoken = voice ? voice.log : [];
   const skipped = voice ? voice.skipped.slice(-4).reverse() : [];
   box.innerHTML = `<div class="vm-head"><b>${on ? '음성 켬' : '음성 끔'}</b>
-      <span class="vm-count">${voice ? `${voice.spokenCount}/${VOICE.RULES.maxPerDrive}회` : `최대 ${VOICE.RULES.maxPerDrive}회`}</span></div>
+      <span class="vm-count">${voice ? `${voice.spokenCount}/${voice.cap}회` : `최대 ${voiceCap()}회`}</span></div>
     <p class="vm-state ${st.ok ? 'ok' : 'warn'}">${esc(st.why)}</p>
     ${spoken.length ? `<ul class="vm-log">${spoken.slice().reverse().map((x) => `<li><span>${fmtT(x.atSec)}</span>${esc(x.line)}</li>`).join('')}</ul>` : '<p class="vm-empty">아직 말한 것이 없어요.</p>'}
     ${skipped.length ? `<details class="vm-skip"><summary>말하지 않은 이유 ${voice.skipped.length}건</summary><ul>${skipped.map((x) => `<li><span>${fmtT(x.atSec)}</span>${esc(VOICE.TITLES[x.code] || x.code)} — ${SKIP_WHY[x.why] || x.why}</li>`).join('')}</ul></details>` : ''}`;
@@ -298,11 +301,11 @@ Screens.goal = () => ({
       <div class="how-two">
         <button type="button" class="how" id="soloBtn" disabled>
           ${icon('sound', 26)}<b>혼자 연습</b>
-          <small>주행 중에는 <b>음성 길잡이</b>가 옆자리 역할을 해요. 필요할 때만 한마디, 최대 ${VOICE.RULES.maxPerDrive}회.</small>
+          <small>주행 중에는 <b>음성 길잡이</b>가 옆자리 역할을 해요. 필요할 때만 한마디, 최대 ${voiceCap()}회.</small>
         </button>
         <button type="button" class="how" id="mentorBtn" disabled>
           ${icon('mentor', 26)}<b>함께 연습</b>
-          <small>옆자리에 사람이 있으니 <b>음성은 꺼 둬요</b>. 대신 출발 전에 <b>약속 카드</b>를 맞춰요.</small>
+          <small>출발 전에 <b>약속 카드</b>를 맞춰요. 음성 길잡이는 그대로 켜져 있고, 설정에서 끌 수 있어요.</small>
         </button>
       </div>
       <p class="caption" id="soloNote">어느 쪽이든 워밍업 3개 + 원하면 선택 미션 · 약 5분. 실제 도로 연습은 처음엔 동승자와 함께 하시면 더 안전해요.</p>
@@ -752,7 +755,7 @@ Screens.lock = () => ({
       <h1>화면은 잠시 쉴게요.<br>도로만 보세요.</h1>
       <p class="sub">${appMode === 'eval' ? '센서(가상)가 상황을 기록하고 있어요. 주차하면 상황별 조언을 보여 줘요.' : '주차하면 오늘 연습을 함께 돌아봐요.'}</p>
       ${voice?.enabled
-        ? `<p class="lock-voice">${icon('sound', 22)} 필요할 때만 한마디 할게요 · 최대 ${VOICE.RULES.maxPerDrive}회<br><small>내비·통화·경고음이 나오면 바로 양보해요</small></p>`
+        ? `<p class="lock-voice">${icon('sound', 22)} 필요할 때만 한마디 할게요 · 최대 ${voice.cap}회<br><small>내비·통화·경고음이 나오면 바로 양보해요</small></p>`
         : `<p class="lock-voice off">${icon('mentor', 22)} ${(prep?.mode || 'solo') === 'mentor' ? '함께 타신 분이 있어 음성은 꺼 뒀어요' : '음성 길잡이는 꺼져 있어요'}</p>`}
     </div>`;
     // 주행 중 화면은 정적이다 — 이 글은 주행에 들어갈 때 한 번 정해지고 바뀌지 않는다.
@@ -877,7 +880,9 @@ function profileHtml() {
     <h3>별칭 <small>이 기기에만 저장돼요</small></h3>
     <div>${chipGroup('alias', aliases, H.alias)}</div>
     <h3>주행 중 음성 길잡이 <small>F12</small></h3>
-    <div class="set-row">${icon('sound', 22)}<span>주행 중 음성 길잡이<small>${H.voiceOn == null ? '지금은 모드에 따라 — 혼자 연습은 켜짐, 함께 연습은 꺼짐' : H.voiceOn ? '항상 켜짐(함께 연습에서도)' : '항상 꺼짐'}</small></span><button type="button" class="switch" id="setVoice" role="switch" aria-label="주행 중 음성 길잡이" aria-checked="${voicePrefOn(prep?.mode || 'solo')}"><span></span></button></div>
+    <div class="set-row">${icon('sound', 22)}<span>주행 중 음성 길잡이<small>${voicePrefOn() ? '켜짐' : '꺼짐'}</small></span><button type="button" class="switch" id="setVoice" role="switch" aria-label="주행 중 음성 길잡이" aria-checked="${voicePrefOn(prep?.mode || 'solo')}"><span></span></button></div>
+    <div class="set-row">${icon('note', 22)}<span>주행당 최대 횟수<small>많을수록 잔소리가 될 수 있어요. 간격 45초는 그대로</small></span>
+      <div class="seg" role="radiogroup" aria-label="주행당 최대 횟수">${[3, 5, 10, 20].map((k) => `<button type="button" role="radio" data-cap="${k}" aria-checked="${voiceCap() === k}">${k}</button>`).join('')}</div></div>
     <div class="set-row">${icon('gear', 22)}<span>제한 속도 음성<small>내비가 이미 안내하니 기본은 꺼짐</small></span><button type="button" class="switch" id="setSpeedVoice" role="switch" aria-label="제한 속도 음성" aria-checked="${!!H.speedLimitVoice}"><span></span></button></div>
     <div class="set-row vm-test"><span>소리가 나오는지 확인<small>${esc(speaker.state().why)}</small></span><button type="button" class="mini" id="setVoiceTest">들어 보기</button></div>
     <p class="caption">주행 중 금지는 ‘영상’이고, 오디오는 오디오 포커스 정책을 지키면 허용돼요. 내비·통화·경고음이 나오면 바로 양보하고 그 말은 버려요.</p>
@@ -903,13 +908,13 @@ function bindOverlay(root) {
     const aliases = ['나', '연습생', '새내기 운전자', '주말 드라이버'];
     rebindChipsSimple(root, 'alias', aliases, () => H.alias, (v) => { H.alias = v; saveHistory(); renderChrome(); });
     $('#setVoice').onclick = (e) => {
-      // 3단계로 돌린다: 모드에 따름 → 항상 켜짐 → 항상 꺼짐
-      H.voiceOn = H.voiceOn == null ? true : H.voiceOn ? false : null;
+      H.voiceOn = !voicePrefOn();
       saveHistory();
       if (voice) voice.enabled = voicePrefOn(prep?.mode || 'solo');
       if (!voicePrefOn(prep?.mode || 'solo')) speaker.stop();
       renderVoiceMeter(); renderOverlay();
     };
+    $$('[data-cap]', root).forEach((b) => (b.onclick = () => { H.voiceCap = +b.dataset.cap; saveHistory(); if (voice) voice.cap = H.voiceCap; renderOverlay(); }));
     $('#setSpeedVoice').onclick = (e) => { H.speedLimitVoice = !H.speedLimitVoice; e.currentTarget.setAttribute('aria-checked', String(H.speedLimitVoice)); saveHistory(); if (voice) voice.speedLimitOn = H.speedLimitVoice; };
     $('#setVoiceTest').onclick = async (e) => {
       speaker.unlock();
@@ -1250,6 +1255,9 @@ function flashNote(t) {
 // 콘솔·앱 버튼을 실제로 눌러 가며 전체 흐름을 약 1분에 보여 준다. 사람이 콘솔을 만지면 바로 멈춘다.
 const demo = { running: false, token: 0 };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// 자동 시연 속도(0.5× · 1× · 2× · 3×). 시연 중에도 바꾸면 바로 반영된다.
+let demoSpeed = 1;
+const dsleep = (ms) => sleep(ms / demoSpeed);
 function demoBanner(text) {
   let el = $('#demoBanner');
   if (!el) { el = document.createElement('div'); el.id = 'demoBanner'; el.className = 'demo-banner'; el.setAttribute('role', 'status'); document.body.appendChild(el); }
@@ -1268,34 +1276,56 @@ function stopDemo(msg) {
 async function startDemo() {
   if (demo.running) return;
   if (appMode !== 'practice') return startSimDemo();
-  if (session.phase !== C.Phase.CHECKING && session.phase !== C.Phase.READY) { location.href = `${location.pathname}?demo=1`; return; }
+  // 처음부터 다시 시작하지 않고 **지금 있는 단계에서 이어 간다**.
+  // 0 안전 확인 · 1 목표 · 2 워밍업 · 3 가상 주차 · 4 페달 · 5 약속 · 6 출발 · 7 주행 · 8 복기
+  const STAGE = { goal: 1, mission: 2, parking: 3, pedal: 4, pact: 5, go: 6 };
+  const at = session.phase === C.Phase.DRIVING_LOCK ? 7 : session.phase === C.Phase.REVIEW ? 8
+    : session.phase === C.Phase.PREPARING ? (STAGE[prep?.step] ?? 1) : 0;
+  const mi = prep?.step === 'mission' ? prep.missionIdx : 0;
   demo.running = true; const tk = ++demo.token;
   $('#demoBtn').textContent = '시연 멈추기';
   const alive = () => demo.running && demo.token === tk;
-  const step = async (label, ms = 700) => { if (!alive()) throw new Error('stop'); demoBanner(label); await sleep(ms); if (!alive()) throw new Error('stop'); };
+  const step = async (label, ms = 700) => { if (!alive()) throw new Error('stop'); demoBanner(label); await dsleep(ms); if (!alive()) throw new Error('stop'); };
   const click = (sel) => { const el = $(sel); if (el && !el.disabled) el.click(); };
-  const ramp = async (fn, from, to, ms) => { const t0 = performance.now(); for (;;) { const k = Math.min(1, (performance.now() - t0) / ms); fn(from + (to - from) * k); tick(); if (k >= 1) break; await sleep(40); if (!alive()) throw new Error('stop'); } };
+  const ramp = async (fn, from, to, ms) => { ms /= demoSpeed; const t0 = performance.now(); for (;;) { const k = Math.min(1, (performance.now() - t0) / ms); fn(from + (to - from) * k); tick(); if (k >= 1) break; await sleep(40); if (!alive()) throw new Error('stop'); } };
   const waitFor = async (cond, max = 15000) => { const t0 = performance.now(); while (!cond()) { if (performance.now() - t0 > max || !alive()) throw new Error('stop'); await sleep(80); } };
   const setGear = (g) => click(`#c-gear button[data-v="${g}"]`);
   try {
     syncConsole();
     await waitFor(() => !booting);
-    await step('차가 기어 P·주차 브레이크·주행 제한을 직접 확인해요', 1600);
-    click('#startBtn');
-    await step('조수석에 멘토가 앉으면 차가 알아봐요', 900); click('#c-pass');
-    await step('오늘 걱정되는 것: 주차', 900); click('.chips[data-group="goal"] .chip[data-v="주차"]');
-    await step('멘토와 함께 시작', 800); click('#mentorBtn');
-    await step('이미 매고 있던 벨트는 인정하지 않아요 → 풀었다가', 1300); click('#c-belt');
-    await step('다시 ‘딸깍’', 800); click('#c-belt');
-    await step('차가 확인했어요', 1500); click('#nextBtn');
-    await step('브레이크를 끝까지 꾹', 600); await ramp(setBrake, 0, 100, 500);
-    await step('천천히 떼기', 400); await ramp(setBrake, 100, 0, 900);
-    await step('끝까지 꾹, 그리고 천천히 — 확인!', 1400); click('#nextBtn');
-    await step('방향지시등 왼쪽', 700); click('#c-turn button[data-v="LEFT"]');
-    await step('오른쪽', 700); click('#c-turn button[data-v="RIGHT"]');
-    await step('끄기', 700); click('#c-turn button[data-v="NONE"]');
-    await step('깜빡이 완료', 1300); click('#nextBtn');
-    await step('선택 미션은 오늘은 넘어가요(5분 안에 핵심만)', 1300); click('#skipAllBtn');
+    if (at > 0) await step('지금 자리에서 이어서 보여 줄게요', 900);
+    if (at === 0) {
+      if (V.gear.value !== 'P') setGear('P');
+      if (!V.parkingBrakeOn.value) click('#c-pb');
+      await waitFor(() => session.phase === C.Phase.READY);
+      await step('차가 기어 P·주차 브레이크·주행 제한을 직접 확인해요', 1600);
+      click('#startBtn');
+    }
+    if (at <= 1) {
+      await step('조수석에 멘토가 앉으면 차가 알아봐요', 900); if (!V.passengerOccupied.value) click('#c-pass');
+      await step('오늘 걱정되는 것: 주차', 900); click('.chips[data-group="goal"] .chip[data-v="주차"]');
+      await step('멘토와 함께 시작', 800); click('#mentorBtn');
+    }
+    if (at <= 2) {
+      if (mi <= 0) {
+        await step('이미 매고 있던 벨트는 인정하지 않아요 → 풀었다가', 1300); click('#c-belt');
+        await step('다시 ‘딸깍’', 800); click('#c-belt');
+        await step('차가 확인했어요', 1500); click('#nextBtn');
+      }
+      if (mi <= 1) {
+        await step('브레이크를 끝까지 꾹', 600); await ramp(setBrake, 0, 100, 500);
+        await step('천천히 떼기', 400); await ramp(setBrake, 100, 0, 900);
+        await step('끝까지 꾹, 그리고 천천히 — 확인!', 1400); click('#nextBtn');
+      }
+      if (mi <= 2) {
+        await step('방향지시등 왼쪽', 700); click('#c-turn button[data-v="LEFT"]');
+        await step('오른쪽', 700); click('#c-turn button[data-v="RIGHT"]');
+        await step('끄기', 700); click('#c-turn button[data-v="NONE"]');
+        await step('깜빡이 완료', 1300); click('#nextBtn');
+      }
+      await step('선택 미션은 오늘은 넘어가요(5분 안에 핵심만)', 1300); click('#skipAllBtn');
+    }
+    if (at <= 3) {
     await waitFor(() => prep?.step === 'parking');
     const sc = () => mounted.screen;
     await step('내 차 크기로 하는 가상 주차 — 기준선까지 살짝 앞으로', 900);
@@ -1308,12 +1338,21 @@ async function startDemo() {
     await step('차가 섰어요 → 핸들을 풀고 쭉 후진', 700); await ramp(setSteer, 540, 0, 600);
     sc().move = -1; await waitFor(() => sc().done || sc().bump > 0, 9000); sc().move = 0;
     await step(sc().done ? '칸 안에 들어왔어요!' : '거의 다 왔어요', 1600); click('#pkNext');
+    }
+    if (at <= 4 && prep?.step === 'pedal') {
     await step('페달 감각: 초록 칸 안에서 2초', 500); await ramp(setBrake, 0, 27, 700);
     await waitFor(() => judgeState?.progress?.kind === 'done', 5000); await step('부드러웠어요', 1300); await ramp(setBrake, 27, 0, 300); click('#nextBtn');
+    }
+    if (at <= 5 && prep?.step === 'pact') {
     await step('멘토와 오늘의 약속', 700);
     $$('.chips[data-group="pact"] .chip')[0]?.click(); await sleep(400); $$('.chips[data-group="pact"] .chip')[3]?.click();
     await step('둘 다 약속했어요', 900); click('#pactBtn');
-    await step('출발 준비 완료 — 주차 브레이크를 풀고 D', 1600); click('#c-pb'); await sleep(400); setGear('D');
+    }
+    if (at <= 6) {
+    await step('출발 준비 완료 — 주차 브레이크를 풀고 D', 1600); if (V.parkingBrakeOn.value) click('#c-pb'); await dsleep(400); setGear('D');
+    }
+    if (at <= 7) {
+    await waitFor(() => session.phase === C.Phase.DRIVING_LOCK);
     await step('화면은 조용히 잠겨요 — 영상·애니메이션·화면 전환·터치 없음', 900);
     if (timeScale === 1) click('#c-fast');
     const setSpeed = (v) => { setV('speedKmh', Math.round(v)); setV('uxRestricted', v > 0, { onlyIfChanged: true }); syncConsole(); };
@@ -1325,8 +1364,9 @@ async function startDemo() {
     setBrake(60); await ramp(setSpeed, 38, 8, 500);
     await step('이번엔 급제동 — 45초가 지났으니 한 번 더 말해 줘요', 2400);
     setBrake(0); await ramp(setSpeed, 8, 0, 400);
-    await step('주차: 기어 P + 주차 브레이크', 600); setGear('P'); await sleep(300); click('#c-pb');
+    await step('주차: 기어 P + 주차 브레이크', 600); setSpeed(0); setGear('P'); await dsleep(300); if (!V.parkingBrakeOn.value) click('#c-pb');
     if (timeScale > 1) click('#c-fast');
+    }
     await waitFor(() => session.phase === C.Phase.REVIEW);
     // A-9 리플레이가 복기 앞에 한 번 들어온다(연습 모드)
     if (screenKey() === 'replay') {
@@ -1685,10 +1725,10 @@ async function startSimDemo() {
   if (session.phase !== C.Phase.CHECKING && session.phase !== C.Phase.READY) { location.href = `${location.pathname}?demo=1`; return; }
   demo.running = true; const tk = ++demo.token; $('#demoBtn').textContent = '시연 멈추기';
   const alive = () => demo.running && demo.token === tk;
-  const step = async (label, ms = 700) => { if (!alive()) throw new Error('stop'); demoBanner(label); await sleep(ms); if (!alive()) throw new Error('stop'); };
+  const step = async (label, ms = 700) => { if (!alive()) throw new Error('stop'); demoBanner(label); await dsleep(ms); if (!alive()) throw new Error('stop'); };
   const click = (sel) => { const el = $(sel); if (el && !el.disabled) el.click(); };
   const waitFor = async (cond, max = 30000) => { const t0 = performance.now(); while (!cond()) { if (performance.now() - t0 > max || !alive()) throw new Error('stop'); await sleep(60); } };
-  const ramp = async (fn, from, to, ms) => { const t0 = performance.now(); for (;;) { const k = Math.min(1, (performance.now() - t0) / ms); fn(from + (to - from) * k); if (k >= 1) break; await sleep(40); if (!alive()) throw new Error('stop'); } };
+  const ramp = async (fn, from, to, ms) => { ms /= demoSpeed; const t0 = performance.now(); for (;;) { const k = Math.min(1, (performance.now() - t0) / ms); fn(from + (to - from) * k); if (k >= 1) break; await sleep(40); if (!alive()) throw new Error('stop'); } };
   const steerTo = async (lane, sig) => {
     if (sig) setV('turnSignal', sig); syncConsole();
     const target = lane * SIM.LANE_W;
@@ -1755,6 +1795,7 @@ $('#consoleFab .fab-ico').innerHTML = icon('console', 22);
 $('#historyBtn').onclick = () => openOverlay('history');
 $('#profileBtn').onclick = () => openOverlay('profile');
 $('#helpBtn').onclick = () => { obStep = 0; openOverlay('intro'); };
+$('#demoSpeed').onchange = (e) => { demoSpeed = +e.target.value || 1; };
 $('#demoBtn').onclick = () => (demo.running ? stopDemo('멈췄어요') : startDemo());
 addEventListener('keydown', (e) => { if (e.key === 'Escape' && overlay) closeOverlay(); });
 THEME.init();

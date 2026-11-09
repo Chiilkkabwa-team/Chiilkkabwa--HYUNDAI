@@ -76,7 +76,8 @@ export class VoiceGuide {
    * @param {boolean} [o.enabled] 설정에서 켜 둔 값(없으면 모드에 따라 결정)
    * @param {boolean} [o.speedLimitOn] 제한 속도 음성(기본 꺼짐)
    */
-  constructor({ goal = null, mode = 'solo', enabled = null, speedLimitOn = false } = {}) {
+  constructor({ goal = null, mode = 'solo', enabled = null, speedLimitOn = false, maxPerDrive = RULES.maxPerDrive } = {}) {
+    this.cap = maxPerDrive;   // 주행당 최대 발화 수(설정으로 3·5·10·20)
     this.goal = goal;
     this.mode = mode;
     // 멘토가 타고 있으면 기본 꺼짐. 사람이 말하는데 기계가 끼어들면 안 된다.
@@ -105,7 +106,7 @@ export class VoiceGuide {
     if (!this.enabled) return 'OFF';
     if (!LINES[code]) return 'NO_LINE';
     if (!this.opensFor(code)) return 'NOT_THIS_GOAL';
-    if (this.spokenCount >= RULES.maxPerDrive) return 'DRIVE_CAP';
+    if (this.spokenCount >= this.cap) return 'DRIVE_CAP';
     if (tSec - this.lastAtSec < RULES.minIntervalSec) return 'TOO_SOON';
     const used = this.perCode[code] || 0;
     if (LINES[code].once && used >= 1) return 'ONCE_ONLY';
@@ -157,7 +158,7 @@ export class VoiceGuide {
   }
 
   /** 남은 발화 횟수(잠금 화면에 'n/5'로 보여 준다) */
-  remaining() { return Math.max(0, RULES.maxPerDrive - this.spokenCount); }
+  remaining() { return Math.max(0, this.cap - this.spokenCount); }
 
   /** 이 코드를 말했는가(리플레이 🔊 표시) */
   didSpeak(code, atSec) {

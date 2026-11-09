@@ -860,3 +860,17 @@ body:not([data-mode="practice"]) .sim-hud { margin-bottom: auto; }
 /* 온보딩 모달은 그림이 들어가므로 조금 넓게 */
 .modal-ob { width: min(900px, calc(100% - 32px)); }
 .ob-title:focus-visible { outline: 3px solid var(--yellow); outline-offset: 4px; border-radius: 6px; }
+
+/* ── 가상 도로: 내비·계기판 같은 '뒤에서 내려다보는' 시점 (2026-11-09) ──
+   그림은 위에서 본 2D 그대로 그리고, 화면에서만 원근으로 눕힌다.
+   현대차 계기판의 '내 차 + 주변 차' 화면처럼 앞쪽이 멀어지며 흐려진다.
+   그리기 좌표·판정은 바뀌지 않는다(시각 효과만). */
+body:not([data-mode="practice"]) .sim-canvas {
+  transform: perspective(560px) rotateX(36deg) scale(1.5, 1.35);
+  transform-origin: 50% 80%;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 26%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 26%);
+}
+.driving-view { perspective: none; }
+.demo-speed select { min-height: 40px; padding: 0 8px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--sub); font-weight: 700; }
+@media (prefers-reduced-motion: reduce) { body:not([data-mode="practice"]) .sim-canvas { transform: none; -webkit-mask-image: none; mask-image: none; } }
