@@ -602,14 +602,14 @@ Screens.parking = () => ({
     $('#pkSrc').textContent = fv ? '차 핸들 신호(모의)' : '화면 핸들';
     const msg = $('#pkMsg');
     let m = '', cls = '';
-    if (this.done) { m = '칸 안에 들어왔어요!'; cls = 'ok'; }
+    if (this.done) { m = '칸 안에 들어왔어요'; cls = 'ok'; }
     else if (this.bump > 0) { m = '옆 차에 닿을 것 같아요. 반대로 조금 움직여 볼까요?'; cls = 'warn'; }
     else {
       const ra = this.pose; const st = this.sim.parkState(this.pose, this.slot);
       const nearRef = Math.abs(ra.x - this.refX) < 0.35 && Math.abs(Math.sin(ra.heading)) > 0.9;
-      if (nearRef && Math.abs(wheel) < 30) { m = '지금! 핸들을 오른쪽 끝까지 돌리고 후진해요'; cls = 'key'; }
-      else if (Math.abs(Math.sin(ra.heading)) < 0.12 && Math.abs(wheel) > 8 && st.dx < 1.2 && ra.y < 1.4) { m = '차가 똑바로 섰어요. 핸들을 가운데로 풀고 쭉 후진!'; cls = 'key'; }
-      else if (st.dx < 1.2 && st.dy < 2.5) m = st.headingErr > 6 ? `거의 다 왔어요. 차 방향을 ${st.headingErr.toFixed(0)}°만 더 세워 볼까요?` : st.dy > 0.35 ? '방향 좋아요. 조금 더 천천히 후진!' : '좌우를 조금만 맞춰 볼까요?';
+      if (nearRef && Math.abs(wheel) < 30) { m = '지금 핸들을 오른쪽 끝까지 돌리고 후진해요'; cls = 'key'; }
+      else if (Math.abs(Math.sin(ra.heading)) < 0.12 && Math.abs(wheel) > 8 && st.dx < 1.2 && ra.y < 1.4) { m = '차가 똑바로 섰어요. 핸들을 가운데로 풀고 쭉 후진'; cls = 'key'; }
+      else if (st.dx < 1.2 && st.dy < 2.5) m = st.headingErr > 6 ? `거의 다 왔어요. 차 방향을 ${st.headingErr.toFixed(0)}°만 더 세워 볼까요?` : st.dy > 0.35 ? '방향 좋아요. 조금 더 천천히 후진' : '좌우를 조금만 맞춰 볼까요?';
     }
     if (msg.dataset.m !== m) { msg.textContent = m; msg.className = `pk-msg ${cls}`; msg.dataset.m = m; }
   },
@@ -633,7 +633,7 @@ Screens.parking = () => ({
     ctx.strokeStyle = parked ? T('--success') : T('--primary'); ctx.setLineDash([S * 0.25, S * 0.2]); ctx.lineWidth = S * 0.06;
     ctx.strokeRect(X(slot.cx - 1.1), Y(-2.35), 2.2 * S, 4.7 * S); ctx.setLineDash([]);
     ctx.fillStyle = parked ? T('--success-text') : T('--primary-text'); ctx.font = `700 ${S * 0.55}px Pretendard Variable, sans-serif`; ctx.textAlign = 'center';
-    ctx.fillText(parked ? '도착!' : '여기', X(slot.cx), Y(0.2));
+    ctx.fillText(parked ? '도착' : '여기', X(slot.cx), Y(0.2));
     // 옆 차
     for (const n of this.neighbors) drawCar(ctx, S, X, Y, n.poly, { body: this.bump > 0 && Math.abs(n.cx) === 2.5 ? T('--warn') : T('--car-npc'), glass: T('--car-glass-npc') });
     // 기준선(뒷바퀴가 여기 오면 핸들 끝까지)
@@ -800,7 +800,7 @@ Screens.review = () => ({
     const dist = sum?.distanceKm != null ? ` · ${sum.distanceKm.toFixed(1)}km` : '';
     el.innerHTML = `<div class="screen review">
       <div class="hero"><div class="hero-m">${mascot('happy', 88)}</div><div>
-        <h1>수고했어요!</h1>
+        <h1>수고했어요</h1>
         <p class="big-stat">오늘 연습 <b>${sum ? sum.durationMin : 0}분</b>${dist}</p>
         <p class="caption">${sum?.durationFromVehicle ? `${srcChip('MOCK')} 트립 기준` : '(앱 기준 시간)'}</p>
       </div></div>
@@ -896,7 +896,7 @@ function profileHtml() {
 function certHtml() {
   const first = H.firstAt ? new Date(H.firstAt).toLocaleDateString('ko-KR') : new Date().toLocaleDateString('ko-KR');
   return `<div class="cert">
-    <div class="cert-top">${mascot('happy', 84)}<div><small>치일까봐 연습 수료 카드</small><h2>${esc(H.alias)} 님, 혼자 출발!</h2></div></div>
+    <div class="cert-top">${mascot('happy', 84)}<div><small>치일까봐 연습 수료 카드</small><h2>${esc(H.alias)} 님, 혼자 출발</h2></div></div>
     <div class="cert-stats"><div><b>${H.reviewsSaved}</b><small>이어 간 연습</small></div><div><b>${H.badges.length}</b><small>모은 배지</small></div><div><b>${first}</b><small>첫 연습</small></div></div>
     <div class="cert-badges">${H.badges.map((b) => badgeArt(C.Badges[b.badge], true, 40)).join('')}</div>
     <p class="cert-note">운전 실력 인증이 아니라, 이어 온 연습의 기록이에요.<br>도로에서는 언제나 천천히, 안전하게.</p>
@@ -1174,7 +1174,7 @@ function guide(s) {
       case 'goal': return ['앱에서 목표를 골라요. <b>조수석에 사람 있음</b>을 켜면 멘토 모드가 강조돼요.', 'r-pass'];
       case 'mission': {
         const id = judgeState?.judge.id; const p = judgeState?.progress;
-        if (p?.kind === 'done') return ['잘했어요! 앱에서 <b>[다음]</b>을 눌러요.', null];
+        if (p?.kind === 'done') return ['잘했어요 앱에서 <b>[다음]</b>을 눌러요.', null];
         if (p?.kind === 'unavailable') return ['신호를 읽을 수 없어 앱이 건너뛰기를 안내해요.', null];
         if (id === 'SEAT_BELT') return [V.driverBeltBuckled.value ? '<b>안전벨트</b>를 한 번 풀었다가 다시 매요.' : '이제 <b>안전벨트</b>를 매요.', 'r-belt'];
         if (id === 'BRAKE_PRESS_RELEASE') return [p?.step === 2 ? '이제 <b>꾹 밟기</b>에서 손을 떼요(천천히 떼짐).' : '<b>꾹 밟기</b>를 누르고 있거나 페달을 끝까지 밀어요.', 'r-brake'];
@@ -1184,7 +1184,7 @@ function guide(s) {
         if (id === 'STEERING_CENTER') return ['<b>핸들</b>을 가운데(±5°)로 맞추고 2초.', 'r-steer'];
         return ['', null];
       }
-      case 'pedal': return judgeState?.progress?.kind === 'done' ? ['부드러웠어요! 앱에서 다음으로.', null] : ['<b>브레이크 페달</b> 슬라이더를 20~35%에 두고 2초.', 'r-brake'];
+      case 'pedal': return judgeState?.progress?.kind === 'done' ? ['부드러웠어요 앱에서 다음으로.', null] : ['<b>브레이크 페달</b> 슬라이더를 20~35%에 두고 2초.', 'r-brake'];
       case 'parking': return ['<b>핸들</b>을 돌리면 화면 속 바퀴가 따라 꺾여요. 앱의 [후진]을 누르고 있어요.', 'r-steer'];
       case 'pact': return ['앱에서 약속을 1~3개 골라요.', null];
       case 'go': return V.parkingBrakeOn.value ? ['<b>주차 브레이크</b>를 풀고 기어를 D로 옮겨 봐요.', 'r-pb'] : ['기어를 <b>D</b>로 옮겨 보세요. 화면이 쉬어요.', 'r-gear'];
@@ -1315,7 +1315,7 @@ async function startDemo() {
       if (mi <= 1) {
         await step('브레이크를 끝까지 꾹', 600); await ramp(setBrake, 0, 100, 500);
         await step('천천히 떼기', 400); await ramp(setBrake, 100, 0, 900);
-        await step('끝까지 꾹, 그리고 천천히 — 확인!', 1400); click('#nextBtn');
+        await step('끝까지 꾹, 그리고 천천히 — 확인', 1400); click('#nextBtn');
       }
       if (mi <= 2) {
         await step('방향지시등 왼쪽', 700); click('#c-turn button[data-v="LEFT"]');
@@ -1337,7 +1337,7 @@ async function startDemo() {
     sc().move = 0;
     await step('차가 섰어요 → 핸들을 풀고 쭉 후진', 700); await ramp(setSteer, 540, 0, 600);
     sc().move = -1; await waitFor(() => sc().done || sc().bump > 0, 9000); sc().move = 0;
-    await step(sc().done ? '칸 안에 들어왔어요!' : '거의 다 왔어요', 1600); click('#pkNext');
+    await step(sc().done ? '칸 안에 들어왔어요' : '거의 다 왔어요', 1600); click('#pkNext');
     }
     if (at <= 4 && prep?.step === 'pedal') {
     await step('페달 감각: 초록 칸 안에서 2초', 500); await ramp(setBrake, 0, 27, 700);
@@ -1381,7 +1381,7 @@ async function startDemo() {
     $$('.chips[data-group="next"] .chip')[0]?.click(); await step('다음 목표 하나', 900);
     click('#saveBtn');
     await step('저장 — 다음 연습은 ‘지난번 목표’에서 이어져요', 2200);
-    stopDemo('끝! 이제 직접 해 보세요');
+    stopDemo('끝 이제 직접 해 보세요');
   } catch (e) { if (demo.token === tk) stopDemo('멈췄어요'); }
 }
 // 사람이 콘솔을 직접 만지면 시연을 멈춘다
@@ -1519,7 +1519,7 @@ Screens.report = () => ({
         <div class="report-sum">
           <div class="tag-row">${VIRTUAL_CHIP(coach)}<span class="tag soft">${coach ? '강습 모드' : '평가 모드'}</span></div>
           <h1>${grade}</h1>
-          <p class="sub">${prev ? `지난번 ${prev.score}점 → 오늘 ${r.score}점 ${r.score > prev.score ? '— 늘었어요!' : r.score === prev.score ? '— 그대로예요' : ''}` : '첫 가상 주행 기록이에요'}</p>
+          <p class="sub">${prev ? `지난번 ${prev.score}점 → 오늘 ${r.score}점 ${r.score > prev.score ? '— 늘었어요' : r.score === prev.score ? '— 그대로예요' : ''}` : '첫 가상 주행 기록이에요'}</p>
           <div class="stat-row">
             <div><b>${fmtT(r.durationSec)}</b><small>주행 시간</small></div>
             <div><b>${r.distanceKm.toFixed(2)}km</b><small>거리</small></div>
@@ -1777,7 +1777,7 @@ async function startSimDemo() {
     await waitFor(() => session.phase === C.Phase.REVIEW);
     await step('주행 리포트: 점수 · 항목별 · 상황별 조언', 2500);
     $('#appBody').scrollTo({ top: 400, behavior: 'smooth' }); await step('상황별 기록 — 어느 센서가 무엇을 봤는지', 2500);
-    stopDemo('끝! 이제 직접 달려 보세요(키보드 ↑↓←→)');
+    stopDemo('끝 이제 직접 달려 보세요(키보드 ↑↓←→)');
   } catch (err) { if (demo.token === tk) stopDemo('멈췄어요'); }
 }
 

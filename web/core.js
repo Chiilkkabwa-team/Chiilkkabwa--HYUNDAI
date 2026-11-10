@@ -71,7 +71,7 @@ export function seatBeltJudge() {
       const b = blocking(s.driverBeltBuckled); if (b) return unavailable(b);
       const v = edge.newValue(s.driverBeltBuckled);
       if (v === false) sawUnbuckled = true;
-      if (v === true && sawUnbuckled) return done(s.driverBeltBuckled.source, '딸깍, 좋아요! 출발 준비 1단계 완료');
+      if (v === true && sawUnbuckled) return done(s.driverBeltBuckled.source, '딸깍, 좋아요 출발 준비 1단계 완료');
       return sawUnbuckled
         ? progress(1, 1, '안전벨트를 ‘딸깍’ 소리 나게 매 주세요')
         : progress(1, 1, '이미 매고 있네요. 한 번 풀었다가 다시 매 볼까요?');
@@ -113,7 +113,7 @@ export function turnSignalJudge() {
       else if (step === 2 && v === 'NONE') return done(s.turnSignal.source, '깜빡이, 손가락 하나로 충분해요');
       else if (v !== null && v !== 'NONE') retry = true; // 순서가 다를 때: 실패가 아니라 '한 번 더'
       const hint = ['왼쪽 방향지시등을 켜 보세요(레버 아래로)', '이번엔 오른쪽(레버 위로)', '이제 꺼 볼까요?'][step];
-      return progress(step + 1, 3, hint, { retry: retry ? '거의 다 왔어요. 한 번 더!' : null });
+      return progress(step + 1, 3, hint, { retry: retry ? '거의 다 왔어요. 한 번 더' : null });
     },
   };
 }
@@ -140,7 +140,7 @@ export function steeringCenterJudge(toleranceDeg = 5, holdMs = 2000) {
       const b = blocking(sig); if (b) return unavailable(b);
       if (usable(sig) && sig.receivedAt >= startedAt && Math.abs(sig.value) <= toleranceDeg) {
         if (since === null) since = now;
-        if (now - since >= holdMs) return done(sig.source, '바퀴가 똑바로! 출발 전에 늘 확인해요');
+        if (now - since >= holdMs) return done(sig.source, '바퀴가 똑바로 출발 전에 늘 확인해요');
         return progress(1, 1, '좋아요, 그대로 2초만 기다려요', { holdRatio: (now - since) / holdMs });
       } else if (usable(sig) && Math.abs(sig.value) > toleranceDeg) since = null;
       return progress(1, 1, '핸들을 가운데로 맞추고 2초 기다려요', { holdRatio: 0 });
@@ -167,8 +167,8 @@ export function pedalHoldJudge(key = 'brakePedalPct', low = 20, high = 35, holdM
         if (v >= low && v <= high) {
           if (since === null) since = now;
           samples.push(v);
-          if (now - since >= holdMs) return done(sig.source, '부드러웠어요!', std(samples));
-          return progress(1, 1, '좋아요, 그대로!', { holdRatio: (now - since) / holdMs });
+          if (now - since >= holdMs) return done(sig.source, '부드러웠어요', std(samples));
+          return progress(1, 1, '좋아요, 그대로', { holdRatio: (now - since) / holdMs });
         }
         since = null; samples = [];
       }
@@ -181,7 +181,7 @@ export const MissionCatalog = {
   required: () => [seatBeltJudge(), brakePressReleaseJudge(), turnSignalJudge()],
   optional: () => [
     toggleJudge('WIPER', '와이퍼 켜고 끄기', 'wiperOn', '와이퍼 레버를 한 번 움직여 보세요', '비 오는 날 이 레버, 기억해 둬요'),
-    toggleJudge('LOW_BEAM', '전조등 켜기', 'lowBeamOn', '전조등 스위치를 돌려 보세요', '어두워지면 여기!'),
+    toggleJudge('LOW_BEAM', '전조등 켜기', 'lowBeamOn', '전조등 스위치를 돌려 보세요', '어두워지면 여기'),
     steeringCenterJudge(),
   ],
 };
@@ -329,7 +329,7 @@ export const CONTENT = {
   learner: ['자신감 생겼어요', '후진이 아직 무서워요', '말이 너무 빨랐어요', '출발이 어려웠어요', '생각보다 괜찮았어요'],
   mentor: ['속도 조절이 좋아졌어', '핸들 감각이 늘었어', '주변 확인을 잘했어', '다음엔 후진 연습하자', '오늘은 쉬어 가자'],
   nextGoals: ['후진 주차 속도', '평행 주차 기준점', '출발할 때 부드럽게', '차선 바꾸기 전 확인', '좌회전 타이밍'],
-  retry: ['조금만 더 천천히 해 볼까요?', '거의 다 왔어요. 한 번 더!', '괜찮아요, 처음엔 다 그래요'],
+  retry: ['조금만 더 천천히 해 볼까요?', '거의 다 왔어요. 한 번 더', '괜찮아요, 처음엔 다 그래요'],
 };
 
 export const MISSION_META = {

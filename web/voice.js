@@ -86,7 +86,7 @@ export class VoiceGuide {
     this.spokenCount = 0;
     this.lastAtSec = -Infinity;
     this.perCode = {};
-    this.log = [];        // 실제로 말한 것(리플레이에서 🔊 표시에 쓴다)
+    this.log = [];        // 실제로 말한 것(리플레이의 "말했어요" 표시에 쓴다)
     this.skipped = [];    // 왜 말하지 않았는지(T13 점검·디버그 패널용)
     this.pending = null;  // 포커스 대기 중인 발화
     this.lastQuietAt = 0; // 마지막 지적 시각(STEADY 판정)
@@ -160,7 +160,7 @@ export class VoiceGuide {
   /** 남은 발화 횟수(잠금 화면에 'n/5'로 보여 준다) */
   remaining() { return Math.max(0, this.cap - this.spokenCount); }
 
-  /** 이 코드를 말했는가(리플레이 🔊 표시) */
+  /** 이 코드를 말했는가(리플레이 "말했어요" 표시) */
   didSpeak(code, atSec) {
     return this.log.some((x) => x.code === code && Math.abs(x.atSec - atSec) < 0.6);
   }
