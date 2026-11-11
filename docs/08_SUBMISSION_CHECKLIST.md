@@ -1,63 +1,55 @@
-# 08. 제출 체크리스트 — GitHub·APK·README·블라인드
+# 08. 공모전 제출 체크리스트
 
-> TL;DR — 1차(11/15 23:59): DOCX + 별지 PDF(필수 아님) + 선택 가산점(영상·GitHub·APK). 2차: 에뮬레이터 동작 앱. 모든 산출물에서 실명·학교·개인 계정 노출 금지.
+2026-11-11 공식 안내 재확인. 운영진의 공지 변경이 있으면 공식 안내를 우선한다.
 
-## 1. GitHub 저장소 (공모전 안내 기준, 11/3 조사)
-- 소스 + release APK: `apk/팀명_앱이름_release.apk` (팀명은 01장 결정 후)
-- README 공식 4요소(지원·제출 방법 페이지 원문): ① 앱 이름 및 한 줄 소개 ② 실행 방법 ③ 테스트 환경 및 필요한 설정 ④ APK 파일 위치 또는 GitHub Release 링크 — 여기에 사용 SDK·영상·웹 체험 링크를 덧붙인다
-- **이 저장소는 비공개(private)다** → 심사용 GitHub 계정을 Collaborator로 초대해야 심사가 가능하다
-  - ⚠️ 2026-11-06 확인: 공모전 공지사항은 3건(유의사항·모집공고·설명회)뿐이고 **심사용 계정은 아직 공지되지 않았다**. 제출 전까지 `appdevchallenge.auto-hmg.io/notice`를 계속 확인할 것
-  - 개인 계정의 비공개 저장소는 Collaborator에게 **쓰기 권한도** 부여되므로 초대 전 권한을 확인한다
-  - 대안: 제출 직전에 공개(public)로 전환 (블라인드 점검을 마친 뒤)
-- **커밋 작성자 이름·이메일이 실명이 아닌지** (`git log --format='%an %ae'`)
-- 저장소 이름·조직명에 학교명 금지
+출처:
+- https://appdevchallenge.auto-hmg.io/guide/submission
+- https://appdevchallenge.auto-hmg.io/faq
+- https://appdevchallenge.auto-hmg.io/guide/rules
 
-## 1-1. 팀 협업 설정 (2026-11-06 결정)
-조직(Organization)으로 옮기지 않고 **개인 비공개 저장소 + 협업자 초대**로 간다. 저장소 주소·Vercel 연결·CI가 그대로 유지돼 제출 직전 사고가 없다.
+## 1. 일정과 필수 제출
 
-**팀원 초대 방법** — 저장소 → Settings → Collaborators → Add people → GitHub 아이디 입력
-| 역할 | 권한 | 비고 |
-|---|---|---|
-| 팀원(개발) | Write | 커밋·푸시 |
-| 팀원(기획) | Write 또는 Read | 문서만 보면 Read로 충분 |
-| 심사용 계정 | Write(강제) | ⚠️ 개인 저장소는 Read만 줄 수 없다 → 제출 직전 **공개 전환**이 더 안전 |
+- 1차 접수: 2026-11-15(일) 23:59 KST
+- 1차 결과: 2026-11-23
+- 2차 PT: 2026-12-03~04. PT 대상 팀은 실행 가능한 앱이 필요
+- **필수**: 팀원 전원이 동의 여부, 서명, 날짜를 작성한 공식 접수 DOCX(기획서 포함)
+- 선택 개발 산출물: 시연 영상, GitHub 소스와 APK, 화면 프로토타입 등(가산점 가능)
+- 숏폼: 별도 특별상 프로그램, 본상 가산점 아님
+- 수신: appdevchallenge@hyundai-partners.com
+- 제목: [차량용 앱 개발 공모전] 팀명_대표자명
+- 팀원 전원 CC; 수정 제출은 같은 발신자 이메일로 마감 전 전체 자료 재첨부
+- 심사용 프로젝트 소개(02장)는 개인 실명·학교·연락처 등 블라인드 기준 준수
 
-> 초대에는 **GitHub 아이디**가 필요하다(이메일 초대도 가능하지만 상대가 가입해야 함). 아이디를 모으면 한 번에 초대한다.
-> 블라인드 주의: 아이디·프로필에 실명·학교가 드러나면 심사에서 노출될 수 있다. 팀 전용 계정을 권장.
+## 2. GitHub Private 제출 규칙 (2026-11-11 공식 기준)
 
-## 2. APK — **2026-11-08 빌드 성공**
-빌드가 실제로 되는 것을 확인했다. 그 전까지 `ui/`는 한 번도 컴파일되지 않았다.
+- Private 저장소도 제출 가능. **심사용 Collaborator 초대 불필요**.
+- 접수 메일에 저장소 URL과 심사 기준이 될 **최종 커밋 SHA**를 쓴다.
+- 저장소를 공개하는 방식: 2026-11-16까지 Public으로 바꾸고 11월 23일까지 공개 유지. 공개하지 않으면 해당 개발 산출물 가산점은 반영되지 않는다.
+- 공개가 어렵다면 접수 마감 **전에** 소스와 APK가 포함된 압축파일 다운로드 주소를 보낸다.
+- 공개 전에는 코드뿐 아니라 이전 Git 커밋, 작성자 이메일, 내부 문서, 비밀 키, 민감정보 노출을 점검한다. .gitignore는 과거 커밋을 삭제하지 않는다.
 
-| 산출물 | 명령 | 상태 |
-|---|---|---|
-| 모의 차량(전 흐름 시연) | `./gradlew :app:assembleMockDebug` | ✅ BUILD SUCCESSFUL |
-| 실제 신호(에뮬레이터) | `./gradlew :app:assembleVehicleDebug` | ✅ BUILD SUCCESSFUL |
-| 제출용 release | `./gradlew :app:assembleRelease` | ✅ BUILD SUCCESSFUL |
-| 단위 테스트 | `./gradlew :app:testMockDebugUnitTest` | ✅ **17/17 통과** |
+## 3. README 및 APK
 
-**빌드에 필요한 것**(처음 빌드하는 사람용)
-1. Android Studio 또는 commandline tools + **Android SDK `platforms;android-35`, `build-tools;35.0.0`, `platform-tools`**, JDK 17 이상(검증은 21)
-2. 저장소 루트 `local.properties`에 `sdk.dir=<SDK 경로>` (이 파일은 `.gitignore`에 있다)
-3. 네트워크: `dl.google.com`(Google Maven), `repo.maven.apache.org`, `nexus-playground.pleos.ai`(Pleos SDK)
+README에 적을 것:
+1. 앱명 및 한 줄 소개
+2. 실행 방법
+3. 테스트 환경 및 필요 설정
+4. Pleos Emulator 버전 및 화면 규격
+5. APK 파일 위치 또는 GitHub Release 링크
 
-**서명**
-- 기본값은 **디버그 키**다 → 설치는 되지만 스토어 배포용은 아니다. 공모전 제출(설치·실행 확인)에는 충분하다
-- 자기 키로 서명하려면 루트에 `keystore.properties`(storeFile/storePassword/keyAlias/keyPassword) → `.gitignore`에 이미 들어 있다
-- **키스토어·비밀번호를 저장소에 커밋하지 않는다**
+- APK 권장 파일명: 팀명_앱이름_release.apk
+- APK는 **실행 가능한 릴리스 버전**으로 제출. 크기 제한 시 GitHub Releases에 첨부하고 링크 기재.
+- 현재 저장소 apk/에는 .gitkeep만 확인되며 실제 APK가 올라온 상태는 아니다.
+- 기존 문서의 2026-11-08 BUILD SUCCESSFUL 기록은 당시 실행 이력이다. 이번 변경에서 APK 설치·실행을 새로 확인한 것이 아니다.
+- mock/웹 시연은 반드시 '모의'로 표시하고, Android vehicle 빌드 성공을 Pleos 실수신 성공으로 표기하지 않는다.
 
-**제출 시**
-- 시연용은 vehicle 플레이버. mock 플레이버는 별도 표기(applicationId `.mock`)
-- 28MB APK를 git에 커밋하지 않는다(`apk/*.apk`가 `.gitignore`) → **GitHub Release**로 올리고 README에 링크(공식 4요소 ④)
-- ⚠️ **빌드된다 ≠ 차에서 동작한다.** 에뮬레이터 설치·신호 수신은 아직 **미시험**이다. 보고서·README에 "빌드·단위 테스트 통과"까지만 쓴다(허위 기재 시 선정 취소)
-- 에뮬레이터 v2.1.0에서 설치·실행 확인 영상
+## 4. 제출 전 체크
 
-## 3. 블라인드 점검
-- [ ] 코드 주석·README·문서에 실명·학교·연락처 없음
-- [ ] 스크린샷·영상에 계정명·이메일 없음(Android Studio 상단, 브라우저 탭 주의)
-- [ ] 별지 PDF 속성(작성자) 비움
-- [ ] DOCX 02장 블라인드(이미 점검됨, 수정 시 재점검)
-
-## 4. 제출 메일
-- 받는 곳 appdevchallenge@hyundai-partners.com, 제목 `[차량용 앱 개발 공모전] 팀명_대표자명`, 팀원 전원 CC
-- 첨부: 서명된 DOCX, 별지 PDF, (영상·GitHub 링크는 DOCX 7번)
-- 수정: 같은 발신자, 제목 앞 `[수정제출]`, 전체 재첨부
+- [ ] 공식 DOCX 신청자 정보/개별 동의/서명 날짜 완성
+- [ ] 제출용 02장 및 영상·README 블라인드 점검
+- [ ] README 기능·실행·환경·APK 정보와 실제 상태 일치
+- [ ] 최종 커밋 SHA 확정
+- [ ] Public 전환 또는 압축 파일 제출 방식 확정
+- [ ] APK 실제 설치/실행 상태와 출처 명확히 표기
+- [ ] 개인정보/키/계정/Git 히스토리 점검
+- [ ] 팀원 전원 CC, 11/15 23:59 마감 준수

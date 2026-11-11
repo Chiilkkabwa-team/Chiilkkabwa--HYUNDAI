@@ -1,48 +1,76 @@
-# 00. 빌드 시작 — 첫날 순서와 마일스톤
+# 00. 신규 팀원 Android Studio 시작
 
-> TL;DR — ① 영문 경로로 복사해 Android Studio로 열고 mock 플레이버부터 빌드 ② 컴파일 오류 수정 ③ 테스트 16개 통과 확인 ④ 에뮬레이터·Virtual Console 설치 ⑤ vehicle 플레이버로 실제 신호 연결(Day1 신호 시험) ⑥ 시연 영상·GitHub·APK.
+기준: 2026-11-11. 공통 개발 규칙은 [TEAM_GUIDE.md](TEAM_GUIDE.md), 구현 상태는 [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md).
 
-## 0. 준비
-| 항목 | 값 |
-|---|---|
-| Android Studio | Ladybug(2024.2) 이상 권장 |
-| JDK | 17 |
-| Gradle / AGP / Kotlin | 8.10.2 / 8.8.2 / 2.0.0 (공식 Vehicle SDK 샘플 앱과 같은 조합, 11/3 조사) |
-| 에뮬레이터 | Pleos Connect Emulator v2.1.0, API 34, Automotive, RAM 4GB, Cold boot |
-| 경로 | **한글 없는 경로**(예: `C:\dev\chiilkkabwa-app`). 한글 경로는 Windows AGP 경로 검사에 걸림 |
+## 1. 공통 환경
 
-## 1. 첫날 순서 (Day 1)
-1. 이 폴더를 영문 경로로 복사 → `git init` → 첫 커밋(실명·이메일이 커밋 작성자에 들어가지 않게 팀 공용 이름 사용 권장: `git config user.name "chiilkkabwa-team"`)
-2. Android Studio로 열기 → Sync. 실패하면:
-   - `ai.pleos.playground:Vehicle:2.3.2`를 못 받으면 Playground 로그인·저장소 URL을 `docs/03`에서 재확인. 임시로 `app/build.gradle.kts`에서 주석 처리하면 mock 빌드는 된다(PleosVehicleSource는 SDK를 import하지 않으므로 컴파일 영향 없음).
-3. `./gradlew :app:testMockDebugUnitTest` → 16개 통과 확인
-4. `./gradlew :app:assembleMockDebug` → 컴파일 오류 수정(UI·data 레이어는 클라우드에서 컴파일되지 않았음)
-5. 에뮬레이터에 mock APK 설치 → 디버그 패널(오른쪽 아래 '모의 ▲')로 전체 흐름 확인: P/주차브레이크 → 연습 시작 → 목표 → 워밍업 3+3 → 가상 주차 → (페달) → 약속 → D → 잠금 → P → 복기 → 배지
-6. Playground에서 My Project 생성(카테고리: Lifestyle 1순위) → SDK 상태 화면 캡처(문서 대비 실제 '사용 가능' 확인)
-7. vehicle 플레이버 설치 → `adb logcat -s AaosVehicleSource`로 **지원 속성 목록** 확인 → `docs/03` 표 갱신
-8. Virtual Console에서 기어·주차브레이크·벨트·브레이크·방향지시등·핸들각·속도를 바꾸며 각 신호 수신 확인 → 결과를 `docs/06` 로그 양식에 기록
-9. PleosVehicleSource의 TODO(sdk)를 실제 시그니처로 채움(Seat 벨트 → Brake → TurnSignal → SteeringWheel → Odometer → CarInfo → Wiper/Light 순)
+- Windows 10/11, Android Studio(지원 안정판)
+- Gradle JDK: 17 권장(이전 팀 기록은 JDK 21에서 성공했다고 기재)
+- 프로젝트 설정: Gradle Wrapper 8.10.2 / Android Gradle Plugin 8.8.2 / Kotlin 2.0.0
+- Android SDK: API 35, Build-Tools 35.0.0, Platform-Tools
+- 프로젝트 설정: compileSdk 35 / targetSdk 34 / minSdk 28
+- 실차 신호 실험: Pleos Connect Emulator v2.1.0(API 34) + Virtual Console (실수신은 별도 검증 필요)
+- 키스토어, 계정, 비밀 토큰, local.properties는 커밋 금지
 
-## 2. 마일스톤
-| # | 목표 | 완료 기준 | 목표일(제안) |
-|---|---|---|---|
-| M0 | mock 빌드 동작 | 디버그 패널로 전 흐름 1회 끊김 없이 | 11/7 |
-| M1 | 에뮬레이터 신호 확인 | 신호별 '문서/계정/수신' 표 완성, 스크린샷 | 11/8 |
-| M2 | 안전 게이트·잠금 실신호 | Virtual Console 속도/기어 변경 시 잠금·복귀(T02·T06·T07) | 11/10 |
-| M3 | 워밍업 실신호 3종 | 벨트·브레이크·방향지시등 에뮬레이터 신호로 완료(T04·T05) | 11/12 |
-| M4 | 1차 제출물 | 45~60초 시연 영상, GitHub(README·APK) — 선택 제출 | 11/14 |
-| M5 | 2차 PT 완성 | T01~T12 통과, 가상 주차 핸들 연동, 복기 트립값, 리허설 3회 | 12/2 |
+## 2. Git 클론
 
-## 3. 완료의 정의(Definition of Done)
-- 테스트 통과 + 해당 시험(T##) 결과를 로그 양식으로 남김
-- 화면 출처 라벨이 실제 데이터 출처와 일치
-- 주행 제한 중 어떤 입력도 받지 않음
-- docs 갱신(신호 상태·문구)
+PowerShell에서 영문 경로의 원하는 작업 폴더를 선택한다.
 
-## 4. 막히면
-| 증상 | 대응 |
-|---|---|
-| Pleos 신호가 안 옴 | capability·권한 확인 → 미지원이면 UNSUPPORTED로 두고 화면 연습(모의)로 진행. 운영진(appdevchallenge@hyundai-partners.com)·partnership@pleos.ai 문의 |
-| 주차 브레이크 신호 없음 | `GatePolicy(allowWhenParkingBrakeUnsupported = true)`는 **팀 결정 후**에만. 기본은 잠금 |
-| CarUxRestrictions가 안 바뀜 | Virtual Console Motion에서 속도를 올려 확인. 그래도 안 되면 기어 D를 주행으로 보는 현재 규칙(NOT_IN_PARK → DRIVING_LOCK)으로 시연 |
-| 페달 압력 미지원 | 페달 미션 자동 생략(현재 구현). 기획서에도 '조건부'로 표기돼 있음 |
+~~~powershell
+mkdir C:\dev -ErrorAction SilentlyContinue
+cd C:\dev
+git clone https://github.com/Chiilkkabwa-team/Chiilkkabwa--HYUNDAI.git
+cd .\Chiilkkabwa--HYUNDAI
+git status
+git branch -a
+~~~
+
+**이미 clone했다면 새로 clone하지 않는다.** 기존의 안쪽 Chiilkkabwa--HYUNDAI 폴더에서 실행한다. 이미 존재하는 저장소에 git init을 다시 하면 안 된다.
+
+## 3. Android Studio 설치 확인
+
+1. Android Studio > Open에서 **Git 저장소의 루트 폴더**를 연다.
+2. Gradle Sync 결과를 확인한다. 필요하면 Android SDK 35와 JDK 17을 설정한다.
+3. Build Variants에서 mockDebug를 먼저 선택한다.
+4. 저장소 루트 PowerShell에서 실행한다.
+
+~~~powershell
+.\gradlew.bat :app:testMockDebugUnitTest
+.\gradlew.bat :app:assembleMockDebug
+.\gradlew.bat :app:assembleVehicleDebug
+~~~
+
+- mock: 앱 안의 **모의 차량 신호**를 이용한 시연용.
+- vehicle: AAOS 일부 코드가 존재하나 **PleosVehicleSource는 미연동**. 컴파일 성공만으로 실제 신호 수신을 입증하지 못한다.
+- Pleos Maven 의존성이 app/build.gradle.kts의 공통 dependencies에 있어 mock 빌드도 해당 리포지토리 접근이 필요할 수 있다.
+- 실행 결과/막힌 원인을 [VERIFICATION_LOG.md](VERIFICATION_LOG.md) 양식으로 기록한다.
+
+## 4. Pleos Emulator 별도 확인
+
+공식 설치 안내: https://document.pleos.ai/docs/connect/guide/getting-started/application-development/setup-connect-sdk-emulator
+
+~~~powershell
+adb devices
+adb forward tcp:8088 tcp:8088
+adb logcat -s AaosVehicleSource PleosVehicleSource
+~~~
+
+Virtual Console 입력 항목과 **앱에 실제로 수신된 신호**는 별개다. 기어·주차 브레이크·벨트 등 각 신호를 개별 검증하고 [03_PLEOS_SDK_NOTES.md](03_PLEOS_SDK_NOTES.md)에 기록한다.
+
+## 5. 브랜치 생성
+
+~~~powershell
+git fetch origin --prune
+git switch main
+git pull --ff-only origin main
+git switch -c feature/my-task
+~~~
+
+담당 경계, 통합 규칙, PR 제목 형식은 [TEAM_GUIDE.md](TEAM_GUIDE.md) 참조.
+
+## 6. 완료 기준
+
+- 기능별 책임 범위와 변경 파일을 파악했다.
+- 컴파일/테스트를 실제 실행하고 결과를 기록했다.
+- 모의 신호와 실제 수신을 구분했다.
+- 기능 브랜치만 푸시했으며, 통합 담당자가 검증 후 main에 병합한다.
