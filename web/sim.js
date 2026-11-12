@@ -26,6 +26,11 @@ export const EVENTS = {
   CRASH: { title: '충돌(가상)', pts: 30, sensor: 'front', cat: 'gap', advice: '실제였다면 사고예요. 속도를 줄이고 거리를 넉넉히 두는 연습부터 다시 해요.' },
   SPEEDING: { title: '제한 속도 초과', pts: 3, sensor: null, cat: 'speed', advice: `제한 ${ROAD_LIMIT_KMH}km/h. 계기판 숫자를 3~5초마다 한 번씩 봐요.` },
   COACH_STOP: { title: '강습자 정지 요청', pts: 0, sensor: null, cat: 'coach', info: true, advice: '조수석 강습자가 정지를 요청해 차가 천천히 멈췄어요(제조사 협업 가정).' },
+  // 가상 교차로(11/12 회의 A04). 화면 속 도로는 곧게 이어지고, 교차로에서 '돌았다'는 판정만 한다.
+  JUNCTION_AHEAD: { title: '교차로 접근(가상)', pts: 0, sensor: null, cat: 'turn', info: true, advice: '교차로 앞에서는 속도를 줄이고 횡단보도부터 봐요.' },
+  TURN_GOOD: { title: '교차로 회전 잘함', pts: 0, sensor: null, cat: 'turn', good: true, advice: '깜빡이를 켜고, 알맞은 차로에서, 천천히 돌았어요.' },
+  TURN_FAST: { title: '회전 속도 빠름', pts: 3, sensor: null, cat: 'turn', advice: '교차로 회전은 걷는 속도의 몇 배 정도(20km/h 안팎)로 충분해요. 횡단보도 앞에서 한 번 줄여요.' },
+  TURN_WRONG_LANE: { title: '회전 차로 아님', pts: 2, sensor: null, cat: 'turn', advice: '좌회전은 맨 왼쪽, 우회전은 맨 오른쪽 차로에서 해요. 교차로 30m 전에 미리 옮겨 두면 편해요.' },
   ACC_CANCEL: { title: '브레이크로 크루즈 해제', pts: 0, sensor: null, cat: 'coach', info: true, advice: '브레이크를 밟으면 크루즈가 꺼져요. 다시 켜려면 강습자 패널에서.' },
 };
 
@@ -34,6 +39,7 @@ export const CATEGORIES = [
   { key: 'lane', name: '차선 유지', icon: 'road' },
   { key: 'change', name: '차로 변경 매너', icon: 'turn' },
   { key: 'gap', name: '안전거리·끼어들기 대응', icon: 'mentor' },
+  { key: 'turn', name: '교차로 회전', icon: 'turn' },
   { key: 'speed', name: '속도 준수', icon: 'gear' },
 ];
 
@@ -43,6 +49,15 @@ export const PRESETS = {
   growing: { label: '익숙해지는 중', desc: '차선 보조 보통 · 크루즈 끔 · 최고 60km/h', lka: 'normal', acc: false, accSet: 50, cap: 60 },
   solo: { label: '실전 연습', desc: '보조 모두 끄기 — 스스로 해 보기', lka: 'off', acc: false, accSet: 50, cap: null },
 };
+
+/** 가상 교차로 배치: 첫 교차로는 끼어들기 장면(14초) 뒤에 오도록 300m부터, 그 뒤 280m마다 우·좌 번갈아 */
+export const JUNCTION_W = 12;          // 가로지르는 도로 폭(m)
+export const TURN_OK_KMH = 25;         // 이 속도 이하로 들어가면 '천천히' 돈 것으로 본다(가상 기준)
+export function junctionAt(k) { return { k, s: 300 + k * 280, dir: k % 2 === 0 ? 'RIGHT' : 'LEFT' }; }
+export function nextJunction(s) {
+  const k = Math.max(0, Math.ceil((s - 300 - JUNCTION_W) / 280));
+  return junctionAt(k);
+}
 
 function rng(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
 
@@ -68,6 +83,7 @@ export class DriveSim {
       { id: 6, s: -35, x: LANE_W, v: 14, vd: 14 },
     ];
     this.nextId = 7;
+    this.junction = { k: -1, warned: -1, turns: 0 }; // 처리한 교차로 번호
   }
 
   laneOf(x) { return clamp(Math.round(x / LANE_W), -1, 1); }
@@ -172,10 +188,40 @@ export class DriveSim {
     }
     if (lane !== this.prevLane) { this.onLaneChange(lane); this.prevLane = lane; }
 
+    this.stepJunction();
+
     // 끼어들기 대응 관찰이 끝나면
     if (this.cutIn.watchUntil && this.t > this.cutIn.watchUntil) {
       if (!this.cutIn.bad) this.log('CUTIN_HANDLED', { cooldown: 0 });
       this.cutIn.watchUntil = 0;
+    }
+  }
+
+  /**
+   * 가상 교차로: 60m 전에 '접근'을 알리고(음성 주의가 여기서 열린다),
+   * 정지선을 넘는 순간 깜빡이가 그 방향이면 '회전'으로 보고 속도·차로를 본다.
+   * 깜빡이가 없으면 직진으로 본다(직진도 맞는 선택이다).
+   */
+  stepJunction() {
+    const e = this.ego; const J = nextJunction(e.s - 1);
+    const d = J.s - (e.s + CAR_L / 2);
+    if (d < 60 && d > 0 && this.junction.warned < J.k && e.v > 1.5) {
+      this.junction.warned = J.k;
+      const rec = this.log('JUNCTION_AHEAD', { cooldown: 0 });
+      if (rec) { rec.dir = J.dir; rec.title = `교차로 ${J.dir === 'RIGHT' ? '우회전' : '좌회전'} 구간(가상)`; }
+    }
+    if (d <= 0 && this.junction.k < J.k) {
+      this.junction.k = J.k;
+      if (this.input.signal !== J.dir) return; // 직진
+      const lane = this.laneOf(e.x); const kmh = e.v * 3.6;
+      const okLane = J.dir === 'RIGHT' ? lane === 1 : lane === -1;
+      this.junction.turns += 1;
+      this.lastTurn = { k: J.k, dir: J.dir, t: this.t };
+      let bad = false;
+      if (!okLane) { this.log('TURN_WRONG_LANE', { cooldown: 0 }); bad = true; }
+      if (kmh > TURN_OK_KMH) { this.log('TURN_FAST', { cooldown: 0 }); bad = true; }
+      if (!bad) this.log('TURN_GOOD', { cooldown: 0 });
+      const last = this.events[this.events.length - 1]; if (last) last.dir = J.dir;
     }
   }
 

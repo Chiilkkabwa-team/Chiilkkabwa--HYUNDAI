@@ -79,6 +79,7 @@ function startVoiceDrive(mode) {
 /** 주행이 끝나면 남은 발화를 멈추고 리플레이를 만든다 */
 function endVoiceDrive() {
   speaker.stop(); speaking = false;
+  if (voice) voice.window = null; // 주차한 뒤에 지난 상황을 뒤늦게 말하지 않는다
   replayRows = VOICE.buildReplay(replayRows, voice, 'MOCK');
   if (replayRows.length) {
     H.replays = [{ at: Date.now(), mode: appMode, goal: prep?.goal || null, rows: replayRows.slice(0, 40) }, ...(H.replays || [])].slice(0, 10);
@@ -93,7 +94,11 @@ function endVoiceDrive() {
  */
 function offerVoice(code, atSec, kmh) {
   if (!voice) return;
-  const u = voice.consider(code, atSec, kmh);
+  voice.queue(code, atSec, kmh); // 바로 말하지 않고 0.8초 모아서 가장 급한 것 하나만
+}
+function flushVoice(atSec, opts) {
+  if (!voice) return;
+  const u = voice.flush(atSec, opts);
   if (!u) return;
   if (speaking) { voice.dropped('BUSY'); return; }
   speaking = true;
@@ -120,7 +125,7 @@ function renderVoiceMeter() {
 const SKIP_WHY = {
   OFF: '음성이 꺼져 있어요', NOT_THIS_GOAL: '오늘 목표가 아니에요', DRIVE_CAP: '이번 주행 횟수를 다 썼어요',
   TOO_SOON: '45초가 지나지 않았어요', SAME_CAP: '같은 지적을 이미 2번 했어요', ONCE_ONLY: '주행당 1번만 해요',
-  TOO_LONG: '문장이 너무 길어요', NO_LINE: '말할 문장이 없어요',
+  TOO_LONG: '문장이 너무 길어요', NO_LINE: '말할 문장이 없어요', LOWER_PRIORITY: '더 급한 상황을 먼저 말했어요',
   AUDIO_FOCUS: '내비·통화에 양보했어요(발화 버림)', BUSY: '다른 소리가 나는 중이었어요', UNAVAILABLE: '브라우저가 소리를 막았어요',
 };
 
@@ -1567,6 +1572,7 @@ function drawSimView() {
   ctx.setLineDash([3 * ppm, 6 * ppm]); ctx.lineDashOffset = -((e.s * ppm) % (9 * ppm));
   for (const x of [-1.75, 1.75]) { ctx.beginPath(); ctx.moveTo(X(x), 0); ctx.lineTo(X(x), Hh); ctx.stroke(); }
   ctx.setLineDash([]);
+  drawJunctions(ctx, sv, W, Hh, ppm, X, Y);
   // 센서 범위
   const sn = sv.sensors(); const hot = sv.flash && sv.t < sv.flash.until ? sv.flash.sensor : null;
   const warnF = Number.isFinite(sn.front) && e.v > 2 && sn.front < e.v * 1.2 + 4;
@@ -1600,6 +1606,38 @@ function drawSimView() {
       <span class="hchip ${sv.settings.acc ? 'on' : ''}">크루즈 ${sv.settings.acc ? sv.settings.accSet : '끔'}</span>` : '<span class="hchip">평가 중 · 보조 끔</span>'}</div>
       ${sv.stopReq ? '<div class="hud-stop">강습자 정지 요청 — 천천히 멈춰요</div>' : ''}
       ${recent ? `<div class="hud-ev ${recent.pts > 0 ? 'bad' : recent.good ? 'good' : ''}">${recent.sensor ? `${{ front: '전방', rear: '후방', side: '측방' }[recent.sensor]} 센서 · ` : ''}${recent.title}${recent.pts ? ` −${recent.pts}` : ''}</div>` : ''}`;
+  }
+}
+// 가상 교차로(A04): 가로지르는 도로 + 횡단보도 + 정지선 + 회전 차로 화살표
+function drawJunctions(ctx, sv, W, Hh, ppm, X, Y) {
+  const e = sv.ego; const first = SIM.nextJunction(e.s - 40);
+  for (const J of [first, SIM.junctionAt(first.k + 1)]) {
+    const yTop = Y(J.s + SIM.JUNCTION_W), yBot = Y(J.s);
+    if (yBot < -40 || yTop > Hh + 40) continue;
+    ctx.fillStyle = T('--road-asphalt'); ctx.fillRect(0, yTop, W, yBot - yTop);
+    ctx.strokeStyle = T('--road-line'); ctx.lineWidth = Math.max(2, ppm * 0.15);
+    // 가로 도로 가운데 점선
+    ctx.setLineDash([3 * ppm, 4 * ppm]); ctx.beginPath(); ctx.moveTo(0, (yTop + yBot) / 2); ctx.lineTo(X(-5.25), (yTop + yBot) / 2); ctx.moveTo(X(5.25), (yTop + yBot) / 2); ctx.lineTo(W, (yTop + yBot) / 2); ctx.stroke(); ctx.setLineDash([]);
+    // 횡단보도(정지선 앞 4m)와 정지선
+    ctx.fillStyle = T('--road-line');
+    for (let x = -5; x < 5.2; x += 1) ctx.fillRect(X(x), Y(J.s - 1), 0.5 * ppm, 3 * ppm);
+    ctx.fillRect(X(-5.25), Y(J.s - 5), 10.5 * ppm, Math.max(2, 0.3 * ppm));
+    // 회전 차로 바닥 화살표(30m 전) — 맨 오른쪽/왼쪽 차로
+    const lx = (J.dir === 'RIGHT' ? 1 : -1) * SIM.LANE_W; const ay = Y(J.s - 30); const sgn = J.dir === 'RIGHT' ? 1 : -1;
+    ctx.strokeStyle = T('--road-line'); ctx.lineWidth = Math.max(2, ppm * 0.22); ctx.beginPath();
+    ctx.moveTo(X(lx), ay + 2.5 * ppm); ctx.lineTo(X(lx), ay); ctx.quadraticCurveTo(X(lx), ay - 1 * ppm, X(lx + sgn * 0.9), ay - 1 * ppm); ctx.stroke();
+    ctx.fillStyle = T('--road-line'); ctx.beginPath(); ctx.moveTo(X(lx + sgn * 1.4), ay - 1 * ppm); ctx.lineTo(X(lx + sgn * 0.8), ay - 1.5 * ppm); ctx.lineTo(X(lx + sgn * 0.8), ay - 0.5 * ppm); ctx.closePath(); ctx.fill();
+    // 이름표
+    const label = `가상 교차로 · ${J.dir === 'RIGHT' ? '우회전' : '좌회전'} 구간`;
+    ctx.font = `600 ${Math.max(11, ppm * 0.75)}px Pretendard Variable, sans-serif`; ctx.textAlign = 'center';
+    ctx.fillStyle = T('--road-line'); ctx.fillText(label, W / 2, (yTop + yBot) / 2 + ppm * 0.3);
+  }
+  // 방금 돈 교차로: 1.6초 동안 회전 궤적을 그려 '돌았다'를 보여 준다(주행 화면은 가상 시뮬레이션이다)
+  const lt = sv.lastTurn;
+  if (lt && sv.t - lt.t < 1.6) {
+    const J = SIM.junctionAt(lt.k); const sgn = lt.dir === 'RIGHT' ? 1 : -1; const k = (sv.t - lt.t) / 1.6;
+    ctx.strokeStyle = TA('--primary', 0.55 * (1 - k)); ctx.lineWidth = SIM.CAR_W * ppm * 0.6; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(X(e.x), Y(J.s)); ctx.quadraticCurveTo(X(e.x), Y(J.s + SIM.JUNCTION_W / 2), X(e.x + sgn * 7), Y(J.s + SIM.JUNCTION_W / 2)); ctx.stroke(); ctx.lineCap = 'butt';
   }
 }
 function carTop(ctx, cx, cy, ppm, color, ego, signal, t) {
@@ -1638,11 +1676,14 @@ function pumpVoice() {
     while (seenSimEvents < sim.events.length) {
       const e = sim.events[seenSimEvents++];
       replayRows.push(e);
-      if (!e.good && !e.info) offerVoice(e.code, e.t, e.kmh);
+      // 교차로 접근은 '정보' 기록이지만 음성은 회전 주의를 연다(길 안내가 아니라 주의만)
+      if (e.code === 'JUNCTION_AHEAD') offerVoice(e.dir === 'LEFT' ? 'TURN_LEFT_CAUTION' : 'TURN_RIGHT_CAUTION', e.t, e.kmh);
+      else if (!e.good && !e.info) offerVoice(e.code, e.t, e.kmh);
     }
   }
-  // 오래 조용했으면 칭찬 한 번
-  const s = voice.considerSteady(voiceSec);
+  flushVoice(appMode === 'practice' ? voiceSec : (sim ? sim.t : voiceSec));
+  // 달리는 동안 오래 조용했으면 칭찬 한 번
+  const s = voice.considerSteady(voiceSec, V.speedKmh.value);
   if (s) {
     if (speaking) voice.dropped('BUSY');
     else {
@@ -1760,6 +1801,20 @@ async function startSimDemo() {
     sim.npcs.push({ id: 900, s: sim.ego.s - 13, x: 0, v: sim.ego.v + 2, vd: sim.ego.v + 2 });
     await step('이번엔 신호 없이, 뒤차가 가까운데 오른쪽으로 끼어들면…', 600); await steerTo(0, null);
     await step('후방 센서 감지: 무리한 끼어들기(−8) + 방향지시등 없음(−3)', 2200);
+    // 가상 교차로 우회전(A04): 맨 오른쪽 차로 → 교차로 앞에서 속도 줄이고 깜빡이 → 천천히 돌기
+    {
+      await step('교차로에서 우회전할 거예요 — 맨 오른쪽 차로로 미리 옮겨요', 300); await steerTo(1, 'RIGHT');
+      const J = SIM.nextJunction(sim.ego.s + 70);
+      await waitFor(() => J.s - sim.ego.s < 75, 40000);
+      await step(`${J.dir === 'RIGHT' ? '우' : '좌'}회전 구간 — 속도를 줄이고 깜빡이 켜기. 음성: “${VOICE.LINES[J.dir === 'RIGHT' ? 'TURN_RIGHT_CAUTION' : 'TURN_LEFT_CAUTION'].line}”`, 300);
+      setAccel(0); await ramp(setBrake, 0, 25, 500);
+      await waitFor(() => sim.ego.v * 3.6 < 20, 9000); setBrake(0); setAccel(8);
+      setV('turnSignal', J.dir); syncConsole();
+      if (J.dir === 'LEFT') { await steerTo(-1, J.dir); setV('turnSignal', J.dir); syncConsole(); }
+      await waitFor(() => sim.events.some((x) => /^TURN_(GOOD|FAST|WRONG_LANE)$/.test(x.code)), 20000);
+      setV('turnSignal', 'NONE'); syncConsole();
+      await step('천천히, 알맞은 차로에서 돌았어요 — 교차로 회전 잘함', 1600); setAccel(25);
+    }
     if (coach) {
       await step('강습자: “최고 40km/h로 제한”', 600); $$('#coachCtl .seg[data-name="cap"] button')[2]?.click(); setAccel(60);
       await sleep(2600);

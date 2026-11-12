@@ -138,3 +138,33 @@ test('sim_strong_lka_keeps_lane_better_than_off', () => {
   const drift = (lka) => { const s = new Sim.DriveSim({ lka }); s.npcs = []; s.ego.v = 15; run(s, 10, (x) => { x.input.accel = 0.15; x.input.steer = 20; }); return s.report().laneKeepPct; };
   assert.ok(drift('strong') > drift('off'));
 });
+
+// ── 가상 교차로 좌·우회전(A04, 11/12 회의) ──
+const toJunction = (s, k = 0) => { const J = Sim.junctionAt(k); s.ego.s = J.s - 80; s.ego.v = 0; return J; };
+test('sim_junction_ahead_is_announced_once', () => {
+  const s = new Sim.DriveSim(); s.npcs = []; s.cutIn.done = true;
+  const J = toJunction(s); s.ego.v = 8;
+  run(s, 12, (x) => { x.input.accel = 0.12; });
+  const near = s.events.filter((e) => e.code === 'JUNCTION_AHEAD');
+  assert.equal(near.length, 1); assert.equal(near[0].dir, J.dir);
+});
+test('sim_slow_right_turn_from_right_lane_is_good', () => {
+  const s = new Sim.DriveSim(); s.npcs = []; s.cutIn.done = true;
+  toJunction(s, 0); s.ego.x = Sim.LANE_W; s.ego.v = 5; s.input.signal = 'RIGHT';
+  run(s, 20, (x) => { x.input.accel = 0.05; });
+  assert.ok(s.events.some((e) => e.code === 'TURN_GOOD'));
+  assert.ok(!s.events.some((e) => e.code === 'TURN_FAST'));
+});
+test('sim_fast_turn_from_wrong_lane_is_noted', () => {
+  const s = new Sim.DriveSim(); s.npcs = []; s.cutIn.done = true;
+  toJunction(s, 1); s.ego.x = Sim.LANE_W; s.ego.v = 14; s.input.signal = 'LEFT'; // 좌회전인데 오른쪽 차로·50km/h
+  run(s, 8, (x) => { x.input.accel = 0.2; });
+  const codes = s.events.map((e) => e.code);
+  assert.ok(codes.includes('TURN_FAST')); assert.ok(codes.includes('TURN_WRONG_LANE'));
+});
+test('sim_no_signal_at_junction_means_straight', () => {
+  const s = new Sim.DriveSim(); s.npcs = []; s.cutIn.done = true;
+  toJunction(s); s.ego.v = 14;
+  run(s, 10, (x) => { x.input.accel = 0.2; });
+  assert.ok(!s.events.some((e) => /^TURN_/.test(e.code)), '깜빡이가 없으면 직진 — 감점 없음');
+});
