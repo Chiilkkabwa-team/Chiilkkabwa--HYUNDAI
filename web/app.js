@@ -5,6 +5,7 @@ import * as SIM from './sim.js';
 import * as VOICE from './voice.js';
 import * as THEME from './theme.js';
 import * as OB from './onboarding.js';
+import * as RP from './replay.js';
 
 // 캔버스에서 쓰는 색은 리터럴을 적지 않고 CSS 토큰에서 읽는다(테마를 따라가도록).
 // styles.css 의 :root / :root[data-theme="light"] 가 유일한 색 정의 자리다.
@@ -47,7 +48,8 @@ let watcher = null;        // 차량 신호에서 상황을 알아내는 감시�
 let replayRows = [];       // 이번 주행의 리플레이 항목
 let replayShown = false;   // 복기 화면 앞에 리플레이를 한 번 보여 줬는지
 let speaking = false;      // 재생 중 겹치지 않게
-let seenSimEvents = 0;     // 평가·강습 모드에서 이미 처리한 sim 기록 수
+let seenSimEvents = 0;
+let track = new RP.Track(); // 이번 주행의 속도·페달·가상 위치 시간표(메모리에만 — 저장하지 않는다)     // 평가·강습 모드에서 이미 처리한 sim 기록 수
 // 시계가 둘이다. 섞으면 급출발이 '완만한 가속'으로 보인다.
 //  voiceSec     = 빨리 감기(×30)를 반영한 '주행 경과 시간'. 음성 빈도 규칙·리플레이 시각에 쓴다.
 //                 (프로토타입에서 ×30을 켜면 45초 간격도 같이 압축돼 시연 안에서 규칙이 보인다)
@@ -63,6 +65,7 @@ const voiceCap = () => H.voiceCap || VOICE.RULES.maxPerDrive;
 /** 주행에 들어갈 때 음성·리플레이를 새로 시작한다 */
 function startVoiceDrive(mode) {
   voiceSec = 0; voiceRealSec = 0; seenSimEvents = 0; replayRows = []; replayShown = false; speaking = false;
+  track = new RP.Track(); RP.closePip();
   watcher = new VOICE.SignalWatcher();
   // 연습 모드에서는 정차 중에 프레임 루프를 멈춰 두므로(성능) 주행에 들어갈 때 다시 켠다
   startSimLoop();
@@ -780,19 +783,22 @@ Screens.replay = () => ({
         <h1>오늘 주행 돌아보기</h1>
         <p class="sub">${rows.length ? `기록된 순간 ${rows.length}개${spokenN ? ` · 그중 ${spokenN}개는 주행 중에 말해 드렸어요` : ''}` : '같이 보면서 이야기해 봐요'}</p>
       </div></div>
-      ${rows.length ? `<ol class="rp-list">${rows.map((r) => `<li class="rp ${r.kind}">
+      ${timelineSection(rows, false)}
+      ${rows.length ? `<ol class="rp-list">${rows.map((r, i) => `<li class="rp ${r.kind}">
         <span class="rp-t">${fmtT(r.atSec)}</span>
         <div class="rp-body">
           <b>${esc(r.title)}</b>
           ${r.spoken ? `<span class="rp-spoke" title="주행 중에 음성으로 말한 항목">${icon('sound', 16)} 말했어요</span>` : ''}
           <small class="rp-meta">${r.kmh}km/h${r.sensor ? ` · ${SENSOR_LABEL[r.sensor]} 센서(가상)` : ''} · ${srcChip(r.source)}</small>
           ${r.advice ? `<p class="rp-adv">${esc(r.advice)}</p>` : ''}
+          ${sceneBtn(i, r.atSec)}
         </div></li>`).join('')}</ol>`
         : `<p class="rp-empty">${mascot('happy', 64)}<span>${VOICE.REPLAY_EMPTY}</span></p>`}
       <p class="caption">점수가 아니라 그 순간의 사실이에요. 기기 안에만 저장되고, 내보내기는 직접 하실 때만 해요.</p>
       <div class="actions"><div></div>${btn('rpNext', '복기 계속', 'primary big')}</div>
     </div>`;
-    $('#rpNext').onclick = () => { replayShown = true; render(); };
+    $('#rpNext').onclick = () => { RP.closePip(); replayShown = true; render(); };
+    bindTimeline(el, rows, false);
   },
 });
 
@@ -1237,7 +1243,7 @@ function tick() {
   flushToasts();
 }
 function onPhaseChange(from, to) {
-  if (to === C.Phase.DRIVING_LOCK) { overlay = null; $('#toasts').innerHTML = ''; toastBusy = false; review = null; }
+  if (to === C.Phase.DRIVING_LOCK) { RP.closePip(); overlay = null; $('#toasts').innerHTML = ''; toastBusy = false; review = null; }
   if (to === C.Phase.REVIEW) review = null;
   if (appMode !== 'practice' && to === C.Phase.DRIVING_LOCK && Math.abs(V.steeringDeg.value) > 5) { setSteer(0); flashNote('핸들을 가운데로 맞추고 출발해요'); }
   if (appMode !== 'practice' && to === C.Phase.DRIVING_LOCK) { sim = new SIM.DriveSim(appMode === 'eval' ? { lka: 'off', acc: false, cap: null } : { ...simSettings }, (Date.now() % 997) + 1); simReport = null; }
@@ -1505,12 +1511,15 @@ Screens.coach = () => ({
   },
 });
 
-function evItem(e) {
+function evItem(e, i) {
   const sensor = e.sensor ? `<em class="sens">${SENSOR_LABEL[e.sensor]} 센서(가상)</em>` : '';
   const tag = e.pts > 0 ? `<b class="pts bad">−${e.pts}</b>` : e.good ? '<b class="pts good">잘함</b>' : '<b class="pts info">기록</b>';
   const spoke = voice?.didSpeak(e.code, e.t) ? `<span class="rp-spoke" title="주행 중에 음성으로 말한 항목">${icon('sound', 16)} 말했어요</span>` : '';
-  return `<li class="${e.pts > 0 ? 'bad' : e.good ? 'good' : 'info'}"><span class="t">${fmtT(e.t)}</span>${tag}<div><b>${e.title}</b> ${sensor}${spoke}<small>${e.kmh}km/h · ${srcChip('MOCK')} · ${e.advice}</small></div></li>`;
+  return `<li class="${e.pts > 0 ? 'bad' : e.good ? 'good' : 'info'}"><span class="t">${fmtT(e.t)}</span>${tag}<div><b>${e.title}</b> ${sensor}${spoke}<small>${e.kmh}km/h · ${srcChip('MOCK')} · ${e.advice}</small>${sceneBtn(i, e.t)}</div></li>`;
 }
+
+// 리포트 사건 → 리플레이 항목 모양(그래프·재현 창이 같은 모양을 쓴다). 순서는 r.events와 같다.
+const reportRows = (r) => r.events.map((e) => ({ atSec: e.t, title: e.title, kind: e.pts > 0 ? 'note' : e.good ? 'good' : 'info', spoken: !!voice?.didSpeak(e.code, e.t), source: 'MOCK' }));
 
 // ── 주행 리포트 ──
 Screens.report = () => ({
@@ -1537,6 +1546,7 @@ Screens.report = () => ({
         <span>${c.minus ? `−${c.minus}점 · ${c.bad}번` : '깔끔했어요'}${c.good ? ` · 잘함 ${c.good}` : ''}</span>
         ${c.key === 'lane' && r.laneKeepPct != null ? `<div class="holdbar"><i style="width:${r.laneKeepPct}%"></i></div>` : ''}</div>`).join('')}</section>
       ${r.advice.length ? `<section class="panel advice"><h2>다음엔 이것만</h2>${r.advice.map((a, i) => `<p><b>${i + 1}.</b> ${a.advice} <small>(${a.title})</small></p>`).join('')}</section>` : ''}
+      ${timelineSection(reportRows(r), true)}
       <section class="panel"><h2>상황별 기록 <small>${r.events.length}건 · 시간순</small></h2>
         <ul class="ev-list">${r.events.map(evItem).join('') || '<li class="muted">기록된 상황이 없어요. 짧게 달렸거나 아주 안정적이었어요.</li>'}</ul></section>
       <div class="actions two">
@@ -1545,7 +1555,8 @@ Screens.report = () => ({
       </div>
       <p class="caption">가상 시뮬레이션 점수예요. 실제 운전 실력 평가나 면허 기준이 아니에요.</p>
     </div>`;
-    $('#againBtn').onclick = () => { session = C.onReviewDone(session); prep = newPrep(); simReport = null; sim = null; render(); };
+    bindTimeline(el, reportRows(r), true);
+    $('#againBtn').onclick = () => { RP.closePip(); session = C.onReviewDone(session); prep = newPrep(); simReport = null; sim = null; render(); };
     $('#histBtn').onclick = () => openOverlay('history');
   },
 });
@@ -1698,6 +1709,34 @@ function pumpVoice() {
   }
 }
 
+/** 주행 중 시간표 한 장(초당 10장). 사건 시각과 같은 시계를 쓴다(sim: sim.t, 연습: voiceSec) */
+function recordTrack() {
+  const base = { kmh: V.speedKmh.value, brake: V.brakePedalPct.value, accel: V.accelPedalPct.value, steer: V.steeringDeg.value, sig: V.turnSignal.value };
+  if (sim && appMode !== 'practice') {
+    track.push({ t: sim.t, ...base, kmh: sim.ego.v * 3.6, x: sim.ego.x, s: sim.ego.s,
+      npcs: sim.npcs.filter((n) => Math.abs(n.s - sim.ego.s) < 60).map((n) => [n.id, n.x, n.s, !!(n.cutter && sim.t - (sim.cutIn.at || 0) < 8)]) });
+  } else track.push({ t: voiceSec, ...base });
+}
+
+/** 복기 화면 공통: 속도 시간표 + 사건 점 + '장면 보기'. 주차 후 화면에서만 부른다. */
+function timelineSection(rows, hasSim) {
+  if (track.frames.length < 2) return '';
+  return `<section class="panel tl"><h2>속도 시간표 <small>점을 누르면 그 장면을 다시 봐요</small></h2>
+    ${RP.timelineSvg(track.frames, rows)}${RP.timelineLegend(hasSim)}</section>`;
+}
+function bindTimeline(root, rows, hasSim) {
+  const open = (i, opener) => {
+    const r = rows[i]; if (!r) return;
+    RP.openPip(root.querySelector('.screen') || root, { frames: track.around(r.atSec), row: r, kind: hasSim ? 'sim' : 'signals', reduced: reduceMotion, opener, sourceLabel: C.SourceLabel[r.source || 'MOCK'] });
+  };
+  $$('.tl-mk', root).forEach((g) => {
+    g.addEventListener('click', () => open(+g.dataset.i, g));
+    g.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(+g.dataset.i, g); } });
+  });
+  $$('[data-scene]', root).forEach((b) => (b.onclick = () => open(+b.dataset.scene, b)));
+}
+const sceneBtn = (i, atSec) => (track.hasScene(atSec) ? `<button type="button" class="mini scene-btn" data-scene="${i}">장면 보기</button>` : '');
+
 let simLast = performance.now();
 let simLoopOn = false; let lastIdleDraw = 0;
 const keysDown = new Set();
@@ -1707,7 +1746,7 @@ function simLoop(t) {
   // 연습 모드에서는 주행 중이 아닐 때 루프를 멈춘다(성능). 주행 중에는 음성 감시 때문에 돌려야 한다.
   if (appMode === 'practice' && !simRunning() && !driving) { simLoopOn = false; return; }
   const dt = Math.min(0.06, (t - simLast) / 1000); simLast = t;
-  if (driving) { voiceSec += dt * timeScale; voiceRealSec += dt; pumpVoice(); }
+  if (driving) { voiceSec += dt * timeScale; voiceRealSec += dt; pumpVoice(); recordTrack(); }
   if (simRunning()) {
     sim.input.accel = V.accelPedalPct.value / 100; sim.input.brake = V.brakePedalPct.value / 100;
     sim.input.steer = V.steeringDeg.value; sim.input.signal = V.turnSignal.value; sim.input.gear = V.gear.value;
@@ -1803,17 +1842,17 @@ async function startSimDemo() {
     await step('후방 센서 감지: 무리한 끼어들기(−8) + 방향지시등 없음(−3)', 2200);
     // 가상 교차로 우회전(A04): 맨 오른쪽 차로 → 교차로 앞에서 속도 줄이고 깜빡이 → 천천히 돌기
     {
-      await step('교차로에서 우회전할 거예요 — 맨 오른쪽 차로로 미리 옮겨요', 300); await steerTo(1, 'RIGHT');
-      const J = SIM.nextJunction(sim.ego.s + 70);
+      const J = SIM.nextJunction(sim.ego.s + 110); const R = J.dir === 'RIGHT';
+      await step(`다음 교차로에서 ${R ? '우' : '좌'}회전 — ${R ? '맨 오른쪽' : '맨 왼쪽'} 차로로 미리 옮겨요`, 300); await steerTo(R ? 1 : -1, J.dir);
       await waitFor(() => J.s - sim.ego.s < 75, 40000);
-      await step(`${J.dir === 'RIGHT' ? '우' : '좌'}회전 구간 — 속도를 줄이고 깜빡이 켜기. 음성: “${VOICE.LINES[J.dir === 'RIGHT' ? 'TURN_RIGHT_CAUTION' : 'TURN_LEFT_CAUTION'].line}”`, 300);
+      await step(`${R ? '우' : '좌'}회전 구간 — 속도를 줄이고 깜빡이 켜기. 음성: “${VOICE.LINES[R ? 'TURN_RIGHT_CAUTION' : 'TURN_LEFT_CAUTION'].line}”`, 300);
       setAccel(0); await ramp(setBrake, 0, 25, 500);
       await waitFor(() => sim.ego.v * 3.6 < 20, 9000); setBrake(0); setAccel(8);
       setV('turnSignal', J.dir); syncConsole();
-      if (J.dir === 'LEFT') { await steerTo(-1, J.dir); setV('turnSignal', J.dir); syncConsole(); }
-      await waitFor(() => sim.events.some((x) => /^TURN_(GOOD|FAST|WRONG_LANE)$/.test(x.code)), 20000);
+      await waitFor(() => sim.junction.k >= J.k, 20000);
       setV('turnSignal', 'NONE'); syncConsole();
-      await step('천천히, 알맞은 차로에서 돌았어요 — 교차로 회전 잘함', 1600); setAccel(25);
+      const good = sim.lastTurn?.k === J.k && sim.events.some((x) => x.code === 'TURN_GOOD' && x.t >= sim.lastTurn.t);
+      await step(good ? '천천히, 알맞은 차로에서 돌았어요 — 교차로 회전 잘함' : '회전 기록이 남았어요 — 주차 후 리포트에서 다시 봐요', 1600); setAccel(25);
     }
     if (coach) {
       await step('강습자: “최고 40km/h로 제한”', 600); $$('#coachCtl .seg[data-name="cap"] button')[2]?.click(); setAccel(60);
