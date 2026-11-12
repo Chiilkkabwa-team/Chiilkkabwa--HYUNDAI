@@ -946,3 +946,43 @@ body:not([data-mode="practice"]) .sim-canvas {
 @media (prefers-reduced-motion: reduce) { #r-belt.clack .bk-tongue, #r-belt.clack .bk-latch { animation: none; background: var(--primary); } }
 #r-belt:has(#c-belt[aria-checked="true"]) .bk-tongue { transform: translateX(3px); background: var(--primary); }
 #r-belt:has(#c-belt[aria-checked="true"]) .bk-latch { background: var(--primary); }
+
+/* ── 알림: 남은 시간을 테두리로(C04, 11/12 회의) — 한 바퀴 줄어들면 사라진다. 주행 중엔 알림 자체가 없다 ── */
+@property --left { syntax: '<number>'; inherits: false; initial-value: 1; }
+.toast.timed { position: relative; }
+.toast.timed::after { content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 2px; pointer-events: none;
+  background: conic-gradient(from 0deg, var(--primary) calc(var(--left) * 1turn), transparent 0);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  animation: toast-life var(--life, 2s) linear forwards; }
+@keyframes toast-life { from { --left: 1; } to { --left: 0; } }
+@media (prefers-reduced-motion: reduce) { .toast.timed::after { animation: none; display: none; } }
+
+/* ── 정차 중 도움말·운전 노트(B04) · 서비스 소개(C05) ── */
+.m-info { margin-left: auto; }
+.learn h2, .about h2 { margin: 10px 0 6px; font-size: 1.35rem; line-height: 1.35; }
+.learn-steps { margin: 14px 0 0; padding-left: 1.3em; display: grid; gap: 8px; line-height: 1.55; color: var(--text); }
+.ox-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+.ox-row p { display: flex; gap: 10px; align-items: flex-start; padding: 12px; border-radius: 14px; background: var(--surface); line-height: 1.45; font-size: .95rem; }
+.ox-row b { display: block; font-size: .8rem; color: var(--sub); }
+.ox { flex: none; width: 30px; height: 30px; }
+.ox.o { color: var(--primary); }
+.ox.x { color: var(--danger-2); }
+.learn-note { margin-top: 12px; padding: 10px 12px; border-radius: 12px; background: var(--surface3); font-size: .92rem; }
+.learn-more, .wiki-nav { display: flex; justify-content: space-between; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+.wiki-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.wiki-tabs .chip-btn { border: 1px solid var(--line); background: var(--surface); color: var(--sub); border-radius: 999px; padding: 6px 12px; min-height: 36px; font-weight: 600; font-size: .85rem; }
+.wiki-tabs .chip-btn[aria-current="page"] { background: var(--primary); color: var(--on-primary); border-color: transparent; }
+.about .sub { margin-top: 6px; }
+.about-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 18px; }
+.about-steps div { padding: 14px; border-radius: 14px; background: var(--surface); }
+.about-steps p { margin-top: 6px; color: var(--sub); font-size: .9rem; line-height: 1.5; }
+.about-rules ul { margin: 8px 0 0; padding-left: 1.2em; display: grid; gap: 6px; line-height: 1.5; }
+.about-table { display: grid; margin-top: 8px; border-radius: 14px; overflow: hidden; background: var(--surface); font-size: .86rem; }
+.about-table [role=row] { display: grid; grid-template-columns: 1.6fr 1fr 1fr 1fr; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--surface3); }
+.about-table .th { border-top: 0; font-weight: 600; color: var(--sub); }
+@media (max-width: 640px) {
+  .ox-row, .about-steps { grid-template-columns: 1fr; }
+  .about-table [role=row] { grid-template-columns: 1fr 1fr; }
+}
+.learn .caption { margin-top: 12px; }

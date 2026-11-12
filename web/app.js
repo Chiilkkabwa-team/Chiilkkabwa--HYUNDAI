@@ -6,6 +6,8 @@ import * as VOICE from './voice.js';
 import * as THEME from './theme.js';
 import * as OB from './onboarding.js';
 import * as RP from './replay.js';
+import * as LEARN from './learn.js';
+import { aboutHtml } from './about.js';
 
 // 캔버스에서 쓰는 색은 리터럴을 적지 않고 CSS 토큰에서 읽는다(테마를 따라가도록).
 // styles.css 의 :root / :root[data-theme="light"] 가 유일한 색 정의 자리다.
@@ -192,6 +194,9 @@ let prep = null; // 준비 단계 상태
 let review = null; // 복기 초안
 let overlay = null; // 'history' | 'profile' | 'cert' | 'intro'
 let obStep = 0;     // 온보딩 단계
+let wikiPage = 0;   // 운전 노트 챕터
+// 온보딩 내용이 바뀌면 숫자를 올린다 → 예전에 닫은 사람에게도 한 번 더 뜬다(11/12 회의: '들어가자마자 안 뜨더라')
+const INTRO_V = 2;
 let judgeState = null; // { judge, progress, doneAt }
 let lastGate = null;
 
@@ -233,7 +238,7 @@ function flushToasts() {
   if (toastBusy || !toastQueue.length || session.phase === C.Phase.DRIVING_LOCK) return;
   const b = toastQueue.shift(); const meta = C.Badges[b.badge];
   const el = document.createElement('div');
-  el.className = 'toast';
+  el.className = 'toast timed'; el.style.setProperty('--life', '2s');
   el.innerHTML = `${badgeArt(meta, true, 48)}<div><small>배지</small><b>${meta.title}${b.mockOnly ? ' <em>(모의)</em>' : ''}</b></div>`;
   $('#toasts').appendChild(el); toastBusy = true; chime('badge');
   setTimeout(() => { el.classList.add('out'); setTimeout(() => { el.remove(); toastBusy = false; }, 250); }, 2000);
@@ -396,7 +401,8 @@ Screens.mission = () => ({
     el.innerHTML = `<div class="screen mission">
       <div class="m-head"><span class="m-count">운전석 워밍업 <b>${n}</b>/${total}</span>
         <div class="dots">${prep.missions.map((m, i) => `<i class="${i < prep.missionIdx ? 'd' : i === prep.missionIdx ? 'c' : ''}"></i>`).join('')}</div>
-        ${meta.optional ? '<span class="tag soft">선택</span>' : ''}${srcChip('MOCK')}</div>
+        ${meta.optional ? '<span class="tag soft">선택</span>' : ''}${srcChip('MOCK')}
+        ${LEARN.HELP[j.id] ? `<button type="button" class="icon-btn m-info" id="mInfo" aria-label="${j.title} 도움말 — 단계와 O/X 예시">${infoIco}도움말</button>` : ''}</div>
       <div class="m-card">
         <div class="m-ill" id="mIll">${icon(meta.icon, 84)}<div class="m-live" id="mLive"></div></div>
         <div class="m-text">
@@ -409,6 +415,7 @@ Screens.mission = () => ({
       <div class="actions" id="mActions"></div>
     </div>`;
     this.key = null;
+    $('#mInfo')?.addEventListener('click', () => openOverlay('help'));
   },
   update() {
     const p = judgeState.progress; if (!p) return;
@@ -774,6 +781,8 @@ Screens.lock = () => ({
   },
 });
 
+const infoIco = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 10.5v6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><circle cx="12" cy="7.4" r="1.3" fill="currentColor"/></svg>';
+
 // A-9 주행 리플레이(F13) — 점수·등급 없음. 사실과 조언만.
 const SENSOR_LABEL = { front: '전방', rear: '후방', side: '측방' };
 Screens.replay = () => ({
@@ -854,11 +863,14 @@ function renderOverlay() {
   const root = $('#modalRoot');
   if (!overlay || session.phase === C.Phase.DRIVING_LOCK) { root.innerHTML = ''; root.classList.remove('open'); return; }
   root.classList.add('open');
-  const body = { history: historyHtml, profile: profileHtml, cert: certHtml, intro: introHtml }[overlay]();
-  root.innerHTML = `<div class="modal-scrim" data-close></div><div class="modal${overlay === 'intro' ? ' modal-ob' : ''}" role="dialog" aria-modal="true" aria-label="${{ history: '내 기록', profile: '설정', cert: '수료 카드', intro: '치일까봐 둘러보기' }[overlay]}" tabindex="-1">
+  const body = { history: historyHtml, profile: profileHtml, cert: certHtml, intro: introHtml,
+    help: () => LEARN.helpHtml(judgeState?.judge?.id, judgeState?.judge?.title || '도움말'), wiki: () => LEARN.wikiHtml(wikiPage), about: aboutHtml }[overlay]();
+  root.innerHTML = `<div class="modal-scrim" data-close></div><div class="modal${overlay === 'intro' ? ' modal-ob' : ''}" role="dialog" aria-modal="true" aria-label="${{ history: '내 기록', profile: '설정', cert: '수료 카드', intro: '치일까봐 둘러보기', help: '미션 도움말', wiki: '운전 노트', about: '서비스 소개' }[overlay]}" tabindex="-1">
     <button type="button" class="icon-btn modal-x" data-close aria-label="닫기">${icon('close', 22)}</button>${body}</div>`;
-  $$('[data-close]', root).forEach((b) => (b.onclick = () => { if (overlay === 'intro') { H.introSeen = true; saveHistory(); } closeOverlay(); }));
+  $$('[data-close]', root).forEach((b) => (b.onclick = () => { if (overlay === 'intro') { H.introSeen = true; H.introV = INTRO_V; saveHistory(); } closeOverlay(); }));
   bindOverlay(root);
+  $$('[data-wiki]', root).forEach((b) => (b.onclick = () => { wikiPage = LEARN.wikiIndex(b.dataset.wiki); openOverlay('wiki'); }));
+  $$('[data-page]', root).forEach((b) => (b.onclick = () => { wikiPage = +b.dataset.page; renderOverlay(); }));
   setTimeout(() => $('.modal', root)?.focus?.(), 0);
 }
 function historyHtml() {
@@ -902,6 +914,8 @@ function profileHtml() {
     <h3>화면</h3>
     <div class="set-row">${icon('sound', 22)}<span>정차 중 효과음</span><button type="button" class="switch" id="setSound" role="switch" aria-label="정차 중 효과음" aria-checked="${H.sound}"><span></span></button></div>
     <div class="set-row">${icon('text', 22)}<span>큰 글씨</span><button type="button" class="switch" id="setLarge" role="switch" aria-label="큰 글씨" aria-checked="${H.largeText}"><span></span></button></div>
+    <h3>배우기</h3>
+    <div class="set-row">${icon('note', 22)}<span>운전 노트<small>출발 전·언덕·차로 바꾸기·교차로·주차 — 정차 중에만 열려요</small></span><button type="button" class="mini" data-wiki="before">열기</button></div>
     <h3>기록</h3>
     <button type="button" class="btn danger" id="delBtn">${icon('trash', 20)} 이 기기의 기록 모두 지우기</button>
     <p class="caption">서버·계정·위치·차대번호를 쓰지 않아요. 기록은 이 브라우저에만 있어요.</p>`;
@@ -945,7 +959,7 @@ function bindOverlay(root) {
     };
   }
   if (overlay === 'intro') {
-    const finish = (then) => { H.introSeen = true; saveHistory(); closeOverlay(); then?.(); };
+    const finish = (then) => { H.introSeen = true; H.introV = INTRO_V; saveHistory(); closeOverlay(); then?.(); };
     const go = (k) => {
       obStep = Math.max(0, Math.min(OB.STEPS.length - 1, k));
       renderOverlay();
@@ -1305,7 +1319,7 @@ function onPhaseChange(from, to) {
   if (from === C.Phase.DRIVING_LOCK) endVoiceDrive();
 }
 function flashNote(t) {
-  const el = document.createElement('div'); el.className = 'toast note'; el.textContent = t; $('#toasts').appendChild(el);
+  const el = document.createElement('div'); el.className = 'toast note timed'; el.style.setProperty('--life', '1.6s'); el.textContent = t; $('#toasts').appendChild(el);
   setTimeout(() => el.remove(), 1600);
 }
 
@@ -1942,6 +1956,7 @@ $('#consoleFab .fab-ico').innerHTML = icon('console', 22);
 $('#historyBtn').onclick = () => openOverlay('history');
 $('#profileBtn').onclick = () => openOverlay('profile');
 $('#helpBtn').onclick = () => { obStep = 0; openOverlay('intro'); };
+$('#aboutBtn').onclick = () => openOverlay('about');
 $('#demoSpeed').onchange = (e) => { demoSpeed = +e.target.value || 1; };
 $('#demoBtn').onclick = () => (demo.running ? stopDemo('멈췄어요') : startDemo());
 addEventListener('keydown', (e) => { if (e.key === 'Escape' && overlay) closeOverlay(); });
@@ -1957,4 +1972,4 @@ applyMode();
 render();
 setInterval(tick, 100);
 if (new URLSearchParams(location.search).has('demo')) setTimeout(startDemo, 200);
-else if (!H.introSeen) setTimeout(() => { obStep = 0; openOverlay('intro'); }, 300);
+else if (!H.introSeen || (H.introV || 1) < INTRO_V) setTimeout(() => { obStep = 0; openOverlay('intro'); }, 300);

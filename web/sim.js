@@ -29,8 +29,8 @@ export const EVENTS = {
   // 가상 교차로(11/12 회의 A04). 화면 속 도로는 곧게 이어지고, 교차로에서 '돌았다'는 판정만 한다.
   JUNCTION_AHEAD: { title: '교차로 접근(가상)', pts: 0, sensor: null, cat: 'turn', info: true, advice: '교차로 앞에서는 속도를 줄이고 횡단보도부터 봐요.' },
   TURN_GOOD: { title: '교차로 회전 잘함', pts: 0, sensor: null, cat: 'turn', good: true, advice: '깜빡이를 켜고, 알맞은 차로에서, 천천히 돌았어요.' },
-  TURN_FAST: { title: '회전 속도 빠름', pts: 3, sensor: null, cat: 'turn', advice: '교차로 회전은 걷는 속도의 몇 배 정도(20km/h 안팎)로 충분해요. 횡단보도 앞에서 한 번 줄여요.' },
-  TURN_WRONG_LANE: { title: '회전 차로 아님', pts: 2, sensor: null, cat: 'turn', advice: '좌회전은 맨 왼쪽, 우회전은 맨 오른쪽 차로에서 해요. 교차로 30m 전에 미리 옮겨 두면 편해요.' },
+  TURN_FAST: { title: '회전 속도 빠름', pts: 3, sensor: null, cat: 'turn', advice: '교차로에서는 충분히 줄인 뒤 돌아요(이 가상 도로는 25km/h 넘으면 빠르다고 봐요). 횡단보도 앞에서 한 번 줄여요.' },
+  TURN_WRONG_LANE: { title: '회전 차로 아님', pts: 2, sensor: null, cat: 'turn', advice: '좌회전은 맨 왼쪽, 우회전은 맨 오른쪽 차로에서 해요. 교차로에 닿기 전에 미리 옮겨 두면 편해요.' },
   ACC_CANCEL: { title: '브레이크로 크루즈 해제', pts: 0, sensor: null, cat: 'coach', info: true, advice: '브레이크를 밟으면 크루즈가 꺼져요. 다시 켜려면 강습자 패널에서.' },
 };
 
