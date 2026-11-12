@@ -1,6 +1,6 @@
 # 기존 Markdown 팩트 감사
 
-작성: 2026-11-11. 기준 SHA: de612636cc2c. **전수 감사가 완료되었다는 문서는 아니다.** 정정이 필요한 항목과 진행 상태를 관리한다.
+작성: 2026-11-11. **규정 문서 추가 검토: 2026-11-13.** 기준 SHA: de612636cc2c. **전수 감사가 완료되었다는 문서는 아니다.** 정정이 필요한 항목과 진행 상태를 관리한다.
 
 | 문서 | 확인한 사실 또는 불일치 | 처리 |
 |---|---|---|
@@ -10,10 +10,12 @@
 | docs/06_TEST_PLAN.md | node --test만으로 Playwright/axe까지 자동 실행되는 것처럼 읽힘 | 후속: 각 검증 방법/명령 분리 |
 | docs/07_DEMO_SCRIPT.md | Android에 없는 음성/시계열 리플레이가 실신호 데모의 필수 장면처럼 표현됨 | 후속: Mock/실신호 시연 구분 |
 | docs/02_ARCHITECTURE.md | SharedPreferences JSON(현재 코드)과 최종 DOCX의 암호화 저장 계획(목표) 분리 필요 | 후속 |
-| docs/03_PLEOS_SDK_NOTES.md | SDK 문서 가용성과 실제 승인/에뮬레이터 수신/주행 오디오 정책을 분리해야 함 | 후속 |
+| docs/03_PLEOS_SDK_NOTES.md | SDK 문서 가용성과 실제 승인/에뮬레이터 수신/주행 오디오 정책을 분리해야 함 | 11/13 주의문과 DO 단정 정정; 에뮬레이터 확인은 후속 |
 | docs/04_UI_SPEC.md, docs/05_MISSIONS_CONTENT.md | 벨트 재체결을 권하는 기존 문구와 최종 DOCX의 '이미 체결 시 재체결 강요 금지' 원칙 충돌 | 후속 |
 | web/README.md | 주행 중 무음이라고 서술하지만 web/voice.js에 모의 음성 기능이 있음 | 후속 |
 | README.md, CLAUDE.md | 제품 계획이 Android에 구현된 사실처럼 읽힐 여지 및 오래된 문서 경로 | 후속 |
+
+규정·안전 근거 대장: [COMPLIANCE_REGISTER.md](COMPLIANCE_REGISTER.md), [SAFETY_RULES.md](SAFETY_RULES.md). 문서 링크·허용 주장과 실제 동작을 별도 검증한다.
 
 자료 우선순위:
 1. 공식 공모전·Pleos 규정: URL과 확인 날짜

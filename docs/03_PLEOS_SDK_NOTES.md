@@ -1,5 +1,7 @@
 # 03. Pleos SDK · AAOS API · 에뮬레이터 노트
 
+**중요한 최신 정정(2026-11-13):** 이 노트는 11월 5~8일의 SDK 조사 기록이며, **주행 중 오디오 허용·SDK 제공 상태를 확정하는 최신 규정이 아니다**. 공식 공모전 범위는 [COMPLIANCE_REGISTER.md](COMPLIANCE_REGISTER.md) §4·§5·§10과 [SAFETY_RULES.md](SAFETY_RULES.md) S02·S05·S06을 우선한다. 아래 §5-0과 §6의 과거 허용 단정은 에뮬레이터/플랫폼 검증 전까지 `NOT_VERIFIED`다.
+
 > TL;DR — 표준 데이터(기어·주행 제한·페달)는 AAOS Car API, 차량 특화(벨트·브레이크 상태·방향지시등·핸들·트립·차체)는 Pleos Vehicle SDK. 모두 **읽기**만. 아래 '확인 상태'는 2026-11-05 기준 **문서 확인만** 됨 → Day1에 갱신.
 
 ## 1. 확인 상태 표 (Day1에 채울 것)
@@ -31,7 +33,7 @@
 - 도메인 메서드(G=get, S=set): Brake G current-brake-pedal-status / CarInfo G CRN-info, VIN-info(+외부 크기) / Door G·S / DrivingMode G cruise-control-state·target-speed·driving-mode / EvBattery / Fuel / HVAC / Light G·S / Odometer G distance-driven, trip cumulative·current·instantaneous distance·time / Safety G telltales / Seat G 위치·belt-buckled·occupancy / SteeringWheel G angle / TurnSignal G state / Wiper G state·switch
 - 호환성: 모델별로 다름 → 도메인별 capability 확인 필수. AAOS 속성은 getPropertyList로 실제 지원 확인, **모델명 분기 금지**
 - Gradle: 저장소 `https://nexus-playground.pleos.ai/repository/maven-releases/`, `ai.pleos.playground:Vehicle:2.3.2` (NaviHelper 3.0.5, SpeechToText 3.3.1, TextToSpeech 3.3.1 추정, FusedLocation 1.1.3)
-- SDK 상태(create-my-project 문서): Vehicle State(조회)·NaviHelper = 신청 없이 사용 가능 / FusedLocation·TTS·STT·Vehicle Control = 준비 중 → **TTS는 Android 기본 TextToSpeech로 대체**
+- SDK 상태(create-my-project 문서 당시 표기): Vehicle State(조회)·NaviHelper = 신청 없이 사용 가능 / FusedLocation·TTS·STT·Vehicle Control = 준비 중. **그러나 공모전 공식 공지 O03은 공개 문서의 Vehicle·NaviHelper·TTS·STT·FusedLocation을 에뮬레이터에서 사용 가능하다고 안내한다.** 포털 `준비 중`과 실제 SDK 가용성은 구분하고, Pleos ON_DEVICE TTS 또는 Android TTS 대체 여부는 구현·기기 검증 후 결정. Gleo App Schema 신청 불가, Pleos LLM SDK 미제공, 차량 마이크의 외부 STT 전송 불가.
 
 ## 3. 공식 문서 링크
 - Vehicle SDK: https://document.pleos.ai/docs/pleos-only/connect-sdk-pleos/Vehicle/intro
@@ -79,7 +81,9 @@
 ## 5-0. TTS·오디오 포커스 (F12 음성 길잡이 근거, 2026-11-08 확인)
 > 출처: document.pleos.ai › 앱 기획 가이드 › *주행 안전을 고려한 설계* / 개발 가이드 › *오디오 포커스* / Connect SDK › TextToSpeech
 
-**핵심 원문 3개** — 주행 중 소리가 금지가 아니라는 근거다.
+**2026-11-13 주의:** 아래는 **과거에 수집한 원문 3개**로, 실제로 *DO 미선언 앱이 주행 중 계속 실행될 수 있다는 보증이 아니다.* 지역별 주행 규제 문서에서는 DO 미선언 Idling/Driving의 기본 동작을 `종료`로 안내한다. 따라서 앱 생명주기·백그라운드 구독·TTS/AudioFocus의 실행·허용 여부를 에뮬레이터에서 확인 전에는 `NOT_VERIFIED`다. 정책 적용에는 규정 대장 §5·§10을 우선한다.
+
+**과거에 수집한 원문 3개(허용 증명 아님)**
 | 원문 | 뜻 |
 |---|---|
 | "주행 규제 상태에서 **영상 재생**을 시작하거나 재개하지 않도록 처리하고, **오디오 재생은 오디오 포커스 개발 가이드에 정의된 정책을 준수**합니다." | 영상 금지, 오디오는 정책 준수 시 허용 |
@@ -145,7 +149,7 @@ $ javap -p android/car/VehiclePropertyIds.class | grep -i "PEDAL\|GEAR_SEL\|PARK
 
 ## 6. 규정 요약(코드에 영향)
 - DO(distractionOptimized) 미선언 앱 = 주행 중 **화면** 사용 불가 → 선언하지 않는다. 주행 중에는 **시스템이 앱 화면을 가릴 가능성이 크다**(앱 잠금 화면이 보이는지 Day1 확인, B37)
-- **DO 미선언은 오디오를 막지 않는다.** 주행 중 음성 길잡이(F12)는 §5-0 오디오 포커스 정책을 지키는 한 허용된다. 화면은 건드리지 않으므로 Activity는 그대로 DO 미선언으로 둔다
+- **[정정/NOT_VERIFIED]** DO 미선언 앱의 주행 중 사용은 지역별 정책의 기본표에서 제한/종료다. 오디오 포커스 준수는 재생 정책의 조건이지, Activity·서비스 유지나 주행 중 음성 길잡이 허용을 보증하지 않는다. SDK 문서/앱 카테고리와 에뮬레이터 관측 확인 전까지 주행 경로는 사용 가능 상태로 선언하지 않는다. [COMPLIANCE_REGISTER.md](COMPLIANCE_REGISTER.md) X01 참고
 - CarUxRestrictions 기준 제한, 속도 0 ≠ 주차
 - 미디어·게임은 정차 중에만, 주행 시 일시정지·숨김
 - 백그라운드: 갱신·애니메이션·센서 수집 중단, 복귀 시 상태 복원

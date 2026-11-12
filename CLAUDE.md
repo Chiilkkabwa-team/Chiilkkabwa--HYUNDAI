@@ -1,6 +1,6 @@
 # CLAUDE.md — 치일까봐(Chiilkkabwa) Pleos Connect 앱
 
-> **먼저 루트 [AGENTS.md](AGENTS.md)를 읽고 준수한다.** `AGENTS.md`는 Codex·Claude Code 등 AI 개발 도구가 공유할 공통 개발 원칙이다. 이 파일은 Claude Code용 보충 안내다.
+> **먼저 루트 [AGENTS.md](AGENTS.md), [docs/SAFETY_RULES.md](docs/SAFETY_RULES.md), [docs/COMPLIANCE_REGISTER.md](docs/COMPLIANCE_REGISTER.md)를 읽고 준수한다.** `AGENTS.md`는 Codex·Claude Code 등 AI 개발 도구가 공유할 공통 개발 원칙이다. 이 파일은 Claude Code용 보충 안내다.
 
 ## 1. 프로젝트
 - 초보·장롱면허 운전자가 주차된 차량에서 조작을 익히고, 주행 중에는 0터치 안전 원칙을 지키며, 주차 후 속도·조작 이벤트를 복기하는 **읽기 전용 Pleos Connect/AAOS 앱**.
@@ -10,10 +10,12 @@
 
 ## 2. 작업 전 읽을 문서
 1. [AGENTS.md](AGENTS.md) — **안전·Git·PR·AI 공통 규칙**
-2. [docs/TEAM_GUIDE.md](docs/TEAM_GUIDE.md) — **기능별 독립 개발** 및 3인 통합 방식
-3. [docs/IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md) — 실제 구현 상태(작성 시점의 스냅샷)
-4. [docs/VERIFICATION_LOG.md](docs/VERIFICATION_LOG.md) — 빌드/에뮬레이터 결과 기록
-5. 작업에 관계된 [docs/01_PRD.md](docs/01_PRD.md), [docs/03_PLEOS_SDK_NOTES.md](docs/03_PLEOS_SDK_NOTES.md), [docs/FACT_AUDIT.md](docs/FACT_AUDIT.md)
+2. [docs/SAFETY_RULES.md](docs/SAFETY_RULES.md) — **S01~S12 제품 안전 불변조건 + G1~G5 검증 게이트**
+3. [docs/COMPLIANCE_REGISTER.md](docs/COMPLIANCE_REGISTER.md) — **공모전/Pleos 공식 URL·확인일·적용 범위·미확인 항목**
+4. [docs/TEAM_GUIDE.md](docs/TEAM_GUIDE.md) — **기능별 독립 개발** 및 3인 통합 방식
+5. [docs/IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md) — 실제 구현 상태(작성 시점의 스냅샷)
+6. [docs/VERIFICATION_LOG.md](docs/VERIFICATION_LOG.md) — 빌드/에뮬레이터 결과 기록
+7. 작업에 관계된 [docs/01_PRD.md](docs/01_PRD.md), [docs/03_PLEOS_SDK_NOTES.md](docs/03_PLEOS_SDK_NOTES.md), [docs/FACT_AUDIT.md](docs/FACT_AUDIT.md)
 
 ## 3. 이번 개발의 중요한 기술적 사실
 - Kotlin/Jetpack Compose, Android `mock`/`vehicle` 플레이버, Gradle 8.10.2 / AGP 8.8.2 / Kotlin 2.0.0.
@@ -28,6 +30,7 @@
 - **개발자별 폴더 고정 담당을 두지 않는다.** 팀에서 배정한 기능 하나를 담당자 한 명이 UI·Core·Data·테스트·문서까지 구현한다. 담당 기능은 아직 미정이며 AI가 임의로 배정·착수하지 않는다.
 - `main`에서 직접 개발하지 않고 기능별 독립 브랜치 사용. 다른 사람의 기능이나 공통 인터페이스·파일을 변경하기 전에는 관련 개발자 및 통합 담당자와 조율한다.
 - 차량 신호·이벤트·세션 상태 등 여러 기능이 쓰는 데이터 계약은 병렬 구현 전에 합의한다. 요청받지 않은 기능 추가와 대규모 리팩터링은 금지한다.
+- **매 기능 착수 전 규정 S-ID·공식 원문 링크와 현재 준수/미검증 상태를 확인**하고, 구현 후 PASS/FAIL/NOT_VERIFIED/NOT_APPLICABLE 및 근거를 기록한다. 주행 중 백그라운드 음성·신호 구독은 AudioFocus만으로 허용된다고 가정하지 않는다. Pleos LLM SDK·Gleo Interface 승인 신청·차량 마이크의 외부 STT 전송을 공모전 구현 범위에서 제외한다.
 - **PR 작성은 선택**. 만들면 **한글 제목 + 만든 것/확인만 짧게**, 타인 리뷰는 요구하지 않는다. `main` 병합은 통합 담당자가 수행한다.
 - 사용자가 요구한 범위만 구현하고 정밀 테스트 후 보고한다. 필요한 사실은 실제 코드·공식 SDK 문서·실행 결과로 확인한다.
 - 주차 게이트·새 이벤트·신호 신선성·오디오 정책이 관련되면 실패 경로까지 테스트한다. 지원되지 않는 차량 SDK 기능이나 API를 가정하지 않는다.
