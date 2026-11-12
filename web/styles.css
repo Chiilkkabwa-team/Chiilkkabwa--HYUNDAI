@@ -913,3 +913,36 @@ body:not([data-mode="practice"]) .sim-canvas {
 .pip-time { font-size: .85rem; color: var(--sub); font-variant-numeric: tabular-nums; }
 .pip-cap { margin-top: 6px; font-size: .78rem; color: var(--muted); line-height: 1.45; }
 .tl-hit { fill: transparent; }
+
+/* ── 콘솔 조작 그림(A05, 11/12 회의): 페달은 누른 시간만큼 깊게, 핸들은 잡고 돌리기 ── */
+.pedal { --press: 0; position: relative; flex: none; width: 54px; height: 62px; padding: 4px 6px; border: 0; border-radius: 12px; background: var(--surface3); color: var(--text); touch-action: none; user-select: none; -webkit-user-select: none; perspective: 160px; }
+.pedal svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.pd-base { fill: var(--muted); }
+.pd-plate { transform-origin: 50% 100%; transform: rotateX(calc(var(--press) * 38deg)) translateY(calc(var(--press) * 4px)); }
+.pd-plate rect { fill: var(--text); }
+.pd-plate path { stroke: var(--surface3); stroke-width: 2.5; stroke-linecap: round; }
+#c-brakeHold.down .pd-plate rect { fill: var(--danger-2); }
+#c-accelHold.down .pd-plate rect { fill: var(--primary); }
+.pd-lab { position: absolute; right: 4px; top: 2px; font-size: .62rem; font-weight: 600; color: var(--muted); }
+.pedal:focus-visible, .wheel:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
+.steer-line { align-items: center; }
+.wheel { --deg: 0deg; flex: none; width: 56px; height: 56px; border-radius: 50%; cursor: grab; touch-action: none; }
+.wheel.down { cursor: grabbing; }
+.wheel svg { width: 100%; height: 100%; display: block; transform: rotate(var(--deg)); }
+.wh-rim { fill: none; stroke: var(--text); stroke-width: 6; }
+.wh-hub { fill: var(--text); }
+.wh-spoke { stroke: var(--text); stroke-width: 5; stroke-linecap: round; }
+.wh-top { fill: var(--primary); }
+.c-hint { display: flex; align-items: center; gap: 10px; margin-top: 8px; padding: 10px 12px; border-radius: 12px; background: var(--surface3); font-size: .85rem; color: var(--text); }
+.c-hint[hidden] { display: none; }
+.buckle { position: relative; display: inline-block; width: 22px; height: 12px; margin-right: 6px; vertical-align: -1px; }
+.buckle i { position: absolute; top: 2px; height: 8px; border-radius: 2px; background: var(--muted); }
+.bk-latch { right: 0; width: 10px; }
+.bk-tongue { left: 0; width: 9px; transform: translateX(0); }
+#r-belt.clack .bk-tongue { animation: bk-in .45s ease-out both; }
+#r-belt.clack .bk-latch { animation: bk-click .45s ease-out both; }
+@keyframes bk-in { 0% { transform: translateX(-8px); } 70% { transform: translateX(4px); } 100% { transform: translateX(3px); background: var(--primary); } }
+@keyframes bk-click { 70% { transform: scale(1); } 85% { transform: scale(1.25); background: var(--primary); } 100% { transform: scale(1); background: var(--primary); } }
+@media (prefers-reduced-motion: reduce) { #r-belt.clack .bk-tongue, #r-belt.clack .bk-latch { animation: none; background: var(--primary); } }
+#r-belt:has(#c-belt[aria-checked="true"]) .bk-tongue { transform: translateX(3px); background: var(--primary); }
+#r-belt:has(#c-belt[aria-checked="true"]) .bk-latch { background: var(--primary); }

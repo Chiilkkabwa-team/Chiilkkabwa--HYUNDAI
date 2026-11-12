@@ -13,7 +13,7 @@ const T = THEME.c;
 const TA = THEME.alpha;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const fmtT = (sec) => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`;
+const fmtT = (s) => { const sec = Math.max(0, s); return `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`; };
 
 export const TRACK_HZ = 10;      // 초당 10장 — 그래프·재현에 충분하고 메모리는 작다
 export const TRACK_MAX = 6000;   // 10분. 넘으면 한 장 건너 하나씩 줄인다(오래 달려도 메모리 일정)

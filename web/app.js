@@ -556,6 +556,8 @@ Screens.parking = () => ({
     this.keys = (e) => {
       if (overlay) return;
       const down = e.type === 'keydown';
+      const k0 = ({ KeyW: 'ArrowUp', KeyS: 'ArrowDown', KeyA: 'ArrowLeft', KeyD: 'ArrowRight' })[e.code];
+      if (k0) { const ev = e; e = { key: k0, type: ev.type, preventDefault: () => ev.preventDefault() }; }
       if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); if (this.done) return; this.move = down ? (e.key === 'ArrowUp' ? 1 : -1) : 0; if (down) this.dir = this.move; }
       if (down && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
         e.preventDefault();
@@ -1087,7 +1089,53 @@ function syncConsole() {
   $('#c-brake').value = V.brakePedalPct.value; $('#v-brake').textContent = Math.round(V.brakePedalPct.value); $('#v-brakeP').textContent = V.brakePressed.value ? '밟음' : '뗌';
   $('#c-steer').value = V.steeringDeg.value; $('#v-steer').textContent = Math.abs(V.steeringDeg.value);
   $('#v-steerDir').textContent = V.steeringDeg.value > 0 ? '오른쪽' : V.steeringDeg.value < 0 ? '왼쪽' : '가운데';
+  const wh = $('#c-wheel'); wh.style.setProperty('--deg', `${V.steeringDeg.value}deg`); wh.setAttribute('aria-valuenow', String(V.steeringDeg.value));
+  wh.setAttribute('aria-valuetext', `${Math.abs(V.steeringDeg.value)}도 ${$('#v-steerDir').textContent}`);
+  $('#c-brakeHold').style.setProperty('--press', String(V.brakePedalPct.value / 100));
+  $('#c-accelHold').style.setProperty('--press', String(V.accelPedalPct.value / 100));
 }
+/** 누르고 있는 동안 upMs에 걸쳐 0→100, 떼면 downMs에 걸쳐 0으로 */
+function holdPedal(el, get, set, upMs, downMs) {
+  let raf = null; const stop = () => { if (raf) { cancelAnimationFrame(raf); raf = null; } };
+  el.addEventListener('pointerdown', (e) => {
+    e.preventDefault(); stop(); el.classList.add('down'); el.setPointerCapture?.(e.pointerId);
+    let last = performance.now();
+    const up = (t) => { const v = get() + ((t - last) / upMs) * 100; last = t; set(Math.min(100, v)); if (v < 100) raf = requestAnimationFrame(up); };
+    raf = requestAnimationFrame(up);
+  });
+  const release = () => {
+    if (!el.classList.contains('down')) return; el.classList.remove('down'); stop();
+    const t0 = performance.now(), v0 = get();
+    const down = (t) => { const k = Math.min(1, (t - t0) / downMs); set(v0 * (1 - k)); if (k < 1) raf = requestAnimationFrame(down); else raf = null; };
+    raf = requestAnimationFrame(down);
+  };
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((ev) => el.addEventListener(ev, release));
+}
+
+/** 핸들 그림: 잡고 돌린 각도만큼(1:1) 돌아간다. 한 바퀴 넘게도 돌릴 수 있다(±540°). */
+function bindWheel(el) {
+  let drag = null;
+  const ang = (e) => { const r = el.getBoundingClientRect(); return (Math.atan2(e.clientY - (r.top + r.height / 2), e.clientX - (r.left + r.width / 2)) * 180) / Math.PI; };
+  el.addEventListener('pointerdown', (e) => { e.preventDefault(); el.setPointerCapture?.(e.pointerId); drag = { a: ang(e), v: V.steeringDeg.value, acc: 0, t0: performance.now() }; el.classList.add('down'); });
+  el.addEventListener('pointermove', (e) => {
+    if (!drag) return;
+    const a = ang(e); let d = a - drag.a; if (d > 180) d -= 360; if (d < -180) d += 360;
+    drag.a = a; drag.acc += d; setSteer(drag.v + drag.acc); tick();
+  });
+  const end = () => { if (!drag) return; const long = performance.now() - drag.t0 > 250; drag = null; el.classList.remove('down'); if (long) maybeWasdHint(); };
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((ev) => el.addEventListener(ev, end));
+  el.addEventListener('keydown', (e) => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    e.preventDefault(); e.stopPropagation(); setSteer(V.steeringDeg.value + (e.key === 'ArrowLeft' ? -15 : 15)); tick();
+  });
+}
+
+/** 마우스로 핸들·페달을 한참 만지면, 가상 주행 중에 한 번만 키보드 안내(콘솔 안 — 앱 화면은 건드리지 않는다) */
+function maybeWasdHint() {
+  if (H.wasdHintSeen || appMode === 'practice' || demo.running) return;
+  $('#wasdHint').hidden = false;
+}
+
 function bindConsole() {
   $$('#c-gear button').forEach((b) => (b.onclick = () => {
     if (sim && simRunning() && sim.ego.v > 0.4 && (b.dataset.v === 'P' || b.dataset.v === 'R')) { flashNote('차가 완전히 멈춘 다음 옮길 수 있어요'); return; }
@@ -1103,15 +1151,15 @@ function bindConsole() {
   $('#c-speed').oninput = (e) => { const v = +e.target.value; setV('speedKmh', v); setV('uxRestricted', v > 0, { onlyIfChanged: true }); syncConsole(); tick(); };
   $('#c-brake').oninput = (e) => { stopRamp(); setBrake(+e.target.value); tick(); };
   $('#c-steer').oninput = (e) => { setSteer(+e.target.value); tick(); };
+  $('#c-steer').addEventListener('pointerdown', () => { const t0 = performance.now(); addEventListener('pointerup', () => { if (performance.now() - t0 > 250) maybeWasdHint(); }, { once: true }); });
   $('#c-steerCenter').onclick = () => { setSteer(0); tick(); };
-  // 꾹 밟기: 누르는 동안 끝까지, 떼면 0.9초에 걸쳐 천천히
-  let ramp = null; const stopRamp = () => { if (ramp) { cancelAnimationFrame(ramp); ramp = null; } };
-  const hb = $('#c-brakeHold');
-  hb.addEventListener('pointerdown', (e) => { e.preventDefault(); stopRamp(); const t0 = performance.now(), v0 = V.brakePedalPct.value;
-    const up = (t) => { const k = Math.min(1, (t - t0) / 250); setBrake(v0 + (100 - v0) * k); if (k < 1) ramp = requestAnimationFrame(up); }; ramp = requestAnimationFrame(up); hb.classList.add('down'); });
-  const release = () => { if (!hb.classList.contains('down')) return; hb.classList.remove('down'); stopRamp(); const t0 = performance.now(), v0 = V.brakePedalPct.value;
-    const down = (t) => { const k = Math.min(1, (t - t0) / 900); setBrake(v0 * (1 - k)); if (k < 1) ramp = requestAnimationFrame(down); else ramp = null; }; ramp = requestAnimationFrame(down); };
-  ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => hb.addEventListener(ev, release));
+  // 페달 그림(11/12 회의 A05): 마우스 클릭은 0/1뿐이라 세기를 못 준다 → **누르고 있는 시간만큼 깊게**.
+  // 짧게 톡 = 살살, 길게 = 세게. 슬라이더는 그대로 두어 정확한 값도 넣을 수 있다.
+  holdPedal($('#c-brakeHold'), () => V.brakePedalPct.value, setBrake, 1600, 900);
+  holdPedal($('#c-accelHold'), () => V.accelPedalPct.value, setAccel, 2500, 250);
+  bindWheel($('#c-wheel'));
+  $('#c-belt').addEventListener('click', () => { if (!V.driverBeltBuckled.value) return; const r = $('#r-belt'); r.classList.remove('clack'); void r.offsetWidth; r.classList.add('clack'); });
+  $('#wasdHintX').onclick = () => { $('#wasdHint').hidden = true; H.wasdHintSeen = true; saveHistory(); };
   // 예외 재현
   $('#statusRows').innerHTML = STATUS_KEYS.map((k) => `<label class="st-row"><span>${SIGNALS[k].label}</span>
     <select data-k="${k}">${Object.entries(STATUS_LABEL).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select></label>`).join('');
@@ -1188,7 +1236,7 @@ function guide(s) {
         if (p?.kind === 'done') return ['잘했어요 앱에서 <b>[다음]</b>을 눌러요.', null];
         if (p?.kind === 'unavailable') return ['신호를 읽을 수 없어 앱이 건너뛰기를 안내해요.', null];
         if (id === 'SEAT_BELT') return [V.driverBeltBuckled.value ? '<b>안전벨트</b>를 한 번 풀었다가 다시 매요.' : '이제 <b>안전벨트</b>를 매요.', 'r-belt'];
-        if (id === 'BRAKE_PRESS_RELEASE') return [p?.step === 2 ? '이제 <b>꾹 밟기</b>에서 손을 떼요(천천히 떼짐).' : '<b>꾹 밟기</b>를 누르고 있거나 페달을 끝까지 밀어요.', 'r-brake'];
+        if (id === 'BRAKE_PRESS_RELEASE') return [p?.step === 2 ? '이제 <b>페달 그림</b>에서 손을 떼요(천천히 떼짐).' : '<b>페달 그림</b>을 꾹 누르고 있거나(누른 만큼 깊게) 막대를 끝까지 밀어요.', 'r-brake'];
         if (id === 'TURN_SIGNAL') return [['방향지시등 <b>◀ 왼쪽</b>', '방향지시등 <b>오른쪽 ▶</b>', '방향지시등 <b>끔</b>'][(p?.step || 1) - 1], 'r-turn'];
         if (id === 'WIPER') return ['<b>와이퍼</b>를 켜 보세요.', 'r-wiper'];
         if (id === 'LOW_BEAM') return ['<b>전조등</b>을 켜 보세요.', 'r-beam'];
@@ -1764,15 +1812,20 @@ function simLoop(t) {
 }
 startSimLoop();
 
-// 키보드 운전(가상 주행 중): ↑ 가속 · ↓ 브레이크 · ←→ 핸들 · 스페이스 = 강습자 정지(강습 모드)
+// 키보드 운전(가상 주행 중): ↑/W 가속 · ↓/S 브레이크 · ←→/A D 핸들 · 스페이스 = 강습자 정지(강습 모드)
+const WASD = { KeyW: 'ArrowUp', KeyS: 'ArrowDown', KeyA: 'ArrowLeft', KeyD: 'ArrowRight' };
 function keyDrive(e) {
   if (!simRunning() || overlay || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName || '')) return;
   const down = e.type === 'keydown';
+  if (document.activeElement?.getAttribute?.('role') === 'slider') return; // 핸들 그림에 포커스면 그쪽이 받는다
+  // W A S D도 같은 뜻(11/12 회의). e.code로 봐서 한글 입력 상태(ㅈㅁㄴㅇ)에서도 된다
+  const key = WASD[e.code] || e.key;
   const map = { ArrowUp: 1, ArrowDown: 1, ArrowLeft: 1, ArrowRight: 1 };
   if (e.key === ' ' && down && appMode === 'coach') { e.preventDefault(); sim.requestStop(!sim.stopReq); return; }
-  if (!map[e.key]) return;
+  if (!map[key]) return;
   e.preventDefault();
-  if (down) keysDown.add(e.key); else keysDown.delete(e.key);
+  if (down) keysDown.add(key); else keysDown.delete(key);
+  if (down && WASD[e.code] && !H.wasdHintSeen) { H.wasdHintSeen = true; saveHistory(); $('#wasdHint').hidden = true; }
   setAccel(keysDown.has('ArrowUp') ? 45 : 0);
   setBrake(keysDown.has('ArrowDown') ? 55 : 0);
   setSteer(keysDown.has('ArrowLeft') ? -110 : keysDown.has('ArrowRight') ? 110 : 0);
@@ -1900,8 +1953,6 @@ $('#themeBtn').onclick = () => THEME.toggle();
 bindConsole(); syncConsole();
 $$('#modeSeg button').forEach((b) => (b.onclick = () => setMode(b.dataset.v)));
 $('#c-accel').oninput = (e) => { setAccel(+e.target.value); };
-(() => { const hb = $('#c-accelHold'); const on = (e) => { e.preventDefault(); setAccel(40); hb.classList.add('down'); }; const off = () => { if (!hb.classList.contains('down')) return; hb.classList.remove('down'); setAccel(0); };
-  hb.addEventListener('pointerdown', on); ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => hb.addEventListener(ev, off)); })();
 applyMode();
 render();
 setInterval(tick, 100);
