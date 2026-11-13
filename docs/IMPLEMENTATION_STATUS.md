@@ -1,6 +1,6 @@
 # 구현 상태 대장
 
-점검일: 2026-11-11 KST. 기준 main: de612636cc2c13f6d4397626fdf24cf8a70cb2e6.
+Android 구현 정적 점검일: 2026-11-11 KST (당시 기준 main: de612636cc2c13f6d4397626fdf24cf8a70cb2e6). **웹 확장과 브랜치 병합 상태 확인: 2026-11-13, dev 9ca4316507481e3e56e50815e90d237da2fe1c0f / main c4c15686a30e788143ccc88d8ebaa52500d3187b.** 새 분업/결함 정리: [3인 기능 분업 v3](THREE_PERSON_FEATURE_PLAN_V3.md).
 요구사항 원본: 사용자가 제공한 **공식접수기획서 최종 DOCX**, 02-3(주요 기능) 및 02-5(개발 계획).
 
 **이 표는 정적 코드 점검 결과이다.** 이 작성 시점에는 Android Studio, CI, Pleos Emulator, 실차를 새로 실행해 검증한 것이 아니다.
@@ -21,8 +21,8 @@
 | 암호화 Room 저장 | 미구현. 현재 SharedPreferences JSON | 브라우저 localStorage | 미검증 |
 | Pleos Vehicle 신호 구독 | PleosVehicleSource의 TODO/UNSUPPORTED 상태 | 해당 없음 | 미검증 |
 
-### 2026-11-12 웹 모의 추가 (브랜치 `claude/confident-wright-u9iqdb`, **main 미병합**)
-11/12 회의 + 3인 기능 배정안 v2의 웹 부분. **전부 웹 모의**이고 Android·에뮬레이터·실차는 손대지 않았다.
+### 2026-11-13 확인: 웹 모의 추가 (Claude 브랜치 → PR #7 dev, PR #8 main 병합 완료)
+11/12 회의 + 3인 기능 배정안 v2의 웹 부분. **전부 웹 모의**이고 Android·에뮬레이터·실차는 손대지 않았다. **브랜치 병합은 기능 완료를 뜻하지 않는다.** 웹 64/64 단위 테스트 PASS 보고와 별개로 브레이크 슬라이더, 벨트 미션, 복기 게이트, 음성 우선순위/이벤트 연결 오류가 확인되었으므로 [분업안 v3](THREE_PERSON_FEATURE_PLAN_V3.md)에 수정 과제로 기록했다.
 
 | 배정안 ID | 기능 | 웹 모의 | Android | 에뮬레이터/실차 |
 |---|---|---|---|---|
