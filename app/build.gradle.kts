@@ -55,7 +55,12 @@ android {
     }
 
     buildTypes {
+        debug {
+            // A01 실수신 검증 전 기본 차단. opt-in도 에뮬레이터에서만 사용한다.
+            buildConfigField("boolean", "PLEOS_SIGNALS_ENABLED", (providers.gradleProperty("enablePleosSignals").orNull == "true").toString())
+        }
         release {
+            buildConfigField("boolean", "PLEOS_SIGNALS_ENABLED", "false")
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")

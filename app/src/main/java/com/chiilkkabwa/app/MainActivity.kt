@@ -63,8 +63,14 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        vm.startSignals()
+    }
+
     override fun onPause() {
         preview?.cancel()
+        vm.stopSignals()
         super.onPause()
     }
 

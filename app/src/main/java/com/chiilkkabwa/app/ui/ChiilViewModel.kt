@@ -76,10 +76,18 @@ class ChiilViewModel(app: Application) : AndroidViewModel(app) {
     private var pedalJudge: MissionJudge? = null
 
     init {
-        repo.start()
         viewModelScope.launch { repo.snapshot.collect { onSnapshot(it) } }
         // 시간 기반 판정(2초 유지)은 준비 단계에서만 필요하다 → 그 외(특히 주행 중)에는 틱을 돌리지 않는다(CPU 규정)
         viewModelScope.launch { while (true) { delay(200); if (_ui.value.session.phase == Phase.PREPARING) onSnapshot(repo.snapshot.value) } }
+    }
+
+    /** A01: 백그라운드에서 SDK 구독/heartbeat를 유지하지 않는다. 복귀 시 새 관측만 사용. */
+    fun startSignals() = repo.start()
+    fun stopSignals() {
+        runner?.pause()
+        repo.stop()
+        // StateFlow의 중간 Locked가 합쳐져도 ViewModel은 즉시 잠긴 상태를 관측한다.
+        onSnapshot(repo.snapshot.value)
     }
 
     private fun onSnapshot(s: VehicleSnapshot) {
