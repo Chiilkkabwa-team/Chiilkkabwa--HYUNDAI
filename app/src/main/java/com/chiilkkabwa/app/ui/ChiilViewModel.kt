@@ -1,6 +1,7 @@
 package com.chiilkkabwa.app.ui
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.chiilkkabwa.app.BuildConfig
@@ -74,6 +75,7 @@ class ChiilViewModel(app: Application) : AndroidViewModel(app) {
 
     private var runner: MissionRunner? = null
     private var pedalJudge: MissionJudge? = null
+    private var lastSignalTrace: String? = null
 
     init {
         viewModelScope.launch { repo.snapshot.collect { onSnapshot(it) } }
@@ -109,6 +111,17 @@ class ChiilViewModel(app: Application) : AndroidViewModel(app) {
         val summary = if (session.phase == Phase.REVIEW) summarize(session.tripStart, session.tripEnd) else prev.summary
 
         _ui.value = prev.copy(session = session, gate = gate, snapshot = s, runner = runnerState, pedal = pedal, summary = summary)
+        // A01 진단: 명시적 opt-in debug 에뮬레이터에서 앱이 소비한 값/상태만 기록한다.
+        if (BuildConfig.DEBUG && BuildConfig.PLEOS_SIGNALS_ENABLED && !BuildConfig.USE_MOCK &&
+            s.driverBeltBuckled.source == com.chiilkkabwa.app.core.signal.SignalSource.EMULATOR) {
+            val trace = "gate=$gate gear=${s.gear.status}/${s.gear.value} " +
+                "parkingBrake=${s.parkingBrakeOn.status}/${s.parkingBrakeOn.value} " +
+                "ux=${s.uxRestricted.status}/${s.uxRestricted.value} " +
+                "belt=${s.driverBeltBuckled.status}/${s.driverBeltBuckled.value} " +
+                "brake=${s.brakePressed.status}/${s.brakePressed.value} " +
+                "turn=${s.turnSignal.status}/${s.turnSignal.value} source=EMULATOR"
+            if (trace != lastSignalTrace) { Log.d("A01SignalTrace", trace); lastSignalTrace = trace }
+        }
     }
 
     // ── 사용자 행동 ─────────────────────────────────────────

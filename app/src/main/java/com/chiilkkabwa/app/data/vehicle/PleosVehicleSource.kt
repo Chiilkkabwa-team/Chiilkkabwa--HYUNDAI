@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import android.util.Log
 import com.chiilkkabwa.app.BuildConfig
 
 /**
@@ -16,7 +17,10 @@ class PleosVehicleSource(context: Context) : VehicleSource {
     private val label = VehicleRepository.realSourceLabel()
     private val enabled = allowPleosSignals(BuildConfig.DEBUG, BuildConfig.PLEOS_SIGNALS_ENABLED, label)
     private val session = PleosSignalSession(
-        { PleosSdkReadClient(context.applicationContext) }, label,
+        {
+            try { PleosSdkReadClient(context.applicationContext) }
+            catch (e: Exception) { Log.e("PleosVehicleSource", "SDK client creation failed", e); throw e }
+        }, label,
         enabled, elapsed = SystemClock::elapsedRealtime,
     )
     private var running = false
@@ -29,6 +33,7 @@ class PleosVehicleSource(context: Context) : VehicleSource {
     }
     override fun start(sink: SnapshotSink) {
         stop()
+        if (enabled) Log.d("PleosVehicleSource", "SDK session start source=$label")
         session.start(sink)
         running = enabled
         if (running) handler.postDelayed(heartbeat, 1_000L)
