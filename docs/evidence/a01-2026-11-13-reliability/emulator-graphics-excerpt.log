@@ -1,0 +1,3 @@
+ERROR        | Failed to find ColorBuffer: 28
+ERROR        | Failed to bind to texture: invalid color buffer.
+INFO         | Boot completed in 28741 ms
