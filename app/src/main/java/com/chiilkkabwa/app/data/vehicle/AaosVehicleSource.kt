@@ -31,32 +31,46 @@ class AaosVehicleSource(private val context: Context) : VehicleSource {
     private var sink: SnapshotSink? = null
     private val label = VehicleRepository.realSourceLabel()
 
+    /** 정상 신호만 기록하고, 비정상 상태·잘못된 타입은 항상 fail-closed. */
     private val callback = object : CarPropertyManager.CarPropertyEventCallback {
         override fun onChangeEvent(v: CarPropertyValue<*>) {
-            val at = System.currentTimeMillis()
-            val okStatus = v.status == CarPropertyValue.STATUS_AVAILABLE
-            sink?.update { s ->
+            val at = now()
+            val available = v.status == CarPropertyValue.STATUS_AVAILABLE
+            // 미사용/오류 상태의 값은 읽거나 해석하지 않는다.
+            val raw = if (available) v.value else null
+            sink?.update { snapshot ->
                 when (v.propertyId) {
                     VehiclePropertyIds.GEAR_SELECTION ->
-                        s.copy(gear = if (okStatus) Signal.ok(mapGear(v.value as Int), label, at) else Signal.failed(SignalStatus.STALE, label, at))
+                        snapshot.copy(gear = aaosObserved<Gear>(raw, available, label, at) { any ->
+                            (any as? Int)?.let(::mapGear)?.takeUnless { it == Gear.UNKNOWN }
+                        })
                     VehiclePropertyIds.PARKING_BRAKE_ON ->
-                        // 표준 데이터는 AAOS 우선(Pleos SDK API 정책). Pleos Brake의 주차 브레이크는 AAOS 미지원 시 대체로만 사용
-                        s.copy(parkingBrakeOn = if (okStatus) Signal.ok(v.value as Boolean, label, at) else Signal.failed(SignalStatus.STALE, label, at))
+                        snapshot.copy(parkingBrakeOn = aaosObserved<Boolean>(raw, available, label, at) { any ->
+                            any as? Boolean
+                        })
                     PROP_BRAKE_PEDAL ->
-                        s.copy(brakePedalPct = if (okStatus) Signal.ok((v.value as Float), label, at) else Signal.failed(SignalStatus.STALE, label, at))
+                        snapshot.copy(brakePedalPct = aaosObserved<Float>(raw, available, label, at, ::pedalPercent))
                     PROP_ACCEL_PEDAL ->
-                        s.copy(accelPedalPct = if (okStatus) Signal.ok((v.value as Float), label, at) else Signal.failed(SignalStatus.STALE, label, at))
-                    else -> s
+                        snapshot.copy(accelPedalPct = aaosObserved<Float>(raw, available, label, at, ::pedalPercent))
+                    else -> snapshot
                 }
             }
         }
+
         override fun onErrorEvent(propId: Int, areaId: Int) {
-            Log.w(TAG, "property error $propId/$areaId")
-            val at = System.currentTimeMillis()
-            sink?.update { s ->
+            Log.w(TAG, "AAOS property error: $propId / $areaId")
+            val at = now()
+            sink?.update { snapshot ->
                 when (propId) {
-                    VehiclePropertyIds.GEAR_SELECTION -> s.copy(gear = Signal.failed(SignalStatus.DISCONNECTED, label, at))
-                    else -> s
+                    VehiclePropertyIds.GEAR_SELECTION ->
+                        snapshot.copy(gear = Signal.failed(SignalStatus.DISCONNECTED, label, at))
+                    VehiclePropertyIds.PARKING_BRAKE_ON ->
+                        snapshot.copy(parkingBrakeOn = Signal.failed(SignalStatus.DISCONNECTED, label, at))
+                    PROP_BRAKE_PEDAL ->
+                        snapshot.copy(brakePedalPct = Signal.failed(SignalStatus.DISCONNECTED, label, at))
+                    PROP_ACCEL_PEDAL ->
+                        snapshot.copy(accelPedalPct = Signal.failed(SignalStatus.DISCONNECTED, label, at))
+                    else -> snapshot
                 }
             }
         }
@@ -69,51 +83,145 @@ class AaosVehicleSource(private val context: Context) : VehicleSource {
 
     override fun start(sink: SnapshotSink) {
         this.sink = sink
-        val c = Car.createCar(context) ?: run { markAll(SignalStatus.DISCONNECTED); return }
+        val c = try {
+            Car.createCar(context)
+        } catch (e: Exception) {
+            Log.w(TAG, "AAOS Car service unavailable", e)
+            markAll(SignalStatus.DISCONNECTED)
+            return
+        }
+        if (c == null) {
+            markAll(SignalStatus.DISCONNECTED)
+            return
+        }
         car = c
-        props = c.getCarManager(Car.PROPERTY_SERVICE) as? CarPropertyManager
-        ux = c.getCarManager(Car.CAR_UX_RESTRICTION_SERVICE) as? CarUxRestrictionsManager
+        try {
+            props = c.getCarManager(Car.PROPERTY_SERVICE) as? CarPropertyManager
+            ux = c.getCarManager(Car.CAR_UX_RESTRICTION_SERVICE) as? CarUxRestrictionsManager
+        } catch (e: SecurityException) {
+            Log.w(TAG, "AAOS car manager permission denied", e)
+            markAll(SignalStatus.PERMISSION_DENIED)
+            return
+        } catch (e: Exception) {
+            Log.w(TAG, "AAOS car manager unavailable", e)
+            markAll(SignalStatus.DISCONNECTED)
+            return
+        }
 
-        // 주행 제한: 현재값 + 변화 구독
-        ux?.let { m ->
-            m.registerListener(uxListener)
-            m.currentCarUxRestrictions?.let { r ->
-                sink.update { it.copy(uxRestricted = Signal.ok(r.isRequiresDistractionOptimization, label, System.currentTimeMillis())) }
+        // CarUxRestrictions는 화면 안전 게이트의 필수 신호다.
+        val manager = ux
+        if (manager == null) {
+            sink.update {
+                it.copy(uxRestricted = Signal.failed(SignalStatus.UNSUPPORTED, label, now()))
             }
-        } ?: sink.update { it.copy(uxRestricted = Signal.failed(SignalStatus.UNSUPPORTED, label, System.currentTimeMillis())) }
-
-        subscribe(VehiclePropertyIds.GEAR_SELECTION, CarPropertyManager.SENSOR_RATE_ONCHANGE) { s, st -> s.copy(gear = Signal.failed(st, label, now())) }
-        subscribe(VehiclePropertyIds.PARKING_BRAKE_ON, CarPropertyManager.SENSOR_RATE_ONCHANGE) { s, st -> if (s.parkingBrakeOn.isUsable) s /* Pleos 대체값 유지 */ else s.copy(parkingBrakeOn = Signal.failed(st, label, now())) }
-
-        // 페달 압력: 위험 권한 + 이 SDK에 상수가 있는지도 확인해야 한다(아래 PROP_* 주석 참고)
-        if (PROP_BRAKE_PEDAL == null && PROP_ACCEL_PEDAL == null) {
-            Log.w(TAG, "pedal compression properties not in this SDK/platform - skipping pedal missions")
-            sink.update { it.copy(
-                brakePedalPct = Signal.failed(SignalStatus.UNSUPPORTED, label, now()),
-                accelPedalPct = Signal.failed(SignalStatus.UNSUPPORTED, label, now()),
-            ) }
-        } else if (hasPedalPermission()) {
-            PROP_BRAKE_PEDAL?.let { id -> subscribe(id, 10f) { s, st -> s.copy(brakePedalPct = Signal.failed(st, label, now())) } }
-                ?: sink.update { it.copy(brakePedalPct = Signal.failed(SignalStatus.UNSUPPORTED, label, now())) }
-            PROP_ACCEL_PEDAL?.let { id -> subscribe(id, 10f) { s, st -> s.copy(accelPedalPct = Signal.failed(st, label, now())) } }
-                ?: sink.update { it.copy(accelPedalPct = Signal.failed(SignalStatus.UNSUPPORTED, label, now())) }
         } else {
-            sink.update { it.copy(
-                brakePedalPct = Signal.failed(SignalStatus.PERMISSION_DENIED, label, now()),
-                accelPedalPct = Signal.failed(SignalStatus.PERMISSION_DENIED, label, now()),
-            ) }
+            try {
+                manager.registerListener(uxListener)
+                val initial = manager.currentCarUxRestrictions
+                if (initial != null) {
+                    sink.update {
+                        it.copy(uxRestricted = Signal.ok(initial.isRequiresDistractionOptimization, label, now()))
+                    }
+                } // 초기값이 없으면 UNKNOWN 유지; READY로 전환하지 않는다.
+            } catch (e: SecurityException) {
+                Log.w(TAG, "AAOS UX restriction permission denied", e)
+                sink.update {
+                    it.copy(uxRestricted = Signal.failed(SignalStatus.PERMISSION_DENIED, label, now()))
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "AAOS UX restriction listener failed", e)
+                sink.update {
+                    it.copy(uxRestricted = Signal.failed(SignalStatus.DISCONNECTED, label, now()))
+                }
+            }
+        }
+
+        // registerCallback은 최초 등록 후 신호의 현재 상태도 콜백으로 제공한다.
+        // 디바이스와 정책 검증 전에 메인 스레드에서 동기 getProperty()를 호출하지 않는다.
+        subscribe(VehiclePropertyIds.GEAR_SELECTION, CarPropertyManager.SENSOR_RATE_ONCHANGE) { snapshot, status ->
+            snapshot.copy(gear = Signal.failed(status, label, now()))
+        }
+        subscribe(VehiclePropertyIds.PARKING_BRAKE_ON, CarPropertyManager.SENSOR_RATE_ONCHANGE) { snapshot, status ->
+            snapshot.copy(parkingBrakeOn = Signal.failed(status, label, now()))
+        }
+
+        // 페달 속성은 공개 android.car.jar에 상수가 없을 수 있다.
+        if (PROP_BRAKE_PEDAL == null && PROP_ACCEL_PEDAL == null) {
+            Log.w(TAG, "AAOS pedal property IDs unavailable: keeping conditional pedal missions disabled")
+            sink.update {
+                it.copy(
+                    brakePedalPct = Signal.failed(SignalStatus.UNSUPPORTED, label, now()),
+                    accelPedalPct = Signal.failed(SignalStatus.UNSUPPORTED, label, now()),
+                )
+            }
+        } else if (hasPedalPermission()) {
+            PROP_BRAKE_PEDAL?.let { id ->
+                subscribe(id, 10f) { snapshot, status ->
+                    snapshot.copy(brakePedalPct = Signal.failed(status, label, now()))
+                }
+            } ?: sink.update {
+                it.copy(brakePedalPct = Signal.failed(SignalStatus.UNSUPPORTED, label, now()))
+            }
+            PROP_ACCEL_PEDAL?.let { id ->
+                subscribe(id, 10f) { snapshot, status ->
+                    snapshot.copy(accelPedalPct = Signal.failed(status, label, now()))
+                }
+            } ?: sink.update {
+                it.copy(accelPedalPct = Signal.failed(SignalStatus.UNSUPPORTED, label, now()))
+            }
+        } else {
+            sink.update {
+                it.copy(
+                    brakePedalPct = Signal.failed(SignalStatus.PERMISSION_DENIED, label, now()),
+                    accelPedalPct = Signal.failed(SignalStatus.PERMISSION_DENIED, label, now()),
+                )
+            }
         }
         logSupportedProperties()
     }
 
     /** 지원 확인 후 구독. 미지원/실패면 onFail로 해당 필드에 상태를 기록 */
-    private fun subscribe(id: Int, rateHz: Float, onFail: (com.chiilkkabwa.app.core.signal.VehicleSnapshot, SignalStatus) -> com.chiilkkabwa.app.core.signal.VehicleSnapshot) {
-        val pm = props ?: return sink?.update { onFail(it, SignalStatus.DISCONNECTED) } ?: Unit
-        if (pm.getCarPropertyConfig(id) == null) { sink?.update { onFail(it, SignalStatus.UNSUPPORTED) }; return }
-        val ok = try { pm.registerCallback(callback, id, rateHz) } catch (e: SecurityException) {
-            sink?.update { onFail(it, SignalStatus.PERMISSION_DENIED) }; return
+    private fun subscribe(
+        id: Int,
+        rateHz: Float,
+        onFail: (com.chiilkkabwa.app.core.signal.VehicleSnapshot, SignalStatus) -> com.chiilkkabwa.app.core.signal.VehicleSnapshot,
+    ) {
+        val manager = props ?: run {
+            sink?.update { onFail(it, SignalStatus.DISCONNECTED) }
+            return
         }
-        if (!ok) sink?.update { onFail(it, SignalStatus.UNSUPPORTED) }
+        val config = try {
+            manager.getCarPropertyConfig(id)
+        } catch (e: SecurityException) {
+            Log.w(TAG, "Permission denied when reading property config: $id", e)
+            sink?.update { onFail(it, SignalStatus.PERMISSION_DENIED) }
+            return
+        } catch (e: Exception) {
+            Log.w(TAG, "Cannot read property config: $id", e)
+            sink?.update { onFail(it, SignalStatus.UNKNOWN) }
+            return
+        }
+        if (config == null) {
+            sink?.update { onFail(it, SignalStatus.UNSUPPORTED) }
+            return
+        }
+        val registered = try {
+            manager.registerCallback(callback, id, rateHz)
+        } catch (e: SecurityException) {
+            Log.w(TAG, "Permission denied subscribing property: $id", e)
+            sink?.update { onFail(it, SignalStatus.PERMISSION_DENIED) }
+            return
+        } catch (e: Exception) {
+            Log.w(TAG, "Cannot subscribe property: $id", e)
+            sink?.update { onFail(it, SignalStatus.DISCONNECTED) }
+            return
+        }
+        if (!registered) {
+            // registerCallback(false)는 미지원뿐 아니라 권한 문제도 가능하다.
+            // 정확한 원인을 모르면 UNKNOWN으로 남겨 안전 게이트를 연다거나 오진하지 않는다.
+            Log.w(TAG, "Property subscription declined (status unverified): $id")
+            sink?.update { onFail(it, SignalStatus.UNKNOWN) }
+        }
     }
 
     private fun hasPedalPermission(): Boolean =
@@ -132,10 +240,12 @@ class AaosVehicleSource(private val context: Context) : VehicleSource {
     }
 
     override fun stop() {
-        props?.unregisterCallback(callback)
-        ux?.unregisterListener()
-        car?.disconnect()
-        car = null; props = null; ux = null; sink = null
+        // stop() 후 도착한 이벤트는 현재 sink에 반영되지 않도록 먼저 차단한다.
+        sink = null
+        try { props?.unregisterCallback(callback) } catch (e: Exception) { Log.w(TAG, "AAOS unregister property failed", e) }
+        try { ux?.unregisterListener() } catch (e: Exception) { Log.w(TAG, "AAOS unregister UX failed", e) }
+        try { car?.disconnect() } catch (e: Exception) { Log.w(TAG, "AAOS disconnect failed", e) }
+        car = null; props = null; ux = null
     }
 
     private fun now() = System.currentTimeMillis()

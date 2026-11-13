@@ -22,6 +22,14 @@
 | 트립 거리·시간 | Pleos Odometer trip current distance/time | pleos CAR_DRIVE | ✅ | ☐ | ☐ | 단위(km? m?), 주행 중 리셋 여부 |
 | 차체 크기 | Pleos CarInfo | pleos CAR_INFO | ✅(외부 크기) | ☐ | ☐ | 필드명 확인 |
 
+### A01 AAOS 신호 구독 내구성 작업 (2026-11-13 / 부분 구현)
+
+- `AaosVehicleSource.kt`는 실제 표준 `GEAR_SELECTION`·`PARKING_BRAKE_ON`·`CarUxRestrictionsManager`의 **읽기 전용** 콜백 구독 경로를 사용한다. 공식 `CarPropertyManager.registerCallback` 문서에 따르면 첫 등록 시 현재 신호를 이벤트로 받는다. 상태가 `STATUS_AVAILABLE`일 때도 값 타입과 범위를 확인하고, 오류·권한 거부·등록 실패는 `UNKNOWN` / `DISCONNECTED` / `PERMISSION_DENIED`로 잠근다.
+- 현재 SDK가 실제로 지원하는지, Virtual Console의 기어·주차 브레이크 변경이 앱까지 수신되는지 **에뮬레이터 증거는 아직 없음(NOT_VERIFIED)**. CI 성공은 이 항목을 PASS로 바꾸지 않는다.
+- **`PleosVehicleSource.kt`의 Seat(벨트)/Brake(페달)/TurnSignal/Light/Wiper/Steering/Odometer 구현은 여전히 공식 SDK 아티팩트의 실제 클래스·리스너·area/value 타입 확인이 필요한 TODO**. 지원하지 않는 센서나 승인 불명 API를 호출하지 않는다. `PleosVehicleSource`가 발행하는 `UNSUPPORTED`는 현재 **연동 미구현 폴백** 표시이지 실차 자체가 센서를 지원하지 않는다는 실증이 아니다.
+- Android JVM 회귀 테스트: `AaosSignalDecodeTest.kt`(정상 신호, 상태 오류, 타입 오류, 페달 범위). Day1에는 `adb logcat -s AaosVehicleSource PleosVehicleSource` 출력, 장비/SDK 버전, console 입력, 실제 앱 화면 게이트 상태를 [검증 기록](VERIFICATION_LOG.md)에 남길 것.
+- 공식 AAOS API: [CarPropertyManager](https://developer.android.com/reference/android/car/hardware/property/CarPropertyManager). 팀 기준 S01·S02·S03·S07·S10을 적용한다.
+
 ## 2. Pleos Vehicle SDK 요약 (v2.3.2 / Vehicle Service v2.3.21, 문서 기준)
 - 구조: 3rd party 앱 → Vehicle SDK → Pleos Connect Vehicle Service(AAOS 위) → 차량
 - 사용 패턴: `Vehicle(context)` → `initialize()` → `getXxx()`로 도메인 객체 → `checkXxxCapabilities` → `getXxx(onComplete, onFailed)` / `registerXxx(listener)` → `release()`(콜백 끝난 뒤)
