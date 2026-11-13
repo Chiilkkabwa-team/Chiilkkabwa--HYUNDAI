@@ -1,0 +1,38 @@
+[
+  {
+    "File": "host-resume-five-minutes.png",
+    "Width": 2560,
+    "Height": 1440,
+    "RgbMin": 0,
+    "RgbMax": 255,
+    "NonzeroBytes": 10084710,
+    "SHA256": "2E73442FED1497C96FF4D73259EA7AED03FC3E68C53C888CE213ABC0FCAB70E7"
+  },
+  {
+    "File": "host-sleep-stable.png",
+    "Width": 2560,
+    "Height": 1440,
+    "RgbMin": 0,
+    "RgbMax": 0,
+    "NonzeroBytes": 0,
+    "SHA256": "3BFC7438AA4C9EB59F7A4C9BC8B0047C11CD0889BA42DD6911D8F384D53BD76E"
+  },
+  {
+    "File": "host-wake-stable.png",
+    "Width": 2560,
+    "Height": 1440,
+    "RgbMin": 0,
+    "RgbMax": 255,
+    "NonzeroBytes": 10078482,
+    "SHA256": "B30CD718C7FEAB917F1C1ED553D5CB9ADF66C0FECCF4C1CC769CFDE8E9DB629D"
+  },
+  {
+    "File": "app-display-after-resume-black.png",
+    "Width": 2560,
+    "Height": 1440,
+    "RgbMin": 0,
+    "RgbMax": 0,
+    "NonzeroBytes": 0,
+    "SHA256": "CEF1CDC133867B8D846B5AE8B12EC98E5E2C78172AE51321CC57037039423828"
+  }
+]

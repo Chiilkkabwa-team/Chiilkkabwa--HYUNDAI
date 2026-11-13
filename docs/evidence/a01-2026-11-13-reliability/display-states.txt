@@ -1,0 +1,137 @@
+Selected verbatim diagnostic sections. APP_ACTIVITY dump omitted because it includes other platform tasks. Full captures remain local.
+STAGE host-before-pause
+hostTime=2026-11-13T23:24:50.0384727+09:00
+Fri Nov 13 06:24:47 PST 2026
+APP_PID
+17157
+POWER
+  mWakefulness=Awake
+  mWakefulnessChanging=false
+  mLastSleepReason=application
+  mHoldingDisplaySuspendBlocker=true
+DISPLAY
+    mState=ON
+    mCommittedState=ON
+  mScreenState=ON
+  mPendingState=ON
+  mActualState=ON
+FOCUS
+  mCurrentFocus=Window{db0c715 u10 com.chiilkkabwa.app/com.chiilkkabwa.app.MainActivity}
+  mFocusedApp=ActivityRecord{f0963b3 u10 com.chiilkkabwa.app/.MainActivity t1000026}
+APP_GRAPHICS
+** Graphics info for pid 17157 [com.chiilkkabwa.app] **
+Stats since: 295342929779ns
+Total frames rendered: 3
+Janky frames: 3 (100.00%)
+	com.chiilkkabwa.app/com.chiilkkabwa.app.MainActivity/android.view.ViewRootImpl@8868198 (visibility=0)
+  com.chiilkkabwa.app/com.chiilkkabwa.app.MainActivity/android.view.ViewRootImpl@8868198
+Total ViewRootImpl   : 1
+STAGE host-settings-pause
+hostTime=2026-11-13T23:25:09.0483239+09:00
+Fri Nov 13 06:25:06 PST 2026
+APP_PID
+17157
+POWER
+  mWakefulness=Awake
+  mWakefulnessChanging=false
+  mLastSleepReason=application
+  mHoldingDisplaySuspendBlocker=true
+DISPLAY
+    mState=ON
+    mCommittedState=ON
+  mScreenState=ON
+  mPendingState=ON
+  mActualState=ON
+FOCUS
+  mCurrentFocus=Window{631554b u10 com.android.car.settings/com.android.car.settings.common.CarSettingActivities$HomepageActivity}
+  mFocusedApp=ActivityRecord{1fcc56b u10 com.android.car.settings/.common.CarSettingActivities$HomepageActivity t1000027}
+APP_GRAPHICS
+** Graphics info for pid 17157 [com.chiilkkabwa.app] **
+Stats since: 295342929779ns
+Total frames rendered: 3
+Janky frames: 3 (100.00%)
+	com.chiilkkabwa.app/com.chiilkkabwa.app.MainActivity/android.view.ViewRootImpl@8868198 (visibility=8)
+  com.chiilkkabwa.app/com.chiilkkabwa.app.MainActivity/android.view.ViewRootImpl@8868198
+Total ViewRootImpl   : 1
+STAGE host-resume-five-minutes
+hostTime=2026-11-13T23:30:36.4427460+09:00
+Fri Nov 13 06:30:34 PST 2026
+APP_PID
+17157
+POWER
+  mWakefulness=Awake
+  mWakefulnessChanging=false
+  mLastSleepReason=application
+  mHoldingDisplaySuspendBlocker=true
+DISPLAY
+    mState=ON
+    mCommittedState=ON
+  mScreenState=ON
+  mPendingState=ON
+  mActualState=ON
+FOCUS
+  mCurrentFocus=Window{db0c715 u10 com.chiilkkabwa.app/com.chiilkkabwa.app.MainActivity}
+  mFocusedApp=ActivityRecord{f0963b3 u10 com.chiilkkabwa.app/.MainActivity t1000026}
+APP_GRAPHICS
+** Graphics info for pid 17157 [com.chiilkkabwa.app] **
+Stats since: 295342929779ns
+Total frames rendered: 6
+Janky frames: 6 (100.00%)
+	com.chiilkkabwa.app/com.chiilkkabwa.app.MainActivity/android.view.ViewRootImpl@8868198 (visibility=0)
+  com.chiilkkabwa.app/com.chiilkkabwa.app.MainActivity/android.view.ViewRootImpl@8868198
+Total ViewRootImpl   : 1
+STAGE host-sleep-stable
+hostTime=2026-11-13T23:32:01.4197521+09:00
+Fri Nov 13 06:31:59 PST 2026
+APP_PID
+17157
+POWER
+  mWakefulness=Asleep
+  mWakefulnessChanging=false
+  mLastSleepReason=sleep_button
+  mHoldingDisplaySuspendBlocker=false
+DISPLAY
+    mState=OFF
+    mCommittedState=OFF
+  mScreenState=OFF
+  mPendingState=OFF
+  mActualState=OFF
+FOCUS
+  mCurrentFocus=Window{c91ce69 u0 SystemUIOverlayWindow}
+  mFocusedApp=ActivityRecord{f0963b3 u10 com.chiilkkabwa.app/.MainActivity t1000026}
+APP_GRAPHICS
+** Graphics info for pid 17157 [com.chiilkkabwa.app] **
+Stats since: 295342929779ns
+Total frames rendered: 9
+Janky frames: 9 (100.00%)
+	com.chiilkkabwa.app/com.chiilkkabwa.app.MainActivity/android.view.ViewRootImpl@8868198 (visibility=8)
+  com.chiilkkabwa.app/com.chiilkkabwa.app.MainActivity/android.view.ViewRootImpl@8868198
+Total ViewRootImpl   : 1
+STAGE host-wake-stable
+hostTime=2026-11-13T23:32:02.5933553+09:00
+Fri Nov 13 06:32:00 PST 2026
+APP_PID
+17157
+POWER
+  mWakefulness=Awake
+  mWakefulnessChanging=false
+  mLastSleepReason=sleep_button
+  mHoldingDisplaySuspendBlocker=true
+DISPLAY
+    mState=ON
+    mCommittedState=ON
+  mScreenState=ON
+  mPendingState=ON
+  mActualState=ON
+FOCUS
+  mCurrentFocus=Window{db0c715 u10 com.chiilkkabwa.app/com.chiilkkabwa.app.MainActivity}
+  mFocusedApp=ActivityRecord{f0963b3 u10 com.chiilkkabwa.app/.MainActivity t1000026}
+APP_GRAPHICS
+** Graphics info for pid 17157 [com.chiilkkabwa.app] **
+Stats since: 295342929779ns
+Total frames rendered: 12
+Janky frames: 12 (100.00%)
+	com.chiilkkabwa.app/com.chiilkkabwa.app.MainActivity/android.view.ViewRootImpl@8868198 (visibility=0)
+  com.chiilkkabwa.app/com.chiilkkabwa.app.MainActivity/android.view.ViewRootImpl@8868198
+Total ViewRootImpl   : 1
+pause_elapsed_seconds=325.9634329

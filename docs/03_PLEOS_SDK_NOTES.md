@@ -246,3 +246,12 @@ $ javap -p android/car/VehiclePropertyIds.class | grep -i "PEDAL\|GEAR_SEL\|PARK
 opt-in debug EMULATOR에서만 최종 snapshot 진단을 추가했다. `SDK callback`은 SDK listener 진입이고 `A01SignalTrace`는 ViewModel 소비 상태다. source/상태/값만 기록하며 개인정보·새 저장·차량 제어는 없다.
 
 [실제 로그·화면](evidence/a01-2026-11-13/README.md)과 [검증 기록](VERIFICATION_LOG.md)을 확인한다. Guest 로그 시간대는 America/Los_Angeles(PST)로 KST는 +17시간이다. 재현 종료 후 시험 앱/로그 수집/AVD 프로세스는 종료했고 설치된 AVD는 보존했다. 다음 실행은 Device Manager에서 해당 AVD를 Cold boot하거나 `emulator -avd Chiilkkabwa_Pleos_2_1_0_A01 -no-snapshot -memory 4096 -cores 4 -gpu host` 후 포워딩한다.
+
+## A01 신뢰성 후속 검증 — 2026-11-13 KST23시
+
+최신 dev `1140c74`에서 앱 코드·권한·게이트를 변경하지 않고 재검증했다. [상세 결과](A01_RELIABILITY_FOLLOWUP.md), [실제 로그·화면](evidence/a01-2026-11-13-reliability/README.md).
+
+- 공식 전체 카드 가이드와 설치 콘솔48개 카드에 벨트 체결·실제 주차브레이크 전용 입력이 확인되지 않았다. Seat Belt/Parking Brake/Electronic Parking Brake는 Telltales 경고등이다. 경고등 On에서 새 앱 구독을 해도 belt=false, parkingBrake=false였다. **벨트true·실제 PB_ON=true·전체 워밍업은 BLOCKED/NOT_VERIFIED**이며 조건을 우회하지 않았다.
+- Settings에서 **325.96초** 중단 후 같은 PID로 복귀해 화면과 새 brake=true 수신을 확인했다. 중단 시 전체 DISCONNECTED/null, 복귀 이후 콘솔0% 복원으로 false 수신. 이 한정 시나리오 PASS.
+- Sleep의 Asleep/Display OFF에서 전체 RGB=0 캡처, Wake 후 정상 화면/새 초기 신호를 관측했다. 기존 검은 캡처도 전체 RGB=0이지만 당시 전원 상태가 없어 **기존 사건의 원인은 NOT_VERIFIED**다. ColorBuffer/EGL 경고가 정상 화면에서도 관측돼 GPU 결함 확정 근거로 쓰지 않는다. 더 긴 중단/호스트 절전/GPU 비교는 미검증.
+- 기본off·debug EMULATOR opt-in·실차/release 차단 유지. 앱 수정 없이 문서·합성 시험 증거만 갱신했다.
