@@ -61,20 +61,21 @@ export class EdgeTracker {
   }
 }
 
+/** 안전벨트는 조작 이벤트가 아닌 체결 상태 확인 미션(S08)이다.
+ * 이미 체결한 벨트는 풀지 않으며, 미지원/확인 불가 상태는 성공으로 처리하지 않는다.
+ * 브레이크·방향지시등의 시작 이후 edge 판정은 유지한다.
+ */
 export function seatBeltJudge() {
-  const edge = new EdgeTracker();
-  let sawUnbuckled = false;
   return {
     id: 'SEAT_BELT', title: '안전벨트 매기',
-    start(s, now) { edge.reset(s.driverBeltBuckled, now); sawUnbuckled = usable(s.driverBeltBuckled) && s.driverBeltBuckled.value === false; },
+    start() { /* 상태 확인에는 과거 변화 기록이 필요 없다. */ },
     update(s) {
-      const b = blocking(s.driverBeltBuckled); if (b) return unavailable(b);
-      const v = edge.newValue(s.driverBeltBuckled);
-      if (v === false) sawUnbuckled = true;
-      if (v === true && sawUnbuckled) return done(s.driverBeltBuckled.source, '딸깍, 좋아요 출발 준비 1단계 완료');
-      return sawUnbuckled
-        ? progress(1, 1, '안전벨트를 ‘딸깍’ 소리 나게 매 주세요')
-        : progress(1, 1, '이미 매고 있네요. 한 번 풀었다가 다시 매 볼까요?');
+      const belt = s.driverBeltBuckled;
+      const blocked = blocking(belt); if (blocked) return unavailable(blocked);
+      if (!usable(belt)) return progress(1, 1, '안전벨트 상태를 확인 중이에요. 이미 맸다면 그대로 유지해 주세요.');
+      return belt.value === true
+        ? done(belt.source, '안전벨트가 체결되어 있어요. 그대로 유지해 주세요.')
+        : progress(1, 1, '안전벨트를 매 주세요. 이미 맸다면 풀지 말고 그대로 두세요.');
     },
   };
 }

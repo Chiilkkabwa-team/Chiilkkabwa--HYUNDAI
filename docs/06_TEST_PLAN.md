@@ -7,8 +7,8 @@
 |---|---|---|---|
 | T01 | 신규 설치, 기록 없음 | 주차 확인 전 어떤 조작도 요구하지 않음 | gate_locks_when_unknown |
 | T02 | 기어 D / 주차 브레이크 해제 / 주행 제한 | 잠금 + 이유 한 문장 | gate_* |
-| T03 | 신호 미지원 / 권한 거부 | 원인별 다른 안내, 건너뛰기·모의 전환 | unsupported_signal_gives_unavailable |
-| T04 | 미션 시작 전부터 브레이크 밟음 | 초기값으로 완료되지 않음 | brake_already_pressed_does_not_complete |
+| T03 | 신호 미지원 / 권한 거부 | 원인별 다른 안내, 건너뛰기·모의 전환 | unsupported_signal_gives_unavailable, belt_permission_denied_* |
+| T04 | 미션 시작 전부터 브레이크 밟음 | 초기값으로 완료되지 않음(안전벨트는 예외: 이미 체결하면 그대로 완료, 재탈착 금지) | brake_already_pressed_does_not_complete, belt_already_buckled_* |
 | T05 | 시작 후 밟음→뗌 | 새 이벤트로만 성공, 0.25초 내 피드백 | brake_* |
 | T06 | 미션 중 주행 제한 | 즉시 잠금·상태 저장, 완료 없음 | runner_pause_and_resume |
 | T07 | 재주차 후 재개 | 게이트·권한 재확인, 이전 값으로 완료 안 됨 | runner_pause_and_resume, old_values_before_start_are_ignored |
@@ -23,7 +23,7 @@
 ## 2. Virtual Console 수동 시험 절차(vehicle 플레이버)
 1. `adb forward tcp:8088 tcp:8088` → 127.0.0.1:8088
 2. Safety: 주차브레이크 ON, Motion: 기어 P → 앱 ‘연습 시작’ 활성 확인
-3. Safety: 안전벨트 해제→체결 → 미션 1 완료 확인
+3. Safety: 이미 체결 상태라면 풀지 않고 미션 1 완료. 별도 시나리오에서는 미체결→체결도 완료 확인
 4. Motion: 브레이크 밟음→뗌 → 미션 2
 5. (방향지시등 콘솔 항목이 없으면 기록하고 건너뛰기 경로 시험)
 6. Motion: 기어 D, 속도 20 → 잠금 화면, 소리·애니메이션 없음

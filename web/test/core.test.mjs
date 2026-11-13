@@ -47,11 +47,30 @@ test('unsupported_signal_gives_unavailable', () => {
   const j = C.seatBeltJudge(); j.start(parked(0), 0);
   assert.deepEqual(j.update(parked(0, { driverBeltBuckled: st('UNSUPPORTED') }), 1), { kind: 'unavailable', status: 'UNSUPPORTED' });
 });
-test('belt_already_buckled_requires_rebuckle', () => {
-  const j = C.seatBeltJudge(); j.start(parked(0), 0);
-  assert.equal(j.update(parked(0, { driverBeltBuckled: ok(true, 5) }), 5).kind, 'progress');
-  j.update(parked(0, { driverBeltBuckled: ok(false, 6) }), 6);
-  assert.equal(j.update(parked(0, { driverBeltBuckled: ok(true, 7) }), 7).kind, 'done');
+test('belt_already_buckled_completes_without_rebuckle', () => {
+  const j = C.seatBeltJudge(); j.start(parked(0), 10);
+  const p = j.update(parked(0, { driverBeltBuckled: ok(true, 0) }), 11);
+  assert.equal(p.kind, 'done');
+  assert.equal(p.source, 'EMULATOR');
+  assert.match(p.praise, /그대로 유지/);
+});
+test('belt_unbuckled_waits_until_fastened', () => {
+  const j = C.seatBeltJudge();
+  j.start(parked(0, { driverBeltBuckled: ok(false, 0) }), 10);
+  const p = j.update(parked(0, { driverBeltBuckled: ok(false, 11) }), 11);
+  assert.equal(p.kind, 'progress'); assert.match(p.hint, /매 주세요/);
+  assert.equal(j.update(parked(0, { driverBeltBuckled: ok(true, 20) }), 20).kind, 'done');
+});
+test('belt_unknown_waits_for_confirmed_true', () => {
+  const j = C.seatBeltJudge(); j.start(parked(0, { driverBeltBuckled: st('UNKNOWN') }), 10);
+  const p = j.update(parked(0, { driverBeltBuckled: st('UNKNOWN', 11) }), 11);
+  assert.equal(p.kind, 'progress'); assert.match(p.hint, /확인 중/);
+  assert.equal(j.update(parked(0, { driverBeltBuckled: ok(true, 20) }), 20).kind, 'done');
+});
+test('belt_permission_denied_is_unavailable', () => {
+  const j = C.seatBeltJudge(); j.start(parked(0), 10);
+  assert.deepEqual(j.update(parked(0, { driverBeltBuckled: st('PERMISSION_DENIED') }), 11),
+    { kind: 'unavailable', status: 'PERMISSION_DENIED' });
 });
 test('turn_signal_left_right_off', () => {
   const j = C.turnSignalJudge(); j.start(parked(0), 0);

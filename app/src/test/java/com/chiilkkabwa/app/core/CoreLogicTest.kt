@@ -97,12 +97,34 @@ class CoreLogicTest {
         assertEquals(Progress.Unavailable(SignalStatus.UNSUPPORTED), p)
     }
 
-    @Test fun belt_already_buckled_requires_rebuckle() {
+    @Test fun belt_already_buckled_completes_without_rebuckle() {
         val j = SeatBeltJudge()
         j.start(parked().copy(driverBeltBuckled = ok(true, 0)), 10)
-        assertTrue(j.update(parked().copy(driverBeltBuckled = ok(true, 20)), 20) is Progress.InProgress)
-        j.update(parked().copy(driverBeltBuckled = ok(false, 30)), 30)
-        assertTrue(j.update(parked().copy(driverBeltBuckled = ok(true, 40)), 40) is Progress.Done)
+        val p = j.update(parked().copy(driverBeltBuckled = ok(true, 0)), 11)
+        assertTrue(p is Progress.Done)
+        assertEquals(E, (p as Progress.Done).source)
+        assertTrue(p.praise.contains("그대로 유지"))
+    }
+
+    @Test fun belt_unbuckled_waits_until_fastened() {
+        val j = SeatBeltJudge()
+        j.start(parked().copy(driverBeltBuckled = ok(false, 0)), 10)
+        assertTrue(j.update(parked().copy(driverBeltBuckled = ok(false, 11)), 11) is Progress.InProgress)
+        assertTrue(j.update(parked().copy(driverBeltBuckled = ok(true, 20)), 20) is Progress.Done)
+    }
+
+    @Test fun belt_unknown_waits_for_confirmed_true() {
+        val j = SeatBeltJudge()
+        j.start(parked().copy(driverBeltBuckled = Signal.unknown(E)), 10)
+        assertTrue(j.update(parked().copy(driverBeltBuckled = Signal.unknown(E)), 11) is Progress.InProgress)
+        assertTrue(j.update(parked().copy(driverBeltBuckled = ok(true, 20)), 20) is Progress.Done)
+    }
+
+    @Test fun belt_permission_denied_is_unavailable() {
+        val j = SeatBeltJudge()
+        j.start(parked(), 10)
+        assertEquals(Progress.Unavailable(SignalStatus.PERMISSION_DENIED),
+            j.update(parked().copy(driverBeltBuckled = Signal.failed(SignalStatus.PERMISSION_DENIED, E, 11)), 11))
     }
 
     @Test fun turn_signal_left_right_off() {

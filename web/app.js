@@ -1246,7 +1246,7 @@ function guide(s) {
         const id = judgeState?.judge.id; const p = judgeState?.progress;
         if (p?.kind === 'done') return ['잘했어요 앱에서 <b>[다음]</b>을 눌러요.', null];
         if (p?.kind === 'unavailable') return ['신호를 읽을 수 없어 앱이 건너뛰기를 안내해요.', null];
-        if (id === 'SEAT_BELT') return [V.driverBeltBuckled.value ? '<b>안전벨트</b>를 한 번 풀었다가 다시 매요.' : '이제 <b>안전벨트</b>를 매요.', 'r-belt'];
+        if (id === 'SEAT_BELT') return [V.driverBeltBuckled.value ? '이미 <b>안전벨트</b>를 매고 있다면 그대로 두세요.' : '이제 <b>안전벨트</b>를 매요.', 'r-belt'];
         if (id === 'BRAKE_PRESS_RELEASE') return [p?.step === 2 ? '이제 <b>페달 그림</b>에서 손을 떼요(천천히 떼짐).' : '<b>페달 그림</b>을 꾹 누르고 있거나(누른 만큼 깊게) 막대를 끝까지 밀어요.', 'r-brake'];
         if (id === 'TURN_SIGNAL') return [['방향지시등 <b>◀ 왼쪽</b>', '방향지시등 <b>오른쪽 ▶</b>', '방향지시등 <b>끔</b>'][(p?.step || 1) - 1], 'r-turn'];
         if (id === 'WIPER') return ['<b>와이퍼</b>를 켜 보세요.', 'r-wiper'];
@@ -1378,9 +1378,13 @@ async function startDemo() {
     }
     if (at <= 2) {
       if (mi <= 0) {
-        await step('이미 매고 있던 벨트는 인정하지 않아요 → 풀었다가', 1300); click('#c-belt');
-        await step('다시 ‘딸깍’', 800); click('#c-belt');
-        await step('차가 확인했어요', 1500); click('#nextBtn');
+        if (V.driverBeltBuckled.value) {
+          await step('안전벨트가 이미 체결되어 있어요. 풀지 말고 그대로 유지해요', 1300);
+        } else {
+          await step('미체결 상태라면 안전벨트를 매요', 1000); click('#c-belt');
+        }
+        await waitFor(() => judgeState?.progress?.kind === 'done');
+        await step('안전벨트 상태를 확인했어요', 1500); click('#nextBtn');
       }
       if (mi <= 1) {
         await step('브레이크를 끝까지 꾹', 600); await ramp(setBrake, 0, 100, 500);
