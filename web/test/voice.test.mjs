@@ -402,3 +402,21 @@ test('speaker_requires_end_callback_and_ignores_late_callbacks', async (t) => {
   assert.equal(await failed, 'dropped');
   assert.equal(speaker.lastError, 'synthesis-failed');
 });
+
+test('speaker_prefers_local_korean_voice_and_reports_missing_korean', (t) => {
+  const previous = globalThis.speechSynthesis;
+  t.after(() => {
+    if (previous === undefined) delete globalThis.speechSynthesis;
+    else globalThis.speechSynthesis = previous;
+  });
+  const english = { name: 'English', lang: 'en-US', localService: true };
+  const remote = { name: 'Remote Korean', lang: 'ko-KR', localService: false };
+  const local = { name: 'Local Korean', lang: 'ko-KR', localService: true };
+  globalThis.speechSynthesis = { getVoices: () => [english, remote, local] };
+  const preferred = new Speaker();
+  assert.equal(preferred.voice, local);
+  globalThis.speechSynthesis = { getVoices: () => [english] };
+  const unavailable = new Speaker();
+  unavailable.unlock();
+  assert.equal(unavailable.state().ok, false);
+});

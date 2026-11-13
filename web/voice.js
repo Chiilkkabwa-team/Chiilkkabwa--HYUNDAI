@@ -45,9 +45,9 @@ export const LINES = {
   TURN_WIDE: { line: '좌회전은 더 안쪽으로도 돼요.', goals: ['좌회전'], advice: '중앙선 끝을 보고 돌아요.' },
   PARK_SLOW: { line: '후진 속도가 지금 좋아요.', goals: ['주차'], advice: '후진은 걷는 속도보다 느리게.' },
   // 11/12 회의: 교차로 회전은 '길 안내'가 아니라 '주의'만. 내비가 이미 방향을 말하므로 방향 안내는 하지 않는다.
-  TURN_LEFT_CAUTION: { line: '좌회전은 마주 오는 차부터 봐요.', goals: ['좌회전', '그냥 몸풀기'], advice: '깜빡이를 켜고, 마주 오는 차와 횡단보도를 확인한 뒤 돌아요.' },
-  TURN_RIGHT_CAUTION: { line: '우회전 전엔 멈춰서 주위를 봐요.', goals: ['좌회전', '그냥 몸풀기'], advice: '우회전은 횡단보도 앞에서 한 번 멈추고, 보행자를 확인한 뒤 천천히 돌아요.' },
-  STEADY: { line: '지금처럼 아주 안정적이에요.', goals: null, advice: '', once: true },
+  TURN_LEFT_CAUTION: { line: '좌회전 전 맞은편을 봐요.', goals: ['좌회전', '그냥 몸풀기'], advice: '깜빡이를 켜고, 마주 오는 차와 횡단보도를 확인한 뒤 돌아요.' },
+  TURN_RIGHT_CAUTION: { line: '우회전 전 횡단보도를 봐요.', goals: ['좌회전', '그냥 몸풀기'], advice: '우회전은 횡단보도 앞에서 한 번 멈추고, 보행자를 확인한 뒤 천천히 돌아요.' },
+  STEADY: { line: '지금 흐름이 부드러워요.', goals: null, advice: '', once: true },
   // 기본 꺼짐: 내비가 이미 안내하므로 중복이고 잔소리로 느껴진다(docs/13 §3)
   SPEEDING: { line: '제한 속도를 조금 넘었어요.', goals: null, advice: '계기판 숫자를 3~5초마다 한 번씩.', off: true },
 };
@@ -360,7 +360,11 @@ export class Speaker {
       const all = this.api.getVoices();
       if (!all.length) return false;
       // 한국어 음성을 먼저, 없으면 기본 음성
-      this.voice = all.find((v) => /^ko/i.test(v.lang)) || all.find((v) => /ko/i.test(v.name)) || all[0] || null;
+      const korean = all.filter((v) => /^ko(?:-|_|$)/i.test(v.lang));
+      this.voice = korean.find((v) => v.localService && /^ko[-_]kr$/i.test(v.lang))
+        ?? korean.find((v) => v.localService)
+        ?? korean.find((v) => /^ko[-_]kr$/i.test(v.lang))
+        ?? korean[0] ?? null;
       this.ready = true;
       this.onState?.(this.state());
       return true;
@@ -371,8 +375,7 @@ export class Speaker {
   state() {
     if (!this.supported) return { ok: false, why: '이 브라우저는 음성 합성을 지원하지 않아요' };
     if (!this.unlocked) return { ok: false, why: '화면을 한 번 누르면 음성이 나와요' };
-    if (!this.voice) return { ok: false, why: '쓸 수 있는 음성을 찾는 중이에요' };
-    if (!/^ko/i.test(this.voice.lang || '')) return { ok: true, why: `한국어 음성이 없어 ${this.voice.name}로 읽어요` };
+    if (!this.voice) return { ok: false, why: this.ready ? '이 기기에서 쓸 수 있는 한국어 음성이 없어요' : '쓸 수 있는 음성을 찾는 중이에요' };
     return { ok: true, why: `${this.voice.name}` };
   }
 
@@ -390,7 +393,7 @@ export class Speaker {
    */
   speak(text, { rate = 1, pitch = 1, volume = 1 } = {}) {
     return new Promise((resolve) => {
-      if (!this.supported || !this.unlocked) { this.lastError = 'UNAVAILABLE'; return resolve('dropped'); }
+      if (!this.supported || !this.unlocked || (this.ready && !this.voice)) { this.lastError = 'UNAVAILABLE'; return resolve('dropped'); }
       if (this.finishActive || this.api.speaking || this.api.pending) { this.lastError = 'BUSY'; return resolve('dropped'); }
       let timeout;
       const finish = (error = null) => {
