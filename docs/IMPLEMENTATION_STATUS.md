@@ -9,7 +9,7 @@ Android 구현 정적 점검일: 2026-11-11 KST (당시 기준 main: de612636cc2
 |---|---|---|---|
 | 주차 안전 게이트 | SafetyGate 및 AAOS 소스 코드 존재. 신호 최신성/복기 입력 정책 보완 필요 | 모의 구현 | 미검증 |
 | 목표·혼자/멘토·약속 | ViewModel/Compose 구현 | 모의 구현 | 미검증 |
-| 벨트/브레이크/방향지시등 워밍업 | 미션 판정 코드 존재, Pleos 실제 어댑터 미연동 | 모의 구현 | 미검증 |
+| 벨트/브레이크/방향지시등 워밍업 | Pleos 읽기 어댑터 연결·기본 off | 모의 구현 | 초기 벨트/브레이크/방향지시등 수신 확인, 전체 미션 미검증 |
 | 가상 주차/조건부 페달 | Kotlin 로직·화면 존재, 실신호는 조건부 | 모의 구현 | 미검증 |
 | AAOS PERF_VEHICLE_SPEED | VehicleSnapshot/구독/권한 선언 없음 | 가상 속도 | 미검증 |
 | 속도 기반 주행 이벤트 | Android 미구현 | 가상 이벤트 | 미검증 |
@@ -19,7 +19,7 @@ Android 구현 정적 점검일: 2026-11-11 KST (당시 기준 main: de612636cc2
 | NaviHelper 경로 전달 | Android 미구현 | 제품 계획 | 미검증 |
 | 프로필 선택/삭제 UX | Store API 존재, 화면 구현 불완전 | 별도 | 미검증 |
 | 암호화 Room 저장 | 미구현. 현재 SharedPreferences JSON | 브라우저 localStorage | 미검증 |
-| Pleos Vehicle 신호 구독 | PleosVehicleSource의 TODO/UNSUPPORTED 상태 | 해당 없음 | 미검증 |
+| Pleos Vehicle 신호 구독 | Seat 벨트·Brake·TurnSignal 구현, 나머지 미연동 | 해당 없음 | API34 Pleos2.1.0에서 일부 실수신 확인, 실차 미검증 |
 
 ### 2026-11-13 확인: 웹 모의 추가 (Claude 브랜치 → PR #7 dev, PR #8 main 병합 완료)
 11/12 회의 + 3인 기능 배정안 v2의 웹 부분. **전부 웹 모의**이고 Android·에뮬레이터·실차는 손대지 않았다. **브랜치 병합은 기능 완료를 뜻하지 않는다.** 웹 64/64 단위 테스트 PASS 보고와 별개로 브레이크 슬라이더, 벨트 미션, 복기 게이트, 음성 우선순위/이벤트 연결 오류가 확인되었으므로 [분업안 v3](THREE_PERSON_FEATURE_PLAN_V3.md)에 수정 과제로 기록했다.
@@ -55,3 +55,9 @@ Android 구현 정적 점검일: 2026-11-11 KST (당시 기준 main: de612636cc2
 - Activity pause/resume에 구독을 연결하고 repository 중지 시 값을 폐기한다. AAOS callback은 시작 당시 sink를 캡처하여 이전 연결 이벤트를 격리한다. 동기 중지 스냅샷 반영으로 warmup 재개를 보완했다.
 - JVM 테스트 mock **44/44**, vehicle **44/44**, 양 debug APK 빌드 및 웹 **79/79** PASS. SDK 클래스/시그니처 확인과 컴파일을 통과한 상태이며 실제 callback 수신 완료를 뜻하지 않는다.
 - 기본 비활성화. 명시적 debug opt-in + EMULATOR에서만 시험 가능하고 실차/release는 차단한다. SDK 미응답 상태에는 추가 client 생성을 차단한다. 리소스 회수·실제 생명주기·권한·Pleos Emulator/실차는 **NOT_VERIFIED**. 자세한 근거/재현 명령은 SDK 노트 A01 절과 검증 로그 참고.
+
+### A01 Pleos Emulator 실측 갱신 (2026-11-13 / 코드258e4da)
+
+공식 Pleos2.1.0 이미지 설치·해시 검증과 API34 AVD 부팅/앱 설치를 완료했다. Vehicle SDK2.3.2, 실제 서비스2.3.22 환경에서 **초기 벨트false, 콘솔 브레이크false/true/false, 방향지시등LEFT/RIGHT/OFF → 앱 소비 snapshot**을 실측했다. 카메라 화면에 의한 pause의 unregister/release·값 폐기와 복귀도 관측했다.
+
+단, 콘솔에 belt-buckled 전용 제어가 없어 벨트true 전환은 미검증이며 Parking Brake 경고등 On이 실제 PARKING_BRAKE_ON을 켜지 않아 안전 게이트는 잠긴다. **전체 미션 완료/게이트 해제/실차는 검증되지 않았다.** 장시간 중단 후 검은 캡처도 관측해 GPU·화면 안정성은 미검증이다. 실기에서 발견한 '정의 없는 페달 권한 요청'을 차단하고 opt-in debug EMULATOR 진단을 보완했다. 기본 off/실차/release 차단 유지. 근거: SDK 노트의 최신 A01 절 및 docs/evidence/a01-2026-11-13.

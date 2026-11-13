@@ -208,3 +208,41 @@ $ javap -p android/car/VehiclePropertyIds.class | grep -i "PEDAL\|GEAR_SEL\|PARK
 설치된 AVD는 `Medium_Phone_API_37.0` 하나, 이미지 tag는 `google_apis_playstore`; Pleos 이미지 없음. `adb devices -l`은 빈 목록. 따라서 앱 설치·Virtual Console→앱 callback·운전석 매핑·실제 권한/주차 게이트·앱 생명주기·실차는 모두 **NOT_VERIFIED**다. 일반 전화 AVD를 Pleos 검증에 대체하지 않았다.
 
 준비 후: opt-in vehicleDebug 빌드 → Pleos AVD에 설치 → `adb forward tcp:8088 tcp:8088` → P/주차브레이크/UX 해제 확인 → 벨트 미체결/체결, 브레이크 밟음/뗌, 방향지시등 좌/우/끔을 변경한다. `adb logcat -v time -s PleosVehicleSource AaosVehicleSource`의 `SDK callback sensor=... value=...`와 앱의 snapshot/미션·출처를 함께 기록한다. get 응답, callback 로그, 앱 화면 판정은 각각 구분한다. 이 절은 시험 절차이며 실행 결과가 아니다.
+
+## A01 에뮬레이터 실측 후속 — 2026-11-13 (Issue #16)
+
+기반 dev `e3958da`, 시험 코드 `258e4da979e96e2150ce1c5c4ece7465fbb9ba07`, 브랜치 `fix/a01-pleos-emulator-validation`. **이 절은 이전 'Pleos 이미지 없음/실수신 미검증' 기록을 갱신한다. 실차 검증을 뜻하지 않는다.**
+
+### 설치·실행 환경
+
+공식 [설치 가이드](https://document.pleos.ai/docs/connect/guide/getting-started/application-development/setup-connect-sdk-emulator)의 Windows 이미지와 [설정 가이드](https://document.pleos.ai/docs/connect/guide/getting-started/application-development/configure-pleos-connect-emulator)를 사용했다. 다운로드 중단 시 기존 8개 파일의 다음 바이트부터 HTTP206/Content-Range를 확인해 이어받았다.
+
+- 공식 파일: `crp_car_emulator.zip`, 4,087,751,964 bytes, SHA-1 `b4f858d5bcc6c71506d7edfc872bcb9e5a11acaa` **일치**. 압축 해제 system.img는18,256,756,736 bytes.
+- SDK package: `system-images;android-34;pleos_car_emulator;x86_64`. ZIP source.properties만 자동 인식하면 `android-automotive` 경로로 잘못 등록되므로 로컬 package.xml에 **공식 crp-sys-img.xml의 path/revision/tag/vendor/license**를 반영했다. 원본 SDK 바이너리를 수정한 것이 아니다.
+- 신규 AVD: `Chiilkkabwa_Pleos_2_1_0_A01`, 공식 device ID `Pleos_Connect_v2_0`(표시는2.1.0), 2560×1440/160dpi, RAM4096MB/4코어, Cold boot, GPUhost, audioInput=no. 기존 휴대전화 AVD 보존.
+- Host: Windows / Intel Arc140T / WHPX 사용 가능. Android Emulator37.2.13(build16740729). GPU는 공식 권장/최소 목록의 외장형과 다르다.
+- 실제 기기: `emulator-5554`, `crp_avd_x86_64`, `release_connect_v2.1.0`, API34, 현재 사용자10. 실제 Vehicle Service는 **2.3.22(versionCode74)**이며 소개 문서의2.3.21과 구분한다. 앱 SDK는2.3.2.
+- `sys.boot_completed=1`, `adb forward tcp:8088 tcp:8088`, `http://127.0.0.1:8088/` HTTP200 및 **DDS ONLINE** 확인. [공식 콘솔 가이드](https://document.pleos.ai/docs/connect/guide/getting-started/application-development/use-vehicle-emulator)를 따랐다.
+- 설치 APK: `-PenablePleosSignals=true :app:assembleVehicleDebug`, USE_MOCK=false. 실측 APK SHA256 `01F40260E753BD22FC25E63FD2500A7B2FD698439F3C9D66C5E5D7D3C3370C8B`. 기본 off와 실차/release 차단은 유지.
+
+### 실제 결과
+
+| 대상 | 콘솔/기기 조작 | SDK callback → 앱이 소비한 snapshot | 판정 |
+|---|---|---|---|
+| 벨트 초기값 | 정상 구독 시작 | BELT=false → belt=OK/false, source=EMULATOR | 초기 실제 수신 PASS |
+| 벨트 체결 전환 | 콘솔 검색 belt: 전용 컨트롤 없음. Telltales의 Seat Belt On/Off는 시험했지만 별개 | 운전석 areaId1 getter는 false 유지, true 미관측 | 체결 전환 BLOCKED/NOT_VERIFIED |
+| 브레이크 | Brake Pedal 0%→100%→0% | false→true→false callback과 brake=OK 상태를 모두 관측 | 콘솔→앱 수신 PASS |
+| 방향지시등 | Turn Signal State Blink left / Off / Blink right / Off | LEFT/OFF/RIGHT/OFF callback → LEFT/NONE/RIGHT/NONE | 콘솔→앱 수신 PASS |
+| 구독 수명 | 방향지시등으로 플랫폼 사각지대 카메라 Activity가 앱을 가림, Off 후 앱 복귀 | unregister/release, 전체 DISCONNECTED/null, 복귀 새 초기 callback 확인 | 해당 시나리오 PASS |
+| 주차 조건 | P/속도0, Parking Brake telltale On/Off | gear=OK/PARK, ux=OK/false이나 실제 parkingBrake=OK/false 유지. 경고등 On은 실제 속성 On이 아님 | 안전 잠금 유지 PASS / 게이트 해제·전체 미션 BLOCKED |
+| 렌더링 | 최초 앱 실행 / 장시간 사용한도 중단 후 재개 | 최초 화면 표시 정상. 최종 재개 후 캡처는 검은 화면이나 신호 trace는 계속 수신 | 장시간 화면 안정성 NOT_VERIFIED |
+
+초기 콜백/getter, 상태 변경 콜백, 앱 소비 상태, 미션 UI 완료를 서로 구분한다. **벨트 체결 전환과 P+주차브레이크+UX 해제를 충족한 전체 워밍업을 완료했다고 보고하지 않는다.** 경고등이나 raw VHAL 주입으로 조건을 우회하지 않았다. 앱에서 차량 제어 API/CONTROL 권한을 추가하지 않았다.
+
+### 실기 중 찾은 문제·보완
+
+이 API34 이미지에는 `android.car.permission.READ_CAR_PEDALS` **정의 자체가 없다**(`pm grant`도 Unknown permission). 기존 무조건 RequestPermission 호출은 GrantPermissionsActivity를 열어 초기 SDK 구독을 pause시켰고, 미응답 draining 차단이 유지되어 재연결되지 않았다. `PackageManager.getPermissionInfo`로 정의 여부를 확인해 **없는 선택 권한 요청을 생략**했다. 수정 전 `am start -W`의 Activity는 GrantPermissionsActivity, 수정 후 MainActivity였고 새 SDK 연결/callback이 확인됐다. 페달 압력 속성도 미지원이므로 기존 UNSUPPORTED 폴백을 유지한다.
+
+opt-in debug EMULATOR에서만 최종 snapshot 진단을 추가했다. `SDK callback`은 SDK listener 진입이고 `A01SignalTrace`는 ViewModel 소비 상태다. source/상태/값만 기록하며 개인정보·새 저장·차량 제어는 없다.
+
+[실제 로그·화면](evidence/a01-2026-11-13/README.md)과 [검증 기록](VERIFICATION_LOG.md)을 확인한다. Guest 로그 시간대는 America/Los_Angeles(PST)로 KST는 +17시간이다. 재현 종료 후 시험 앱/로그 수집/AVD 프로세스는 종료했고 설치된 AVD는 보존했다. 다음 실행은 Device Manager에서 해당 AVD를 Cold boot하거나 `emulator -avd Chiilkkabwa_Pleos_2_1_0_A01 -no-snapshot -memory 4096 -cores 4 -gpu host` 후 포워딩한다.

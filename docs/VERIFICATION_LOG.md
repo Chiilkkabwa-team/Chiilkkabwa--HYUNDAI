@@ -108,3 +108,51 @@
 - [Team CI run 43391694682](https://github.com/Chiilkkabwa-team/Chiilkkabwa--HYUNDAI/actions/runs/43391694682): **Web unit tests SUCCESS / Android tests and both debug flavors SUCCESS**. GitHub job/step 상태를 직접 확인했다. 원격 명령은 workflow의 mock JVM 테스트·mock/vehicle debug 빌드이며, 로컬 vehicle JVM 44개 실행은 별도 증거다.
 - 안전 검토 및 리뷰 후 **기본 off / debug EMULATOR opt-in 한정 / 실차와 release 차단 상태**의 dev 통합을 진행한다. CI 성공은 Emulator 수신을 검증하지 않는다. Issue #16은 실신호 인수 조건이 남아 자동 종료하지 않는다.
 - 통합 전 원격 main은 `c4c15686a30e788143ccc88d8ebaa52500d3187b`. main에 대한 커밋/푸시/PR/병합은 수행하지 않는다. 병합 커밋과 이후 dev CI는 PR 및 GitHub Actions 이력으로 추적한다.
+
+## 2026-11-13 A01 / Issue #16 — Pleos 설치 및 실제 콘솔 신호 검증
+
+- 역할/브랜치: A 담당 요청 / `fix/a01-pleos-emulator-validation`, 기반 dev `e3958dad1bf159479d75e3fc1821969e942b8e59`.
+- 시험 코드: `258e4da979e96e2150ce1c5c4ece7465fbb9ba07`. opt-in vehicleDebug APK SHA256 `01F40260E753BD22FC25E63FD2500A7B2FD698439F3C9D66C5E5D7D3C3370C8B`. 후속 커밋은 문서·증거 정리.
+- 일시: 2026-11-13 KST 최초18:39 이후, 사용한도 중단 후22:33~22:37 재현. guest 로그는 PST이므로 +17시간이 KST다. 서로 다른 PID/재개 구간을 한 연속 실행으로 표현하지 않는다.
+- 환경: Windows, Temurin17, Gradle8.10.2, Intel Arc140T/WHPX, Android Emulator37.2.13, 공식 Pleos Connect2.1.0/API34/x86_64, 신규 AVD `Chiilkkabwa_Pleos_2_1_0_A01`/RAM4096MB/4코어/Cold boot/GPUhost. SDK2.3.2, 실제 Vehicle Service2.3.22(versionCode74), 사용자10, serial emulator-5554. 실차 연결 없음.
+- 설치: 공식4,087,751,964 byte ZIP을 기존8개 조각의 길이 다음 바이트부터 HTTP206/Content-Range로 이어받고 결합했다. SHA1 `b4f858d5bcc6c71506d7edfc872bcb9e5a11acaa` 일치 후 추출. source.properties 자동등록 경로와 공식 remotePackage path가 달라 공식 XML의 메타데이터를 로컬 package.xml에 반영했다. 기존 휴대전화 AVD/사용자 프로젝트/SDK 바이너리 미변경.
+
+| 구분 | 실제 명령/입력 | 실제 결과·판정 |
+|---|---|---|
+| 부팅 | `avdmanager create avd -n Chiilkkabwa_Pleos_2_1_0_A01 -k "system-images;android-34;pleos_car_emulator;x86_64" -d Pleos_Connect_v2_0`, `emulator -avd ... -no-window -no-audio -no-snapshot -memory 4096 -cores 4 -gpu host` | PASS, sys.boot_completed=1, ro.product.device=crp_avd_x86_64, release_connect_v2.1.0 |
+| 콘솔 | `adb -s emulator-5554 forward tcp:8088 tcp:8088`, 브라우저 localhost8088 | PASS, HTTP200/DDS ONLINE, 48개 제어. UI를 실제 조작했으며 앱에서 차량 제어 API를 호출하지 않음 |
+| APK | `-PenablePleosSignals=true :app:assembleVehicleDebug`, `adb -s emulator-5554 install -r -g ...`, `am start --user 10 -W -n com.chiilkkabwa.app/.MainActivity` | 설치/실행 PASS, USE_MOCK=false/source=EMULATOR. 앱 초기 기어P·UX해제 수신, 주차브레이크false |
+| 재현 결함 | 기존 READ_CAR_PEDALS 요청 / `pm grant --user 10 ... READ_CAR_PEDALS` | 권한 정의 없음(Unknown permission), 기존 시작 Activity=GrantPermissionsActivity로 구독 pause/draining 재현. 부여 시도는 실패했고 새 권한을 추가한 것이 아님 |
+| 결함 수정 재검증 | PackageManager.getPermissionInfo로 정의 확인 후 없는 권한 요청 생략, 재빌드/설치/같은 am start | PASS, Activity=MainActivity, SDK service 바인딩 및 세 신호 초기 callback/앱 소비 확인. 선택 페달 압력 UNSUPPORTED 유지 |
+| 벨트 | 정상 구독 초기 callback, Telltales Seat Belt On/Off, 콘솔 검색 belt | 초기false 수신 PASS. areaId1 getter도false. 전용 체결 컨트롤 없고 경고등은 별개이므로 **true 전환 BLOCKED/NOT_VERIFIED** |
+| 브레이크 | Brake Pedal slider Home(0)→End(100)→Home(0) | PASS, callback=false/true/false 및 A01SignalTrace brake=OK/false,true,false |
+| 방향지시등 | Blink left→Off→Blink right→Off | PASS, SDK LEFT/OFF/RIGHT/OFF와 앱 LEFT/NONE/RIGHT/NONE |
+| 수명 | Blink 시 `CarEvsBlindSpotCameraPreviewActivity`가 앱을 가림, Off 시 복귀 | 해당 시나리오 PASS: unregister/removeRequest/release/clearAllListeners, snapshot DISCONNECTED/null, 복귀 새 초기 callback. 모든 주행/프로세스 재생성 시나리오를 검증한 것은 아님 |
+| 안전 게이트 | Parking Brake 경고등On/Off, P/속도0 | 실제parkingBrake=OK/false 유지, gate=PARKING_BRAKE_OFF로 시작 차단 PASS. 실제 PB_ON=true·Ready 및 전체 워밍업 UI는 **BLOCKED**. telltale을 PB_ON으로 대신 사용하지 않음 |
+| 화면 | 최초 표시·중단 후 최종 screencap | 최초 정상 화면, 장시간 중단 후 검은 캡처도 관측. 신호 수신 로그는 유효하지만 **장시간 렌더링 안정성 NOT_VERIFIED** |
+| 회귀 | `.\gradlew.bat --offline :app:testMockDebugUnitTest :app:testVehicleDebugUnitTest :app:assembleMockDebug :app:assembleVehicleDebug` (R: ASCII 별칭 경로), `node --test web/test/*.test.mjs` | PASS: mock44/44, vehicle44/44, 양debug빌드, 웹79/79. 테스트/빌드는 기본off 상태로 복원했고 실기 설치 APK만 opt-in이었다 |
+| 실차/릴리스 | 실행·제출 안 함 | NOT_VERIFIED/NOT_APPLICABLE. 실차/release 및 기본off 정책 보존 |
+
+### 보존 증거와 재현 경계
+
+[evidence 안내](evidence/a01-2026-11-13/README.md), [최종 원본 수집 로그](evidence/a01-2026-11-13/console-reproduction.log), [해제 로그](evidence/a01-2026-11-13/sdk-release-reproduction.log), [최초 안전잠금 화면](evidence/a01-2026-11-13/app-gate-locked.png), [장시간 재개 후 검은 캡처](evidence/a01-2026-11-13/app-display-after-resume-black.png).
+
+- 최종 재현 로그의05:35:00(BRAKEtrue),05:35:18(BRAKEfalse),05:35:25(LEFT),05:35:52(OFF),05:36:05(RIGHT),05:36:25(OFF)에 SDK callback과 앱 소비trace가 함께 있다. UI입력과 로그를 매 단계 대조했으며 선택한 앱 태그를 파일로 직접 연속 수집했다. 앞선 부분 로그의 순환 누락을 완전한 원본이라고 주장하지 않는다.
+- 증거 파일의 required 값/callback/소비trace 존재를 스크립트로 검사해 PASS. SDK 바이너리·APK·AVD·전체 로그·호스트 계정 경로/개인정보는 커밋하지 않는다.
+- 종료 시 P/브레이크0/방향지시등Off, 경고등Off로 복원. 시험 앱·로그 수집·에뮬레이터 프로세스 정상 종료. 설치 AVD 보존, 다음 실행 Cold boot 필요.
+
+### S-ID·Gate 판정 (실측 범위 한정)
+
+- S01 PASS: 읽기 전용 호출·권한 유지, 시뮬레이터 UI 입력만 사용. 제어 API/직접VHAL/새권한 없음.
+- S02 공개SDK 실물/실행 PASS. 공모전·스토어 승인을 새로 받은 것은 아님. 공개 설치/콘솔/SDK 링크는03_PLEOS_SDK_NOTES 최신절, COMPLIANCE_REGISTER의O03/P04/P06 참고.
+- S03 PASS(잠금·중지/복귀 시나리오), PB_ON=true/안전게이트해제는 NOT_VERIFIED. 조건 완화 없음.
+- S04 카메라에 가려질 때 중지 PASS, 장시간 렌더링/전체 주행UX정책은 NOT_VERIFIED.
+- S05 NOT_VERIFIED: 실제 주행 중 수집·음성·백그라운드 유지 허용을 주장하지 않음. 실차 경로 차단 유지.
+- S06 NOT_APPLICABLE: 음성 변경 없음, 기존 음성테스트 회귀 PASS.
+- S07 PASS(관측): bool/enum/출처/실수신과 앱 소비 구분. 미측정 값을 추론하지 않음.
+- S08 실차 미션차단/기존 안전벨트 정책 보존 PASS, 실제 체결전환·미션UI완료 NOT_VERIFIED.
+- S09 PASS(변경): opt-in debug EMULATOR 고정신호 진단만, 새 저장/업로드/PII 수집 없음. 전체 앱 개인정보 인증 아님.
+- S10 PASS(보고): 컴파일/초기수신/상태전환/UI/실차 단계 구분.
+- S11 NOT_VERIFIED(성능/화면): GPU 공식 최소목록 밖, 최초 플랫폼 profile/inputmethod 크래시와 장시간 검은 캡처 관측. 신호 기능 결과와 별개. 외부 자산 추가 없음.
+- S12 NOT_APPLICABLE: 공식 제출·release APK·main/공개 전환 없음.
+- G1/G2: 배정된A01·공식 SDK/설치/권한 증거/독립브랜치 PASS. G3: 기본off/실차차단/오류폴백/잠금 PASS. G4: 위 단위·빌드·실기 범위 PASS, 벨트전환·전체UI 등은 명시적BLOCKED. G5: 원격CI/최신dev 충돌 확인 후 해당 안전한 변경만 통합. Issue#16은 남은 실기 조건이 있어 열린 상태 유지.
