@@ -101,3 +101,10 @@
 - G5 **기본 off의 개발 통합만 조건부 가능**: 독립 리뷰 중요 지적 3개 수정 후 재검토에서 차단급 결함 없음. 실수신 미검증을 완료로 승격하지 않는다. 원격 병합/CI 결과는 아래 후속 기록에서 확인.
 
 남은 차단: Pleos 이미지/장치 준비, Virtual Console 실제 callback→snapshot→미션 수신, SDK 영구 미응답의 실제 자원 회수와 복구. 공개 취소 API가 없어 진행 중 callback 전 release하지 않는 대신 재연결을 차단한다. 이 제한은 출시/실차 사용 전에 해결·검증해야 한다. Issue #16의 실신호 인수 조건은 열린 상태로 남긴다.
+
+### A01 원격 통합 전 CI (2026-11-13 17:17 KST)
+
+- PR [#17](https://github.com/Chiilkkabwa-team/Chiilkkabwa--HYUNDAI/pull/17), head `aac7ead3bcb77a85f28b06b432feeabd7c6c43f7`, base `dev b66f28e`.
+- [Team CI run 43391694682](https://github.com/Chiilkkabwa-team/Chiilkkabwa--HYUNDAI/actions/runs/43391694682): **Web unit tests SUCCESS / Android tests and both debug flavors SUCCESS**. GitHub job/step 상태를 직접 확인했다. 원격 명령은 workflow의 mock JVM 테스트·mock/vehicle debug 빌드이며, 로컬 vehicle JVM 44개 실행은 별도 증거다.
+- 안전 검토 및 리뷰 후 **기본 off / debug EMULATOR opt-in 한정 / 실차와 release 차단 상태**의 dev 통합을 진행한다. CI 성공은 Emulator 수신을 검증하지 않는다. Issue #16은 실신호 인수 조건이 남아 자동 종료하지 않는다.
+- 통합 전 원격 main은 `c4c15686a30e788143ccc88d8ebaa52500d3187b`. main에 대한 커밋/푸시/PR/병합은 수행하지 않는다. 병합 커밋과 이후 dev CI는 PR 및 GitHub Actions 이력으로 추적한다.
