@@ -253,3 +253,22 @@
 ### A04 최신 dev 통합 전 충돌 확인
 
 PR #20 최초 CI에서 웹 및 Android 테스트/양debug빌드 SUCCESS를 확인했다. 병합 직전 A01 문서 PR #21이 dev `1e690022d725a1f65ea171f55194e8c68200c989`로 먼저 들어와 두 검증 대장의 끝부분이 충돌했다. 양쪽 A01/A04 절을 모두 보존해 해결했다. 웹·Android 실행 코드 차이는 없으며 웹105/105를 다시 확인했다. 갱신 head의 CI와 최종 병합 상태는 PR #20/Actions 이력으로 추적한다.
+
+
+## 2026-11-13 C01 / E3 — 복기 게이트 잠금 누락 수정
+
+- 담당 역할: C(복기·기록·UI)
+- 브랜치 / 기준: `fix/c01-review-gate` ← `origin/dev` 64d25b1
+- 환경: Linux 클라우드 컨테이너, JDK 21, Gradle 8.10.2, Android SDK platforms;android-35, Playwright Chromium. 에뮬레이터 없음
+- 문제: `REVIEW` 단계에서 주행이 아닌 잠금(주차 브레이크 해제, 신호 UNKNOWN/STALE/DISCONNECTED/UNSUPPORTED)이 오면 상태를 그대로 둬서 복기·장면 재현 창이 열린 채 남았다(S03 위반)
+- 수정: 웹 `core.js onGate`와 Android `SessionReducer.onGate`의 REVIEW 분기. 주행이 아닌 잠금도 `lockReason`을 세워 잠그고, 단계는 REVIEW로 두어 작성 중 복기를 지킨다. 다시 주차가 확인되면 `lockReason`만 지워 같은 복기로 돌아온다. 주행 제한·기어 변경은 기존대로 DRIVING_LOCK. 화면: 웹 `screenKey`가 멈춤 화면으로, 잠기는 순간 장면 재현 창(`RP.closePip`)과 오버레이를 닫는다. Android `AppRoot`는 잠긴 REVIEW에서 GateScreen
+- 게이트 조건 완화: 없음
+
+| 시험 | 명령/증거 | 결과 |
+|---|---|---|
+| 웹 단위 | `node --test web/test/*.test.mjs` (신규 4개: 브레이크 해제 잠금, UNKNOWN/DISCONNECTED/STALE/UNSUPPORTED 잠금, 주행 제한→DRIVING_LOCK, 재주차 시 같은 복기 복귀) | PASS 109/109 |
+| Android 단위 + 빌드 | `./gradlew :app:testMockDebugUnitTest :app:assembleMockDebug` (신규 `review_locks_on_non_driving_lock_and_resumes`) | PASS 79/79, mock debug 빌드 |
+| 브라우저 시나리오 | Playwright: 연습 주행(속도 0→35→0) → 주차 → 복기 → 사건 점으로 장면 재현 창 열기 → 콘솔 주차 브레이크 해제 → 다시 걸기 | PASS: 해제 즉시 '복기를 잠시 닫았어요' 멈춤 화면, 장면 재현 창 0개, 재주차 시 복기 화면 복귀. 콘솔 오류 0 |
+| 에뮬레이터 / 실차 | 미실행(Pleos AVD 없음) | NOT_VERIFIED |
+
+규정: **S03 PASS(웹·JVM 단위 범위)**, S04 PASS(웹 화면 범위: 잠기면 장면 재현 즉시 종료) / 에뮬레이터 NOT_VERIFIED, S07·S10 NOT_APPLICABLE(출처 표기 변경 없음)

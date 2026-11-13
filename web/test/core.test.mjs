@@ -97,6 +97,35 @@ test('session_flow_parked_drive_review_and_trip_summary', () => {
   const sum = C.summarize(s.tripStart, s.tripEnd);
   assert.equal(sum.durationMin, 14); assert.ok(Math.abs(sum.distanceKm - 3.2) < 1e-9); assert.equal(sum.durationFromVehicle, true);
 });
+// E3(C01): 복기 중 주차 확인이 깨지면 잠그고, 다시 주차하면 같은 복기를 이어서 연다
+const reviewState = () => ({ ...C.initialSession(), phase: 'REVIEW', lockReason: null, tripStart: { wallClockMs: 0 }, tripEnd: { wallClockMs: 60_000 } });
+test('review_locks_when_parking_brake_released', () => {
+  const R = parked(5, { parkingBrakeOn: ok(false, 5) });
+  const s = C.onGate(reviewState(), C.evaluateGate(R), R, 1000);
+  assert.equal(s.phase, 'REVIEW', '작성 중인 복기를 지키려고 단계는 유지');
+  assert.equal(s.lockReason, 'PARKING_BRAKE_OFF', '그러나 잠긴다');
+  assert.deepEqual(s.tripEnd, { wallClockMs: 60_000 }, '트립 기록은 그대로');
+});
+test('review_locks_when_signal_unknown_or_disconnected', () => {
+  for (const status of ['UNKNOWN', 'DISCONNECTED', 'STALE', 'UNSUPPORTED']) {
+    const R = parked(5, { gear: st(status, 5) });
+    const s = C.onGate(reviewState(), C.evaluateGate(R), R, 1000);
+    assert.equal(s.lockReason, 'UNKNOWN_STATE', `${status}이면 잠금`);
+  }
+});
+test('review_drive_restriction_starts_new_drive', () => {
+  const R = parked(5, { uxRestricted: ok(true, 5) });
+  const s = C.onGate(reviewState(), C.evaluateGate(R), R, 1000);
+  assert.equal(s.phase, 'DRIVING_LOCK');
+});
+test('review_resumes_when_parked_again', () => {
+  const R = parked(5, { parkingBrakeOn: ok(false, 5) });
+  let s = C.onGate(reviewState(), C.evaluateGate(R), R, 1000);
+  const P = parked(6);
+  s = C.onGate(s, C.evaluateGate(P), P, 2000);
+  assert.equal(s.phase, 'REVIEW'); assert.equal(s.lockReason, null);
+  assert.deepEqual(s.tripEnd, { wallClockMs: 60_000 }, '다시 주차해도 같은 복기');
+});
 test('preparing_pause_resumes_when_brake_reapplied', () => {
   let s = { ...C.initialSession(), phase: 'PREPARING', lockReason: null };
   const off = parked(0, { parkingBrakeOn: ok(false, 1) });

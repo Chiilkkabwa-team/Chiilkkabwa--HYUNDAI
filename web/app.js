@@ -773,7 +773,7 @@ Screens.go = () => ({
 Screens.paused = () => ({
   mount(el) {
     el.innerHTML = `<div class="screen center"><div class="hero"><div class="hero-m">${mascot('worried', 96)}</div>
-      <div><h1>연습을 잠시 멈췄어요</h1><p class="sub" id="pauseReason"></p><p class="caption">다시 준비되면 하던 곳에서 이어서 해요.</p></div></div></div>`;
+      <div><h1>${session.phase === C.Phase.REVIEW ? '복기를 잠시 닫았어요' : '연습을 잠시 멈췄어요'}</h1><p class="sub" id="pauseReason"></p><p class="caption">${session.phase === C.Phase.REVIEW ? '복기는 주차가 확인될 때만 열려요. 다시 주차하면 보던 곳에서 이어져요' : '다시 준비되면 하던 곳에서 이어서 해요'}</p></div></div></div>`;
   },
   update() { $('#pauseReason').textContent = C.LockReason[session.lockReason] || ''; },
 });
@@ -1029,6 +1029,8 @@ function screenKey() {
     case C.Phase.CHECKING: case C.Phase.READY: return 'gate';
     case C.Phase.DRIVING_LOCK: return appMode === 'coach' && sim ? 'coach' : 'lock';
     case C.Phase.REVIEW:
+      // E3(C01): 주차 확인이 깨지면 복기·리포트·장면 재현을 모두 닫고 멈춤 화면으로. 다시 주차하면 이어서
+      if (session.lockReason) return 'paused';
       // 연습 모드: 리플레이를 한 번 보여 준 뒤 복기 폼으로. 평가·강습 모드는 리포트 안에 들어 있다.
       if (appMode === 'practice' && !replayShown) return 'replay';
       return appMode !== 'practice' && simReport ? 'report' : 'review';
@@ -1297,6 +1299,8 @@ function tick() {
   const before = session;
   session = C.onGate(session, gate, snap, simMs);
   if (before.phase !== session.phase) onPhaseChange(before.phase, session.phase);
+  // E3(C01): 복기 중 주차 확인이 깨지면 장면 재현(작은 창)부터 바로 닫는다
+  if (session.phase === C.Phase.REVIEW && session.lockReason && !before.lockReason) { RP.closePip(); overlay = null; }
   else if (before.phase === C.Phase.PREPARING && before.lockReason && !session.lockReason && judgeState) judgeState.judge.start(snapshot(), now()); // 재개: 새 관측부터
   if (session.phase === C.Phase.PREPARING && !session.lockReason && judgeState && (prep.step === 'mission' || prep.step === 'pedal')) {
     if (judgeState.progress?.kind !== 'done') {

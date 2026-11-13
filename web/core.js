@@ -213,7 +213,11 @@ export function onGate(state, gate, s, now) {
     case Phase.DRIVING_LOCK:
       return locked === null ? { ...state, phase: Phase.REVIEW, lockReason: null, tripEnd: mark(s, now) } : { ...state, lockReason: locked };
     case Phase.REVIEW:
-      return locked !== null && drivingLike ? { ...state, phase: Phase.DRIVING_LOCK, lockReason: locked, tripStart: mark(s, now), tripEnd: null } : state;
+      // E3(C01): 복기는 주차가 '지금도' 확인될 때만 열린다. 주행이 아닌 잠금(주차 브레이크 해제, 신호 UNKNOWN/STALE 등)도
+      // 복기를 잠근다. 단계는 REVIEW로 남겨 작성 중인 복기를 지키고, 다시 주차가 확인되면 이어서 연다.
+      if (locked === null) return state.lockReason ? { ...state, lockReason: null } : state;
+      if (drivingLike) return { ...state, phase: Phase.DRIVING_LOCK, lockReason: locked, tripStart: mark(s, now), tripEnd: null };
+      return state.lockReason === locked ? state : { ...state, lockReason: locked };
     default: return state;
   }
 }
