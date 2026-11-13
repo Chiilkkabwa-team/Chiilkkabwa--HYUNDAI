@@ -8,6 +8,7 @@ import * as OB from './onboarding.js';
 import * as RP from './replay.js';
 import * as LEARN from './learn.js';
 import { aboutHtml } from './about.js';
+import { holdPedal, bindBrakeSlider } from './pedal-control.js';
 
 // 캔버스에서 쓰는 색은 리터럴을 적지 않고 CSS 토큰에서 읽는다(테마를 따라가도록).
 // styles.css 의 :root / :root[data-theme="light"] 가 유일한 색 정의 자리다.
@@ -1120,24 +1121,6 @@ function syncConsole() {
   $('#c-brakeHold').style.setProperty('--press', String(V.brakePedalPct.value / 100));
   $('#c-accelHold').style.setProperty('--press', String(V.accelPedalPct.value / 100));
 }
-/** 누르고 있는 동안 upMs에 걸쳐 0→100, 떼면 downMs에 걸쳐 0으로 */
-function holdPedal(el, get, set, upMs, downMs) {
-  let raf = null; const stop = () => { if (raf) { cancelAnimationFrame(raf); raf = null; } };
-  el.addEventListener('pointerdown', (e) => {
-    e.preventDefault(); stop(); el.classList.add('down'); el.setPointerCapture?.(e.pointerId);
-    let last = performance.now();
-    const up = (t) => { const v = get() + ((t - last) / upMs) * 100; last = t; set(Math.min(100, v)); if (v < 100) raf = requestAnimationFrame(up); };
-    raf = requestAnimationFrame(up);
-  });
-  const release = () => {
-    if (!el.classList.contains('down')) return; el.classList.remove('down'); stop();
-    const t0 = performance.now(), v0 = get();
-    const down = (t) => { const k = Math.min(1, (t - t0) / downMs); set(v0 * (1 - k)); if (k < 1) raf = requestAnimationFrame(down); else raf = null; };
-    raf = requestAnimationFrame(down);
-  };
-  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((ev) => el.addEventListener(ev, release));
-}
-
 /** 핸들 그림: 잡고 돌린 각도만큼(1:1) 돌아간다. 한 바퀴 넘게도 돌릴 수 있다(±540°). */
 function bindWheel(el) {
   let drag = null;
@@ -1175,13 +1158,14 @@ function bindConsole() {
   $('#c-belt').addEventListener('click', () => { if (V.driverBeltBuckled.value) chime('click'); });
   $('#c-fast').onclick = () => { timeScale = timeScale > 1 ? 1 : 30; syncConsole(); };
   $('#c-speed').oninput = (e) => { const v = +e.target.value; setV('speedKmh', v); setV('uxRestricted', v > 0, { onlyIfChanged: true }); syncConsole(); tick(); };
-  $('#c-brake').oninput = (e) => { stopRamp(); setBrake(+e.target.value); tick(); };
   $('#c-steer').oninput = (e) => { setSteer(+e.target.value); tick(); };
   $('#c-steer').addEventListener('pointerdown', () => { const t0 = performance.now(); addEventListener('pointerup', () => { if (performance.now() - t0 > 250) maybeWasdHint(); }, { once: true }); });
   $('#c-steerCenter').onclick = () => { setSteer(0); tick(); };
   // 페달 그림(11/12 회의 A05): 마우스 클릭은 0/1뿐이라 세기를 못 준다 → **누르고 있는 시간만큼 깊게**.
   // 짧게 톡 = 살살, 길게 = 세게. 슬라이더는 그대로 두어 정확한 값도 넣을 수 있다.
-  holdPedal($('#c-brakeHold'), () => V.brakePedalPct.value, setBrake, 1600, 900);
+  const cancelBrakeHold = holdPedal($('#c-brakeHold'), () => V.brakePedalPct.value, setBrake, 1600, 900);
+  // 수동 슬라이더는 페달 그림의 누름/놓음 애니메이션보다 우선한다.
+  bindBrakeSlider($('#c-brake'), cancelBrakeHold, setBrake, tick);
   holdPedal($('#c-accelHold'), () => V.accelPedalPct.value, setAccel, 2500, 250);
   bindWheel($('#c-wheel'));
   $('#c-belt').addEventListener('click', () => { if (!V.driverBeltBuckled.value) return; const r = $('#r-belt'); r.classList.remove('clack'); void r.offsetWidth; r.classList.add('clack'); });
