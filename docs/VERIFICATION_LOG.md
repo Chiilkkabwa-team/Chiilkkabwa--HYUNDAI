@@ -156,3 +156,49 @@
 - S11 NOT_VERIFIED(성능/화면): GPU 공식 최소목록 밖, 최초 플랫폼 profile/inputmethod 크래시와 장시간 검은 캡처 관측. 신호 기능 결과와 별개. 외부 자산 추가 없음.
 - S12 NOT_APPLICABLE: 공식 제출·release APK·main/공개 전환 없음.
 - G1/G2: 배정된A01·공식 SDK/설치/권한 증거/독립브랜치 PASS. G3: 기본off/실차차단/오류폴백/잠금 PASS. G4: 위 단위·빌드·실기 범위 PASS, 벨트전환·전체UI 등은 명시적BLOCKED. G5: 원격CI/최신dev 충돌 확인 후 해당 안전한 변경만 통합. Issue#16은 남은 실기 조건이 있어 열린 상태 유지.
+
+## A02 독립 속도 변화 이벤트 엔진 — 2026-11-13 KST
+
+- 담당: 사용자 배정 A 파트 / Codex A02. Worktree: `Chiilkkabwa-A02`, 브랜치 `feature/a02-speed-events`.
+- 착수 SHA `e3958dad1bf159479d75e3fc1821969e942b8e59`. 작업 중 A01 PR #18이 dev에 병합되어 **최신 origin/dev `b47e96d9f28437e6ac218ec1140a66e14de480c6`로 fast-forward 후 다시 검증**했다. A02 시험 코드/계약 문서 commit: `11d43ab6435938a1d3323a1b0884a52149b5b220`.
+- 범위: 신규 `core/event/SpeedEventEngine.kt`, `SpeedEvents.kt`, 신규 JVM `SpeedEventEngineTest.kt`. 상세 [입출력·설정·오류·연결 계약](A02_SPEED_EVENTS.md). 앱/SDK/차량/주행 UI/음성/저장소에 연결하지 않은 순수 Kotlin 엔진.
+- 환경: Windows PowerShell, Temurin JDK `17.0.20.1+1`, Gradle wrapper `8.10.2`, compile SDK 35, 기존 로컬 Android SDK·Gradle 캐시, Node `v24.22.1`. 새 의존성/권한 추가 없음. Gradle은 명령 내 `ANDROID_HOME`만 사용하고 저장소 설정을 바꾸지 않았다.
+
+| 실제 실행/시나리오 | 결과 및 증거 |
+|---|---|
+| 수정 전 `.\gradlew.bat --offline :app:testMockDebugUnitTest` | PASS, 기존 44개. 이후 테스트부터 신규 A02 파일 포함 |
+| 신규 테스트 먼저 실행 | 모델/엔진 미구현으로 컴파일 실패 확인 후 구현. 추가 회귀로 처리 시계 역전·km/h 기본 감소 경계 누락을 실제 재현하고 수정 |
+| 최종 `.\gradlew.bat --offline :app:testMockDebugUnitTest :app:testVehicleDebugUnitTest :app:assembleMockDebug :app:assembleVehicleDebug` | **PASS**, 최신 dev b47e96d 기반. mock 78/78, vehicle 78/78(기존 44 + A02 34), 두 debug 빌드. 최종 명령 BUILD SUCCESSFUL / 18s |
+| `node --test web/test/*.test.mjs` | **PASS 79/79**. 웹 변경 없음. 새 dev의 A01 변경에도 웹 파일은 동일 |
+| JUnit XML | `app/build/test-results/testMockDebugUnitTest/TEST-*.xml`, vehicle 동일 경로. 각 flavor CoreLogic 20 / ParkedVoicePreview 4 / AaosSignalDecode 4 / PleosSignalSession 14 / VehicleRepositoryLifecycle 2 / SpeedEventEngine 34, failures/errors 0 |
+| A02 테스트 범위 | 첫 표본, 정상·일정 속도, 증가/감소 임계값 및 바로 아래, m/s↔km/h 혼합, 원본 근거·ID·출처, 모든 non-OK 상태, 누락·null·NaN/Infinity·음수/상한, freshness/미래·시각 역전·Long 경계, 최소/최대 간격, 이상 변화, 지속 구간·히스테리시스·쿨다운 경계/소급 방지, 출처·세션 격리, reset 우회 방지, 설정 오류, 수치 정밀도 |
+| 금지 파일 비교 | 최신 origin/dev와 **7개 모두 내용 변경 없음**: PleosVehicleSource, AaosVehicleSource, VehicleSignals, Signals, ChiilViewModel, AndroidManifest, app/build.gradle.kts. A01 갱신분은 dev에서 상속했으며 A02 수정이 아님 |
+| 정적 검토 | `git diff --check`/staged 검사 PASS. 신규 엔진의 Android/Pleos SDK/제어 API import·호출 0, 새 권한/의존성 0. 기존 공유 VehicleSnapshot/이벤트 소비자 변경 0 |
+| A02 에뮬레이터/실차/SDK 신호 | **NOT_VERIFIED / NOT_RUN**. 테스트의 EMULATOR/VEHICLE 출처 값은 provenance 전달용 합성 입력이며 실수신 증거가 아님. A01의 별도 에뮬레이터 검증 결과를 A02 PASS로 대체하지 않는다 |
+| 원격 CI·통합 | push CI **PASS** ([run 43438750304](https://github.com/Chiilkkabwa-team/Chiilkkabwa--HYUNDAI/actions/runs/43438750304): Web unit tests 및 Android tests/both debug flavors SUCCESS). PR [#19](https://github.com/Chiilkkabwa-team/Chiilkkabwa--HYUNDAI/pull/19), base=dev 생성. PR CI 별도 실행 중, dev 병합은 아직 안 함. |
+
+기존 AAOS deprecated API 및 native symbol strip 경고는 앞선 전체 빌드에서 확인되었으며 A02 코드 오류가 아니다. APK/XML/빌드 캐시·개인 설정은 커밋하지 않는다.
+
+### 규정 게이트 (A02 변경 범위)
+
+| ID | 상태/근거 |
+|---|---|
+| S01 | PASS(정적): 차량 제어/SDK 호출 없음. 독립 계산만 수행 |
+| S02 | NOT_APPLICABLE: 새 SDK/비공개 API/권한/외부 STT 도입 없음. 공식 SDK 가용성을 새로 인증하지 않음 |
+| S03/S04 | NOT_APPLICABLE: 주차 게이트·UX·화면·입력 변경 없음. 속도 0으로 주차를 판단하지 않음 |
+| S05 | NOT_VERIFIED: 주행 중 수집·생명주기·기록 허용을 검증하지 않음. 엔진의 실신호·앱 경로는 연결하지 않음 |
+| S06 | NOT_APPLICABLE: 음성 재생·발화 의사결정 변경 없음 |
+| S07 | PASS(JVM): 숫자/시간/단위/상태 검사, 원본 표본·출처·계산 근거 보존. 브레이크 조작·위험·주변 차량·운전 능력 추론 없음. COMPLIANCE_REGISTER P06 및 팀 정책 연결 |
+| S08 | NOT_APPLICABLE: 차량 미션/페달 조작 요청 없음 |
+| S09 | PASS(정적): 새 저장/업로드/개인정보·정밀 위치 수집 없음. 이전 표본·고정 크기 중복 상태만 메모리에 보유. 전체 앱 보안 인증은 아님 |
+| S10 | PASS(JVM/문서): MOCK/EMULATOR/VEHICLE 출처 전달·혼합 구간 차단. 단위 테스트·빌드·실수신 검증을 분리 |
+| S11 | 외부 자산·의존성 도입 NOT_APPLICABLE. 실제 장비 CPU/RAM 성능은 NOT_VERIFIED |
+| S12 | NOT_APPLICABLE: 제출·공개 전환·릴리스·APK 업로드 없음. main 참조 변경 없음 |
+
+- G1 PASS: 사용자 A02 배정, 수정 범위·완료 기준·보호 파일 명시.
+- G2 PASS(코어 범위): SAFETY_RULES/COMPLIANCE_REGISTER/분업안 검토, 기존 SignalStatus/SignalSource만 사용. 개발 임계값을 공식/실차 안전 기준으로 표현하지 않음.
+- G3 PASS(격리): 검증되지 않은 값은 버리고 원인별 판정 불가 반환. 실차/UI 경로 미연결. A01/B/C 통합 조건 별도 문서화.
+- G4 PASS(로컬): 관련 신규·회귀 테스트와 두 debug 빌드 성공. SDK/Emulator/실차와 원격 CI는 미검증.
+- G5 **통합 준비**: 최신 dev 기반·보호 파일 무변경·검증 성공. `dev`/`main` 병합은 이번에 수행하지 않는다.
+
+남은 일: 실제 속도 공급의 지원·권한·단위·획득 시각 검증, 단일 시계 계약/누락 timeout/세션 수명 연결, 실제 주기·측정 노이즈에 맞는 임계값·필터 보정, B/C eventId/시간 매핑과 정책 검증. 현재 결과는 두 표본 사이의 평균 속도 변화이며 브레이크 사용이나 도로 위험을 확정하지 않는다.
