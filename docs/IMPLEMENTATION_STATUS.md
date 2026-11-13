@@ -61,3 +61,10 @@ Android 구현 정적 점검일: 2026-11-11 KST (당시 기준 main: de612636cc2
 공식 Pleos2.1.0 이미지 설치·해시 검증과 API34 AVD 부팅/앱 설치를 완료했다. Vehicle SDK2.3.2, 실제 서비스2.3.22 환경에서 **초기 벨트false, 콘솔 브레이크false/true/false, 방향지시등LEFT/RIGHT/OFF → 앱 소비 snapshot**을 실측했다. 카메라 화면에 의한 pause의 unregister/release·값 폐기와 복귀도 관측했다.
 
 단, 콘솔에 belt-buckled 전용 제어가 없어 벨트true 전환은 미검증이며 Parking Brake 경고등 On이 실제 PARKING_BRAKE_ON을 켜지 않아 안전 게이트는 잠긴다. **전체 미션 완료/게이트 해제/실차는 검증되지 않았다.** 장시간 중단 후 검은 캡처도 관측해 GPU·화면 안정성은 미검증이다. 실기에서 발견한 '정의 없는 페달 권한 요청'을 차단하고 opt-in debug EMULATOR 진단을 보완했다. 기본 off/실차/release 차단 유지. 근거: SDK 노트의 최신 A01 절 및 docs/evidence/a01-2026-11-13.
+
+### A02 속도 변화 이벤트 코어 (2026-11-13 / 11d43ab)
+
+- 최신 dev `b47e96d` 기반 `feature/a02-speed-events`에서 독립 Kotlin `SpeedEventEngine`/`SpeedEvents`와 JVM 테스트를 추가했다. 기존 VehicleSnapshot·A01 어댑터·UI·권한·Gradle 의존성은 수정하지 않았다. [A02 입력/출력·판정·연결 계약](A02_SPEED_EVENTS.md).
+- 명시적 속도 단위·타임스탬프·출처·상태에서 유효한 표본 쌍의 Δv/Δt를 계산한다. 급격한 속도 증가/감소와 원본 근거를 반환하며, 브레이크 조작·주변 위험을 판단하지 않는다. 중복 구간/쿨다운·히스테리시스·오류/신선성·출처/시간 단절을 처리한다.
+- 로컬 A02 34개 포함 mock/vehicle JVM 각각 **78/78**, 두 debug 빌드와 웹 **79/79 PASS**. 검증 근거는 VERIFICATION_LOG의 A02 절. `dev` 통합 준비 상태이며 push/병합은 하지 않았다.
+- 실제 차량/SDK·Emulator 입력·주행 수집 정책·노이즈/임계값 보정·B/C 연결은 **NOT_VERIFIED**. 앱 실신호 경로는 미연결이며 A01의 실수신 검증을 A02 실행 증거로 사용하지 않는다.
