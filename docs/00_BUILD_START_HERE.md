@@ -1,6 +1,6 @@
 # 00. 신규 팀원 Android Studio 시작
 
-기준: 2026-11-11. 공통 개발 규칙은 [TEAM_GUIDE.md](TEAM_GUIDE.md), 구현 상태는 [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md).
+기준: 2026-11-13 (개발 통합 브랜치 `dev` 적용). 공통 개발 규칙은 [TEAM_GUIDE.md](TEAM_GUIDE.md), 구현 상태는 [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md).
 
 ## 1. 공통 환경
 
@@ -26,6 +26,8 @@ git branch -a
 ~~~
 
 **이미 clone했다면 새로 clone하지 않는다.** 기존의 안쪽 Chiilkkabwa--HYUNDAI 폴더에서 실행한다. 이미 존재하는 저장소에 git init을 다시 하면 안 된다.
+
+**주의: clone 직후 기본 브랜치가 `main`일 수 있다.** 이것은 제출/안정 브랜치다. 기능 개발 시작 전 반드시 아래 §5처럼 `dev`로 전환한다.
 
 ## 3. Android Studio 설치 확인
 
@@ -61,16 +63,17 @@ Virtual Console 입력 항목과 **앱에 실제로 수신된 신호**는 별개
 
 ~~~powershell
 git fetch origin --prune
-git switch main
-git pull --ff-only origin main
+git switch dev  # 로컬 dev가 없으면: git switch -c dev --track origin/dev
+git pull --ff-only origin dev
 git switch -c feature/my-task
 ~~~
 
-담당 경계, 통합 규칙, PR 제목 형식은 [TEAM_GUIDE.md](TEAM_GUIDE.md) 참조.
+개별 기능 브랜치의 PR/병합 대상은 `dev`다. `main`으로 바로 PR·병합하지 않는다. 담당 경계, 통합 규칙, PR 제목 형식은 [TEAM_GUIDE.md](TEAM_GUIDE.md) 참조.
 
 ## 6. 완료 기준
 
 - 기능별 책임 범위와 변경 파일을 파악했다.
 - 컴파일/테스트를 실제 실행하고 결과를 기록했다.
 - 모의 신호와 실제 수신을 구분했다.
-- 기능 브랜치만 푸시했으며, 통합 담당자가 검증 후 main에 병합한다.
+- 기능 브랜치만 푸시했으며, 통합 담당자가 검증 후 `dev`에 병합한다.
+- `main`은 별도의 팀 릴리스 승인 후 `dev → main` PR로만 갱신한다.
