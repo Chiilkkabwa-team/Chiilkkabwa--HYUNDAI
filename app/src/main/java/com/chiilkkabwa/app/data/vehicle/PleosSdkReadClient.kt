@@ -42,12 +42,16 @@ internal class PleosSdkReadClient(private val context: Context) : PleosReadClien
 
     override fun check(sensor: PleosSensor, complete: (Boolean) -> Unit, failed: (Exception) -> Unit) {
         requireReadPermission(sensor)
+        val reportFailure: (Exception) -> Unit = {
+            Log.w("PleosVehicleSource", "SDK capability failed sensor=$sensor type=${it.javaClass.simpleName} message=${it.message}")
+            failed(it)
+        }
         when (sensor) {
             PleosSensor.BELT -> seat.checkSeatBeltBuckledCapabilities(
-                onComplete = { config, areas -> complete(supportsLeftDriver(config, areas)) }, onFailed = failed,
+                onComplete = { config, areas -> complete(supportsLeftDriver(config, areas)) }, onFailed = reportFailure,
             )
-            PleosSensor.BRAKE -> brake.checkBrakePedalStatusCapabilities({ complete(readable(it)) }, failed)
-            PleosSensor.TURN -> turn.checkTurnSignalStateCapabilities({ complete(readable(it)) }, failed)
+            PleosSensor.BRAKE -> brake.checkBrakePedalStatusCapabilities({ complete(readable(it)) }, reportFailure)
+            PleosSensor.TURN -> turn.checkTurnSignalStateCapabilities({ complete(readable(it)) }, reportFailure)
         }
     }
 

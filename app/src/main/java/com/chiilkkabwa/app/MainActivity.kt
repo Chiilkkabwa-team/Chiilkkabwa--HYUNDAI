@@ -1,6 +1,7 @@
 package com.chiilkkabwa.app
 
 import android.os.Bundle
+import android.content.pm.PackageManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -37,7 +38,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (!BuildConfig.USE_MOCK) pedalPermission.launch(AaosVehicleSource.PEDAL_PERMISSION) // 페달 미션(조건부)용 위험 권한
+        if (!BuildConfig.USE_MOCK && hasPedalPermissionDefinition()) {
+            pedalPermission.launch(AaosVehicleSource.PEDAL_PERMISSION)
+        }
         if (BuildConfig.DEBUG && BuildConfig.USE_MOCK) {
             val audio = AndroidPreviewAudio(this)
             previewAudio = audio
@@ -61,6 +64,14 @@ class MainActivity : ComponentActivity() {
                 AppRoot(vm, ui, voicePreview, previewResult.value.message())
             }
         }
+    }
+
+    /** API 34 Pleos에는 이 선택 권한 자체가 없을 수 있다. 미지원 권한 창을 열지 않는다. */
+    private fun hasPedalPermissionDefinition(): Boolean = try {
+        packageManager.getPermissionInfo(AaosVehicleSource.PEDAL_PERMISSION, 0)
+        true
+    } catch (_: PackageManager.NameNotFoundException) {
+        false
     }
 
     override fun onResume() {
