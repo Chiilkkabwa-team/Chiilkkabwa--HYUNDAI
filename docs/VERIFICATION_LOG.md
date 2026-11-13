@@ -227,3 +227,29 @@
 - S01/S09 PASS(변경 정적): 차량 제어/권한/SDK·외부 전송/새 개인정보 수집 없음. 나머지 S-ID의 변경 범위와 NOT_APPLICABLE 사유는 A04 문서 참조. 제품 전체 규정/성능 인증 아님.
 - G1~G4 PASS: 배정 범위/독립 브랜치·공유 계약·Mock 설계·단위/브라우저 실행 증거 확보. G5는 최신 origin/dev와 충돌 및 CI 확인 후 웹 변경만 통합. `main=c4c15686a30e788143ccc88d8ebaa52500d3187b` 보존.
 - 남은 한계: 3D/실제 회전 물리·보행자·신호등 통행권·실차 차로 위험은 범위 밖. 시연 점수는 가상 교통에 따라 달라짐. 브라우저 검사는 Chrome/Playwright 설치가 필요하며 기존 CI의 Node 단위 검사와 구분한다.
+
+## 2026-11-13 KST23:20~23:33 — A01 신뢰성 후속 / Issue #16
+
+- 브랜치 `fix/a01-signal-reliability`, 기반/시험 코드 `1140c7487f9e5cde39be1ecc41e7caef8d25e145`. 앱 코드 변경 없음. [결과·공식 근거·재현 조건](A01_RELIABILITY_FOLLOWUP.md), [증거 목록](evidence/a01-2026-11-13-reliability/README.md).
+- Windows/Arc140T/WHPX, Pleos2.1.0 API34, Emulator37.2.13, Vehicle SDK2.3.2/Service2.3.22, 사용자10, emulator-5554, 기존 전용 AVD Cold boot/GPUhost/4코어/RAM4096MB. 실차 없음.
+- 최신 opt-in APK SHA256 `4BCDFF4F362E018AD22273CB96040E1443531EFCDA7D9F1635C32FD7C664FDC5`. `-PenablePleosSignals=true :app:assembleVehicleDebug` 별도 실행/설치 성공. 초기 경고등 비교 PID24255/30692는 PR18 APK, 중단/재개 PID17157은 최신 dev APK. A01 코드 동일.
+
+| 시험 | 실제 실행 | 결과 |
+|---|---|---|
+| 회귀 | Temurin17/Gradle8.10.2, R: ASCII 별칭 경로에서 `.\gradlew.bat --offline :app:testMockDebugUnitTest :app:testVehicleDebugUnitTest :app:assembleMockDebug :app:assembleVehicleDebug` | mock78/78,vehicle78/78,양debug빌드 PASS. A02 코어 테스트 포함 |
+| 웹 | `node --test web/test/*.test.mjs` | 79/79 PASS |
+| 벨트 | 전체48개 콘솔 카드/공식 가이드 확인, belt 검색 No matching controls, Seat Belt telltale On 후 새 연결 | SDK BELT=false 및 앱 OK/false. 실제 체결true 전환 BLOCKED/NOT_VERIFIED |
+| 주차 브레이크 | Parking Brake와 Electronic Parking Brake 경고등 각각 On/Off, 앱 새 구독 | 실제 parkingBrake=OK/false,gear=PARK,ux=false. PARKING_BRAKE_ON=true 전환 BLOCKED/NOT_VERIFIED |
+| 전체 워밍업 | 실제 주차 게이트 상태와 화면 확인 | PARKING_BRAKE_OFF 잠금, 시작 불가. BLOCKED. 경고등·속도0·Mock/미지원 값 대체 없음 |
+| 실제 중단 | HOME은 pause되지 않아 Settings Activity를 `am start --user 10 -W -a android.settings.SETTINGS`로 실행 | 앱 visibility=8, snapshot 전체 DISCONNECTED/null. 미션 성공 없음 |
+| 325.96초 후 복귀 | 동일 MainActivity `am start --user 10 -W -n com.chiilkkabwa.app/.MainActivity`, 중단 중 콘솔Brake100% | 같은 PID17157/HOT,Awake/Display ON,visibility=0,화면 표시. 새 callback/app brake=true; 콘솔0% 후 false. 한정 시나리오 PASS |
+| 화면 전원 대조 | `input keyevent KEYCODE_SLEEP`, 안정 상태 진단/screencap, `KEYCODE_WAKEUP`, 같은 앱 실행 | Asleep/Display OFF와 RGB전체0 재현. Wake 후 같은 PID/Awake/ON/화면·신호 복구 PASS |
+| 기존 검은 화면 원인 | 기존PNG와 이번PNG RGB 비교, power/display/window/gfxinfo/호스트 로그 대조 | 기존도 RGB전체0. 당시 전원·Surface 기록 없어 원인 확정 NOT_VERIFIED. Awake 검은 화면은 이번 시험 미재현. GPU A/B·더 긴 중단·호스트절전 미검증 |
+
+호스트 ColorBuffer 및 EGL 오류는 정상 화면에서도 나타났고 Settings에도 EGL 경고가 있었다. 이 문자열을 원인 확정이나 앱 수정 근거로 삼지 않았다. 화면 데이터·시계·PID·경과 시간은 실제 수집 자료이며 편집한 이미지로 대체하지 않았다. 단계별 상태만 발췌하고 SDK/APK/AVD/전체 로그/위치·개인정보는 커밋하지 않는다. 콘솔 경고등Off,브레이크0,기어P를 유지한 뒤 앱·우리 로그 수집·AVD 종료,기존 데이터 보존.
+
+규정/게이트(이번 변경 범위): S01 PASS(제어API/권한/VHAL 추가0), S02 PASS(기존공개API·공식콘솔 입력만/공식 승인 새 주장 없음), S03 PASS(잠금·중단 폐기/게이트해제는 NOT_VERIFIED), S04 중단/복귀 한정PASS·전체주행정책NOT_VERIFIED, S05 NOT_VERIFIED(실차·주행·음성차단 유지), S06 NOT_APPLICABLE(음성 변경 없음), S07 PASS(실측·출처·불명 구분), S08 잠금유지PASS·전체미션NOT_VERIFIED, S09 PASS(합성 고정신호·필요 진단만/계정·위치·비밀정보 배제), S10 PASS(빌드·실수신·화면·실차 분리), S11 NOT_VERIFIED(장시간/GPU/성능 미확정), S12 NOT_APPLICABLE(제출·릴리스 없음/main 보존). 공식 근거 범위는 SAFETY_RULES/COMPLIANCE_REGISTER와 상세 보고서 링크 참조. G1/G2/G3 PASS(배정·공식근거·제한 유지), G4 위 표 범위만PASS 및 나머지 명시적BLOCKED, G5 문서·증거만 통합하며 실차/미션 활성화 없음. Issue #16은 열린 상태 유지.
+
+### A04 최신 dev 통합 전 충돌 확인
+
+PR #20 최초 CI에서 웹 및 Android 테스트/양debug빌드 SUCCESS를 확인했다. 병합 직전 A01 문서 PR #21이 dev `1e690024`(전체 SHA는 Git 이력 기준)로 먼저 들어와 두 검증 대장의 끝부분이 충돌했다. 양쪽 A01/A04 절을 모두 보존해 해결했다. 웹·Android 실행 코드 차이는 없으며 웹105/105를 다시 확인했다. 갱신 head의 CI와 최종 병합 상태는 PR #20/Actions 이력으로 추적한다.
