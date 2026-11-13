@@ -63,12 +63,17 @@ import kotlin.math.PI
  * 주행 잠금(DRIVING_LOCK)은 어떤 화면보다 우선한다(정적 화면, 애니메이션·소리 없음).
  */
 @Composable
-fun AppRoot(vm: ChiilViewModel, ui: UiState) {
+fun AppRoot(
+    vm: ChiilViewModel,
+    ui: UiState,
+    onVoicePreview: (() -> Unit)? = null,
+    voicePreviewStatus: String? = null,
+) {
     Box(Modifier.fillMaxSize().background(Tokens.Bg).padding(24.dp)) {
         when (ui.session.phase) {
             Phase.DRIVING_LOCK -> DrivingLockScreen()
             Phase.CHECKING -> GateScreen(ui, onStart = {})
-            Phase.READY -> GateScreen(ui, onStart = vm::startPractice)
+            Phase.READY -> GateScreen(ui, vm::startPractice, onVoicePreview, voicePreviewStatus)
             Phase.PREPARING -> if (ui.gate is GateState.Locked) GateScreen(ui, onStart = {}) else PrepRouter(vm, ui)
             Phase.REVIEW -> ReviewScreen(ui, vm::saveReview)
         }
@@ -113,7 +118,12 @@ fun SourceBadge(src: SignalSource?) {
 
 // ── A-1 안전 게이트 ───────────────────────────────────────
 @Composable
-fun GateScreen(ui: UiState, onStart: () -> Unit) {
+fun GateScreen(
+    ui: UiState,
+    onStart: () -> Unit,
+    onVoicePreview: (() -> Unit)? = null,
+    voicePreviewStatus: String? = null,
+) {
     val s = ui.snapshot
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Title("연습 준비를 확인할게요")
@@ -122,6 +132,10 @@ fun GateScreen(ui: UiState, onStart: () -> Unit) {
         CheckRow("주행 제한 없음", s.uxRestricted.isUsable && s.uxRestricted.value == false)
         (ui.gate as? GateState.Locked)?.let { Body(it.reason.message) }
         BigButton("연습 시작", enabled = ui.gate is GateState.Ready && ui.session.phase == Phase.READY, onClick = onStart)
+        if (onVoicePreview != null && ui.gate is GateState.Ready) {
+            BigButton("음성 안내 듣기 (모의)", ghost = true, onClick = onVoicePreview)
+            voicePreviewStatus?.let { Body(it) }
+        }
         ui.profile.nextGoal?.let { Body("지난번 목표: $it — 이어서 해 볼까요?") }
     }
 }
