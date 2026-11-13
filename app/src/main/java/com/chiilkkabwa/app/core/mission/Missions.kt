@@ -57,25 +57,27 @@ class EdgeTracker<T> {
     }
 }
 
-/** 안전벨트: '미체결 → 체결' 변화를 시작 이후 관측. 이미 매고 있으면 풀었다 다시 매도록 안내 */
+/** 안전벨트는 체결 상태 확인 미션(S08).
+ * 이미 착용한 경우에도 그대로 완료하며, 다시 풀어 매게 하지 않는다.
+ * 다른 조작 미션의 '시작 이후 값 변화' 판정은 유지한다.
+ */
 class SeatBeltJudge : MissionJudge {
     override val id = MissionId.SEAT_BELT
     override val title = "안전벨트 매기"
-    private val edge = EdgeTracker<Boolean>()
-    private var sawUnbuckled = false
     override fun start(s: VehicleSnapshot, nowMs: Long) {
-        edge.reset(s.driverBeltBuckled, nowMs)
-        sawUnbuckled = s.driverBeltBuckled.isUsable && s.driverBeltBuckled.value == false
+        // 벨트는 조작 이력이 아닌 현재 유효 신호를 update()에서 확인한다.
     }
     override fun update(s: VehicleSnapshot, nowMs: Long): Progress {
-        s.driverBeltBuckled.blockingStatus()?.let { return Progress.Unavailable(it) }
-        when (edge.newValue(s.driverBeltBuckled)) {
-            false -> sawUnbuckled = true
-            true -> if (sawUnbuckled) return Progress.Done(s.driverBeltBuckled.source, "딸깍, 좋아요! 출발 준비 1단계 완료")
-            null -> Unit
+        val belt = s.driverBeltBuckled
+        belt.blockingStatus()?.let { return Progress.Unavailable(it) }
+        if (!belt.isUsable) {
+            return Progress.InProgress(1, 1, "안전벨트 상태를 확인 중이에요. 이미 맸다면 그대로 유지해 주세요.")
         }
-        return if (sawUnbuckled) Progress.InProgress(1, 1, "안전벨트를 ‘딸깍’ 소리 나게 매 주세요")
-        else Progress.InProgress(1, 1, "이미 매고 있네요. 한 번 풀었다가 다시 매 볼까요?")
+        return if (belt.value == true) {
+            Progress.Done(belt.source, "안전벨트가 체결되어 있어요. 그대로 유지해 주세요.")
+        } else {
+            Progress.InProgress(1, 1, "안전벨트를 매 주세요. 이미 맸다면 풀지 말고 그대로 두세요.")
+        }
     }
 }
 
