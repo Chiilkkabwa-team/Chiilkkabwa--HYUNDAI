@@ -327,7 +327,12 @@ export function buildReplay(events = [], voice = null, source = 'MOCK') {
       sensor: e.sensor || null,
       kind: e.good ? 'good' : e.info ? 'info' : 'note',
       spoken: voice ? voice.didSpeak(e.eventId) : false,
-      source,
+      source: e.source || source,
+      // A04: 웹 교차로 근거는 복기 저장 후에도 보존한다. 발화 정책에는 관여하지 않는다.
+      ...(e.junctionK != null ? {
+        junctionK: e.junctionK, dir: e.dir, segmentDir: e.segmentDir, phase: e.phase,
+        basis: { ...e.basis },
+      } : {}),
     }));
 }
 

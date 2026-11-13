@@ -42,6 +42,12 @@ let H = loadHistory();
 // 모드: practice(연습 — 공개 SDK 범위) / eval(평가 — 가상) / coach(강습 — 제조사 협업 가정 · 가상)
 let appMode = ['practice', 'eval', 'coach'].includes(H.mode) ? H.mode : 'practice';
 let sim = null; let simReport = null;
+let simManeuver = 'STRAIGHT';
+function setSimManeuver(dir) {
+  simManeuver = ['LEFT', 'RIGHT', 'STRAIGHT'].includes(dir) ? dir : 'STRAIGHT';
+  if (sim) sim.input.maneuver = simManeuver;
+  $$('#c-maneuver button').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.v === simManeuver)));
+}
 
 // ── F12 주행 중 음성 길잡이 · F13 리플레이 ─────────────────────
 // 화면은 건드리지 않는다. 음성이 나와도 잠금 화면은 그대로다(CLAUDE.md §5-4).
@@ -1146,6 +1152,7 @@ function maybeWasdHint() {
 }
 
 function bindConsole() {
+  $$('#c-maneuver button').forEach((b) => (b.onclick = () => setSimManeuver(b.dataset.v)));
   $$('#c-gear button').forEach((b) => (b.onclick = () => {
     if (sim && simRunning() && sim.ego.v > 0.4 && (b.dataset.v === 'P' || b.dataset.v === 'R')) { flashNote('차가 완전히 멈춘 다음 옮길 수 있어요'); return; }
     setV('gear', b.dataset.v, { onlyIfChanged: true });
@@ -1578,7 +1585,8 @@ function evItem(e, i) {
   const sensor = e.sensor ? `<em class="sens">${SENSOR_LABEL[e.sensor]} 센서(가상)</em>` : '';
   const tag = e.pts > 0 ? `<b class="pts bad">−${e.pts}</b>` : e.good ? '<b class="pts good">잘함</b>' : '<b class="pts info">기록</b>';
   const spoke = voice?.didSpeak(e.code, e.t) ? `<span class="rp-spoke" title="주행 중에 음성으로 말한 항목">${icon('sound', 16)} 말했어요</span>` : '';
-  return `<li class="${e.pts > 0 ? 'bad' : e.good ? 'good' : 'info'}"><span class="t">${fmtT(e.t)}</span>${tag}<div><b>${e.title}</b> ${sensor}${spoke}<small>${e.kmh}km/h · ${srcChip('MOCK')} · ${e.advice}</small>${sceneBtn(i, e.t)}</div></li>`;
+  const basis = e.phase === 'ENTRY' ? `<small>2D Mock · 가상 진행 ${{ LEFT: '좌회전', RIGHT: '우회전', STRAIGHT: '직진' }[e.dir] || '미확인'} · 깜빡이 ${{ LEFT: '왼쪽', RIGHT: '오른쪽', NONE: '끔' }[e.basis.signal] || '미확인'} · 진입 ${e.basis.speedKmh.toFixed(1)}km/h · 가상 ${['왼쪽', '가운데', '오른쪽'][e.basis.lane + 1]} 차로</small>` : '';
+  return `<li class="${e.pts > 0 ? 'bad' : e.good ? 'good' : 'info'}"><span class="t">${fmtT(e.t)}</span>${tag}<div><b>${e.title}</b> ${sensor}${spoke}<small>${e.kmh}km/h · ${srcChip('MOCK')} · ${e.advice}</small>${basis}${sceneBtn(i, e.t)}</div></li>`;
 }
 
 // 리포트 사건 → 리플레이 항목 모양(그래프·재현 창이 같은 모양을 쓴다). 순서는 r.events와 같다.
@@ -1711,7 +1719,7 @@ function drawJunctions(ctx, sv, W, Hh, ppm, X, Y) {
   if (lt && sv.t - lt.t < 1.6) {
     const J = SIM.junctionAt(lt.k); const sgn = lt.dir === 'RIGHT' ? 1 : -1; const k = (sv.t - lt.t) / 1.6;
     ctx.strokeStyle = TA('--primary', 0.55 * (1 - k)); ctx.lineWidth = SIM.CAR_W * ppm * 0.6; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(X(e.x), Y(J.s)); ctx.quadraticCurveTo(X(e.x), Y(J.s + SIM.JUNCTION_W / 2), X(e.x + sgn * 7), Y(J.s + SIM.JUNCTION_W / 2)); ctx.stroke(); ctx.lineCap = 'butt';
+    ctx.beginPath(); ctx.moveTo(X(lt.x), Y(J.s)); ctx.quadraticCurveTo(X(lt.x), Y(J.s + SIM.JUNCTION_W / 2), X(lt.x + sgn * 7), Y(J.s + SIM.JUNCTION_W / 2)); ctx.stroke(); ctx.lineCap = 'butt';
   }
 }
 function carTop(ctx, cx, cy, ppm, color, ego, signal, t) {
@@ -1809,8 +1817,11 @@ function simLoop(t) {
   if (simRunning()) {
     sim.input.accel = V.accelPedalPct.value / 100; sim.input.brake = V.brakePedalPct.value / 100;
     sim.input.steer = V.steeringDeg.value; sim.input.signal = V.turnSignal.value; sim.input.gear = V.gear.value;
+    sim.input.maneuver = simManeuver;
+    const junctionBefore = sim.junction.k;
     if (V.gear.value === 'P') sim.ego.v = 0;
     const n = Math.max(1, Math.round(dt / 0.02)); for (let i = 0; i < n; i++) sim.step(dt / n);
+    if (sim.junction.k !== junctionBefore) setSimManeuver('STRAIGHT');
     const kmh = Math.round(sim.ego.v * 3.6);
     if (kmh !== V.speedKmh.value) setV('speedKmh', kmh);
     setV('uxRestricted', sim.ego.v > 0.3, { onlyIfChanged: true });
@@ -1854,6 +1865,7 @@ function setMode(m) {
   applyMode(); render();
 }
 function applyMode() {
+  setSimManeuver('STRAIGHT');
   document.body.dataset.mode = appMode;
   $$('#modeSeg button').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.v === appMode)));
   $('#simGroup').hidden = appMode === 'practice';
@@ -1906,14 +1918,15 @@ async function startSimDemo() {
     await step('후방 센서 감지: 무리한 끼어들기(−8) + 방향지시등 없음(−3)', 2200);
     // 가상 교차로 우회전(A04): 맨 오른쪽 차로 → 교차로 앞에서 속도 줄이고 깜빡이 → 천천히 돌기
     {
-      const J = SIM.nextJunction(sim.ego.s + 110); const R = J.dir === 'RIGHT';
+      // 차로 이동·감속 중에 목표 교차로를 지나치지 않도록 충분히 먼 구간을 고른다.
+      const J = SIM.nextJunction(sim.ego.s + 300); const R = J.dir === 'RIGHT';
       await step(`다음 교차로에서 ${R ? '우' : '좌'}회전 — ${R ? '맨 오른쪽' : '맨 왼쪽'} 차로로 미리 옮겨요`, 300); await steerTo(R ? 1 : -1, J.dir);
-      await waitFor(() => J.s - sim.ego.s < 75, 40000);
+      await waitFor(() => J.s - sim.ego.s < 150, 40000);
       await step(`${R ? '우' : '좌'}회전 구간 — 속도를 줄이고 깜빡이 켜기. 음성: “${VOICE.LINES[R ? 'TURN_RIGHT_CAUTION' : 'TURN_LEFT_CAUTION'].line}”`, 300);
       setAccel(0); await ramp(setBrake, 0, 25, 500);
-      await waitFor(() => sim.ego.v * 3.6 < 20, 9000); setBrake(0); setAccel(8);
-      setV('turnSignal', J.dir); syncConsole();
-      await waitFor(() => sim.junction.k >= J.k, 20000);
+      await waitFor(() => sim.ego.v * 3.6 < 20, 9000); setBrake(0); setAccel(4);
+      setSimManeuver(J.dir); setV('turnSignal', J.dir); syncConsole();
+      await waitFor(() => sim.junction.k >= J.k, 35000);
       setV('turnSignal', 'NONE'); syncConsole();
       const good = sim.lastTurn?.k === J.k && sim.events.some((x) => x.code === 'TURN_GOOD' && x.t >= sim.lastTurn.t);
       await step(good ? '천천히, 알맞은 차로에서 돌았어요 — 교차로 회전 잘함' : '회전 기록이 남았어요 — 주차 후 리포트에서 다시 봐요', 1600); setAccel(25);
