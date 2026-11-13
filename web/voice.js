@@ -17,7 +17,9 @@ export const RULES = {
   maxPerDrive: 5,          // 1회 주행당 최대 발화 수
   maxSecPerLine: 2.5,      // 한 문장 길이 상한
   maxSameCode: 2,          // 같은 종류 지적은 주행당 2회까지
-  steadyAfterSec: 600,     // 10분간 지적이 없으면 칭찬 1회
+  steadyAfterSec: 90,      // 달리는 동안 90초간 지적이 없으면 칭찬 1회(11/12 회의: 잘할 때도 한마디. 10분은 너무 길어 들을 일이 없었다)
+  steadyMinKmh: 10,        // 칭찬은 실제로 달리고 있을 때만(신호 대기 중 칭찬은 어색하다)
+  windowSec: 0.8,          // 이 시간 안에 겹친 상황은 모아서 가장 급한 하나만 말한다
   syllablesPerSec: 6.5,    // 한국어 TTS rate 1.0 기준 추정치(T13에서 실측으로 교체)
 };
 
@@ -42,10 +44,25 @@ export const LINES = {
   LIGHTS_RAIN: { line: '비가 와요. 전조등을 켤까요.', goals: null, advice: '와이퍼를 켤 때 전조등도 같이.' },
   TURN_WIDE: { line: '좌회전은 더 안쪽으로도 돼요.', goals: ['좌회전'], advice: '중앙선 끝을 보고 돌아요.' },
   PARK_SLOW: { line: '후진 속도가 지금 좋아요.', goals: ['주차'], advice: '후진은 걷는 속도보다 느리게.' },
-  STEADY: { line: '지금까지 아주 안정적이에요.', goals: null, advice: '', once: true },
+  // 11/12 회의: 교차로 회전은 '길 안내'가 아니라 '주의'만. 내비가 이미 방향을 말하므로 방향 안내는 하지 않는다.
+  TURN_LEFT_CAUTION: { line: '좌회전은 마주 오는 차부터 봐요.', goals: ['좌회전', '그냥 몸풀기'], advice: '깜빡이를 켜고, 마주 오는 차와 횡단보도를 확인한 뒤 돌아요.' },
+  TURN_RIGHT_CAUTION: { line: '우회전 전엔 멈춰서 주위를 봐요.', goals: ['좌회전', '그냥 몸풀기'], advice: '우회전은 횡단보도 앞에서 한 번 멈추고, 보행자를 확인한 뒤 천천히 돌아요.' },
+  STEADY: { line: '지금처럼 아주 안정적이에요.', goals: null, advice: '', once: true },
   // 기본 꺼짐: 내비가 이미 안내하므로 중복이고 잔소리로 느껴진다(docs/13 §3)
   SPEEDING: { line: '제한 속도를 조금 넘었어요.', goals: null, advice: '계기판 숫자를 3~5초마다 한 번씩.', off: true },
 };
+
+/**
+ * 여러 상황이 한꺼번에 겹치면 **가장 급한 하나만** 말한다(11/12 회의).
+ * 예: 끼어든 차 뒤에 급제동 → '급제동'이 더 위험하므로 그것만. 숫자가 클수록 먼저.
+ * 같은 순간에 둘을 연달아 말하면 운전자는 둘 다 못 듣는다.
+ */
+export const PRIORITY = {
+  CRASH: 100, HARSH_BRAKE_NEEDED: 90, HARSH_BRAKE: 85, UNSAFE_CUT: 80, TAILGATE: 70,
+  NPC_CUTIN: 65, TURN_RIGHT_CAUTION: 60, TURN_LEFT_CAUTION: 60, NO_SIGNAL: 50, ROAD_EDGE: 45,
+  LANE_DRIFT: 40, HARSH_START: 35, LIGHTS_RAIN: 30, SPEEDING: 25, TURN_WIDE: 20, PARK_SLOW: 15, STEADY: 5,
+};
+export const priorityOf = (code) => PRIORITY[code] ?? 0;
 
 /** 한국어 발화 길이 추정(초). 한글 음절은 1, 그 밖의 글자는 0.4로 센다. */
 export function estimateSec(text) {
@@ -90,6 +107,30 @@ export class VoiceGuide {
     this.skipped = [];    // 왜 말하지 않았는지(T13 점검·디버그 패널용)
     this.pending = null;  // 포커스 대기 중인 발화
     this.lastQuietAt = 0; // 마지막 지적 시각(STEADY 판정)
+    this.window = null;   // 모으는 중인 상황들 {t0, items:[{code,tSec,kmh}]}
+  }
+
+  /**
+   * 상황을 바로 말하지 않고 짧게(windowSec) 모은다. flush()가 가장 급한 하나를 고른다.
+   * 끼어들기 직후 급제동처럼 1초 안에 이어지는 상황을 한 번에 비교하기 위해서다.
+   */
+  queue(code, tSec, kmh = 0) {
+    if (!this.window) this.window = { t0: tSec, items: [] };
+    this.window.items.push({ code, tSec, kmh });
+  }
+
+  /** 모으는 시간이 끝났으면 가장 급한 하나로 consider()한다. 나머지는 'LOWER_PRIORITY'로 남긴다. */
+  flush(tSec, { force = false } = {}) {
+    const w = this.window;
+    if (!w || (!force && tSec - w.t0 < RULES.windowSec)) return null;
+    this.window = null;
+    const items = w.items.slice().sort((a, b) => priorityOf(b.code) - priorityOf(a.code) || a.tSec - b.tSec);
+    const [top, ...rest] = items;
+    for (const r of rest) {
+      if (LINES[r.code] && !LINES[r.code].once) this.lastQuietAt = Math.max(this.lastQuietAt, r.tSec);
+      this.skipped.push({ code: r.code, atSec: r.tSec, why: 'LOWER_PRIORITY' });
+    }
+    return this.consider(top.code, top.tSec, top.kmh);
   }
 
   /** 이 코드가 지금 열려 있는가(목표 한정 + 기본 꺼짐 항목) */
@@ -128,9 +169,11 @@ export class VoiceGuide {
     return u;
   }
 
-  /** 10분간 지적이 없었으면 칭찬 한 번 */
-  considerSteady(tSec) {
+  /** 달리는 동안 오래(steadyAfterSec) 지적이 없었으면 칭찬 한 번 */
+  considerSteady(tSec, kmh = RULES.steadyMinKmh) {
     if (tSec - this.lastQuietAt < RULES.steadyAfterSec) return null;
+    if (kmh < RULES.steadyMinKmh) return null;
+    if (this.window) return null; // 지적을 모으는 중이면 칭찬하지 않는다
     return this.consider('STEADY', tSec);
   }
 
@@ -180,7 +223,9 @@ export const THRESHOLDS = {
   harshBrakeMinPedal: 35,    // 브레이크 페달을 실제로 밟았을 때만(미끄러짐·내리막 구분)
   laneChangeDeg: 60,         // 이 각도를 넘으면 차로 변경으로 본다
   minKmhForLane: 20,         // 주차장 조작을 차로 변경으로 오해하지 않게
-  codeCooldownSec: 6,        // 같은 코드를 매 프레임 밀어 넣지 않는다
+  codeCooldownSec: 6,
+  turnMinKmh: 3,             // 회전 주의: 이 속도 사이에서 깜빡이를 켜면 교차로 회전으로 본다
+  turnMaxKmh: 35,        // 같은 코드를 매 프레임 밀어 넣지 않는다
 };
 
 export class SignalWatcher {
@@ -222,6 +267,15 @@ export class SignalWatcher {
       if (code && this.#open(code, s.tSec)) out.push(code);
     }
 
+    // 교차로 회전 주의: 천천히 가다가(3~35km/h) 방향지시등을 새로 켰다 = 곧 돈다.
+    // 차로 변경은 보통 더 빠를 때라 구분한다. 길 안내가 아니라 주의만 말한다(11/12 회의).
+    const sig = s.turnSignal || 'NONE';
+    if (driving && sig !== 'NONE' && (p.turnSignal || 'NONE') === 'NONE'
+        && s.kmh >= THRESHOLDS.turnMinKmh && s.kmh <= THRESHOLDS.turnMaxKmh) {
+      const code = sig === 'LEFT' ? 'TURN_LEFT_CAUTION' : 'TURN_RIGHT_CAUTION';
+      if (this.#open(code, s.tSec)) out.push(code);
+    }
+
     // 비 오는데 전조등이 꺼져 있다 — 와이퍼를 켠 순간에만 본다(계속 잔소리하지 않게)
     if (s.wiperOn && !s.lowBeamOn && !(p.wiperOn && !p.lowBeamOn) && this.#open('LIGHTS_RAIN', s.tSec)) out.push('LIGHTS_RAIN');
 
@@ -236,6 +290,7 @@ export const TITLES = {
   TAILGATE: '안전거리 부족', UNSAFE_CUT: '무리한 끼어들기', NPC_CUTIN: '옆 차가 끼어듦',
   CRASH: '충돌(가상)', LIGHTS_RAIN: '비 오는데 전조등 꺼짐', TURN_WIDE: '좌회전 반경',
   PARK_SLOW: '후진 속도', STEADY: '안정적으로 주행', SPEEDING: '제한 속도 초과',
+  TURN_LEFT_CAUTION: '교차로 좌회전', TURN_RIGHT_CAUTION: '교차로 우회전',
 };
 
 /**
