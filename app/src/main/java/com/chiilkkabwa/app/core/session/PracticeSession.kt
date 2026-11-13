@@ -51,9 +51,14 @@ object SessionReducer {
                 if (locked == null) state.copy(phase = Phase.REVIEW, lockReason = null, tripEnd = mark(s, nowMs))
                 else state.copy(lockReason = locked.reason)
 
+            // E3(C01): 주행이 아닌 잠금(주차 브레이크 해제·신호 불명)도 복기를 잠근다.
+            // 단계는 REVIEW로 남겨 작성 중인 복기를 지키고, 다시 주차가 확인되면 lockReason만 지운다.
             Phase.REVIEW ->
-                if (locked != null && drivingLike) state.copy(phase = Phase.DRIVING_LOCK, lockReason = locked.reason, tripStart = mark(s, nowMs), tripEnd = null)
-                else state
+                when {
+                    locked == null -> if (state.lockReason != null) state.copy(lockReason = null) else state
+                    drivingLike -> state.copy(phase = Phase.DRIVING_LOCK, lockReason = locked.reason, tripStart = mark(s, nowMs), tripEnd = null)
+                    else -> if (state.lockReason == locked.reason) state else state.copy(lockReason = locked.reason)
+                }
         }
     }
 

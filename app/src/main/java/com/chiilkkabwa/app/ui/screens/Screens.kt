@@ -75,7 +75,8 @@ fun AppRoot(
             Phase.CHECKING -> GateScreen(ui, onStart = {})
             Phase.READY -> GateScreen(ui, vm::startPractice, onVoicePreview, voicePreviewStatus)
             Phase.PREPARING -> if (ui.gate is GateState.Locked) GateScreen(ui, onStart = {}) else PrepRouter(vm, ui)
-            Phase.REVIEW -> ReviewScreen(ui, vm::saveReview)
+            // 복기 중 주차 확인이 깨지면(E3) 복기 대신 확인 화면을 보여 준다. 기록은 남아 있다
+            Phase.REVIEW -> if (ui.session.lockReason != null) GateScreen(ui, onStart = {}) else ReviewScreen(ui, vm::saveReview)
         }
         if (ui.newBadges.isNotEmpty() && ui.session.phase != Phase.DRIVING_LOCK) BadgeToast(ui) { vm.dismissBadges() }
         if (ui.mockMode) DebugPanel(vm, ui, Modifier.align(Alignment.BottomEnd))

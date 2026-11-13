@@ -175,6 +175,19 @@ class CoreLogicTest {
         assertTrue(kotlin.math.abs(sum.distanceKm!! - 3.2f) < 0.01f)
     }
 
+    /** E3(C01): 복기 중 주차 브레이크가 풀리거나 신호가 불명이면 잠그고, 다시 주차하면 같은 복기로 돌아온다 */
+    @Test fun review_locks_on_non_driving_lock_and_resumes() {
+        val start = SessionState(phase = Phase.REVIEW, lockReason = null)
+        val released = parked(5).copy(parkingBrakeOn = ok(false, 5))
+        var st = SessionReducer.onGate(start, SafetyGate.evaluate(released), released, 1000)
+        assertEquals(Phase.REVIEW, st.phase)
+        assertEquals(LockReason.PARKING_BRAKE_OFF, st.lockReason)
+        val again = parked(6)
+        st = SessionReducer.onGate(st, SafetyGate.evaluate(again), again, 2000)
+        assertEquals(Phase.REVIEW, st.phase)
+        assertEquals(null, st.lockReason)
+    }
+
     /** 준비 중 주차 브레이크를 풀었다가 다시 걸면 일시 정지가 풀려야 한다(2026-11-04 수정, web 테스트와 같은 시나리오) */
     @Test fun preparing_pause_resumes_when_brake_reapplied() {
         var st = SessionState(phase = Phase.PREPARING, lockReason = null)
