@@ -2,7 +2,7 @@
 // 이 테스트가 깨지면 '주행 중에 너무 많이 말하는 앱'이 된다. 규칙을 바꾸려면 docs/01 F12도 같이 고친다.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { VoiceGuide, RULES, LINES, PRIORITY, priorityOf, estimateSec, tooLongLines, buildReplay, REPLAY_EMPTY, SignalWatcher, THRESHOLDS, TITLES } from '../voice.js';
+import { VoiceGuide, RULES, LINES, PRIORITY, priorityOf, estimateSec, tooLongLines, buildReplay, REPLAY_EMPTY, SignalWatcher, THRESHOLDS, TITLES, Speaker } from '../voice.js';
 
 const g = (o = {}) => new VoiceGuide({ goal: '출발·정지', mode: 'solo', ...o });
 
@@ -120,7 +120,7 @@ test('voice_lines_have_no_commands_or_scores', () => {
 
 // ── F13 리플레이 ──
 const evs = [
-  { t: 92, code: 'HARSH_BRAKE', title: '급제동', kmh: 42, sensor: null, advice: '옛 조언' },
+  { eventId: 1, t: 92, code: 'HARSH_BRAKE', title: '급제동', kmh: 42, sensor: null, advice: '옛 조언' },
   { t: 30, code: 'TAILGATE', title: '안전거리 부족', kmh: 55, sensor: 'front', advice: '옛 조언' },
   { t: 150, code: 'GOOD_CHANGE', title: '차로 변경 잘함', kmh: 50, sensor: 'side', good: true, advice: '잘했어요' },
 ];
@@ -133,7 +133,7 @@ test('replay_orders_by_time', () => {
 
 test('replay_marks_spoken', () => {
   const v = g();
-  v.consider('HARSH_BRAKE', 92); v.committed();
+  v.consider('HARSH_BRAKE', 92, 42, 1); v.committed();
   const r = buildReplay(evs, v);
   assert.equal(r.find((x) => x.atSec === 92).spoken, true, '말한 항목에 🔊');
   assert.equal(r.find((x) => x.atSec === 30).spoken, false);
@@ -246,9 +246,10 @@ test('watch_feeds_guide_end_to_end', () => {
   ];
   for (const f of frames) {
     for (const code of w.step(f)) {
-      const u = v.consider(code, f.tSec, f.kmh);
+      const eventId = rows.length + 1;
+      const u = v.consider(code, f.tSec, f.kmh, eventId);
       if (u) v.committed();
-      rows.push({ t: f.tSec, code, title: TITLES[code], kmh: f.kmh });
+      rows.push({ eventId, t: f.tSec, code, title: TITLES[code], kmh: f.kmh });
     }
   }
   assert.equal(v.log.length, 2, '두 상황 모두 말했다');
@@ -300,4 +301,104 @@ test('watcher_turn_signal_at_low_speed_opens_turn_caution', () => {
   const fast = new SignalWatcher();
   fast.step({ tSec: 0, kmh: 70, turnSignal: 'NONE', gear: 'D' });
   assert.deepEqual(fast.step({ tSec: 0.1, kmh: 70, turnSignal: 'LEFT', gear: 'D' }), [], '빠를 때 깜빡이는 차로 변경으로 본다');
+});
+
+test('voice_skips_ineligible_priority_winner_and_uses_next_candidate', () => {
+  const v = g({ goal: '좌회전' });
+  v.queue('HARSH_BRAKE', 10, 18, 1);
+  v.queue('TURN_LEFT_CAUTION', 10.2, 18, 2);
+  assert.equal(v.flush(11).eventId, 2);
+  assert.deepEqual(v.skipped.map(({ eventId, why }) => [eventId, why]), [[1, 'NOT_THIS_GOAL']]);
+});
+
+test('voice_repetition_limit_does_not_hide_a_lower_priority_candidate', () => {
+  const v = g();
+  for (const t of [0, 45]) v.committed(v.consider('HARSH_BRAKE', t));
+  v.queue('HARSH_BRAKE', 90, 18, 1);
+  v.queue('HARSH_START', 90.2, 18, 2);
+  assert.equal(v.flush(91).eventId, 2);
+  assert.equal(v.skipped[0].why, 'SAME_CAP');
+});
+
+test('voice_interval_uses_offer_time_instead_of_event_time', () => {
+  const v = g();
+  v.queue('HARSH_BRAKE', 10, 18, 1);
+  v.committed(v.flush(11));
+  assert.equal(v.consider('HARSH_START', 55), null);
+  assert.ok(v.consider('HARSH_START', 56));
+});
+
+test('voice_caps_legacy_high_settings_at_five', () => {
+  assert.equal(g({ maxPerDrive: 20 }).cap, 5);
+});
+
+test('hazard_and_unknown_direction_are_not_turn_cautions', () => {
+  for (const direction of ['HAZARD', 'UNKNOWN', undefined]) {
+    const w = new SignalWatcher();
+    w.step({ tSec: 0, kmh: 18, turnSignal: 'NONE', gear: 'D' });
+    assert.deepEqual(w.step({ tSec: 0.1, kmh: 18, turnSignal: direction, gear: 'D' }), []);
+  }
+  const w = new SignalWatcher();
+  w.step({ tSec: 0, kmh: 18, gear: 'D' });
+  assert.deepEqual(w.step({ tSec: 0.1, kmh: 18, turnSignal: 'LEFT', gear: 'D' }), []);
+});
+
+test('replay_joins_completed_speech_to_its_event_only', () => {
+  const v = g({ goal: '좌회전' });
+  const playing = v.consider('TURN_RIGHT_CAUTION', 10, 18, 1);
+  const rows = [
+    { eventId: 1, t: 10, code: 'JUNCTION_AHEAD' },
+    { eventId: 2, t: 10, code: 'JUNCTION_AHEAD' },
+  ];
+  assert.deepEqual(buildReplay(rows, v).map(r => r.spoken), [false, false]);
+  v.committed(playing);
+  assert.deepEqual(buildReplay(rows, v).map(r => r.spoken), [true, false]);
+});
+
+test('late_completion_after_cancel_cannot_commit_or_clear_new_request', () => {
+  const v = g();
+  const cancelled = v.consider('HARSH_BRAKE', 10, 18, 1);
+  v.dropped('AUDIO_FOCUS');
+  const active = v.consider('HARSH_START', 12, 18, 2);
+  assert.equal(v.committed(cancelled), null);
+  assert.equal(v.pending, active);
+  assert.equal(v.spokenCount, 0);
+  v.committed(active);
+  assert.equal(v.didSpeak(2), true);
+  assert.equal(v.committed(active), null);
+  assert.equal(v.spokenCount, 1);
+});
+
+test('speaker_requires_end_callback_and_ignores_late_callbacks', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const old = globalThis.SpeechSynthesisUtterance;
+  t.after(() => {
+    if (old === undefined) delete globalThis.SpeechSynthesisUtterance;
+    else globalThis.SpeechSynthesisUtterance = old;
+  });
+  globalThis.SpeechSynthesisUtterance = class {};
+  const speaker = new Speaker();
+  let utterance;
+  speaker.api = { speak(u) { utterance = u; }, cancel() { utterance.onend(); } };
+  speaker.unlock();
+
+  const timedOut = speaker.speak('테스트');
+  t.mock.timers.tick(5000);
+  assert.equal(await timedOut, 'dropped');
+  assert.equal(speaker.lastError, 'TIMEOUT');
+
+  const cancelled = speaker.speak('테스트');
+  const oldUtterance = utterance;
+  speaker.stop('AUDIO_FOCUS');
+  assert.equal(await cancelled, 'dropped');
+  const success = speaker.speak('테스트');
+  oldUtterance.onerror({ error: 'late' });
+  utterance.onend();
+  assert.equal(await success, 'spoken');
+  assert.equal(speaker.lastError, null);
+
+  const failed = speaker.speak('테스트');
+  utterance.onerror({ error: 'synthesis-failed' });
+  assert.equal(await failed, 'dropped');
+  assert.equal(speaker.lastError, 'synthesis-failed');
 });

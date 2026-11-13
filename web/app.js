@@ -49,7 +49,8 @@ let voice = null;          // 주행 1회당 하나
 let watcher = null;        // 차량 신호에서 상황을 알아내는 감시기(연습 모드 = 실제 앱이 하는 일)
 let replayRows = [];       // 이번 주행의 리플레이 항목
 let replayShown = false;   // 복기 화면 앞에 리플레이를 한 번 보여 줬는지
-let speaking = false;      // 재생 중 겹치지 않게
+let nextVoiceEventId = 0;
+let mockNavUntil = 0;
 let seenSimEvents = 0;
 let track = new RP.Track(); // 이번 주행의 속도·페달·가상 위치 시간표(메모리에만 — 저장하지 않는다)     // 평가·강습 모드에서 이미 처리한 sim 기록 수
 // 시계가 둘이다. 섞으면 급출발이 '완만한 가속'으로 보인다.
@@ -60,13 +61,12 @@ let track = new RP.Track(); // 이번 주행의 속도·페달·가상 위치 �
 let voiceSec = 0;
 let voiceRealSec = 0;
 
-// 2026-11-09 팀 요청: 기본은 모드와 상관없이 켜짐. 끄면 끈 상태가 저장된다.
-function voicePrefOn() { return H.voiceOn == null ? true : !!H.voiceOn; }
-const voiceCap = () => H.voiceCap || VOICE.RULES.maxPerDrive;
+function voicePrefOn(mode = prep?.mode || 'solo') { return H.voiceOn == null ? mode !== 'mentor' : !!H.voiceOn; }
+const voiceCap = () => H.voiceCap === 3 ? 3 : VOICE.RULES.maxPerDrive;
 
 /** 주행에 들어갈 때 음성·리플레이를 새로 시작한다 */
 function startVoiceDrive(mode) {
-  voiceSec = 0; voiceRealSec = 0; seenSimEvents = 0; replayRows = []; replayShown = false; speaking = false;
+  voiceSec = 0; voiceRealSec = 0; seenSimEvents = 0; replayRows = []; replayShown = false; mockNavUntil = 0;
   track = new RP.Track(); RP.closePip();
   watcher = new VOICE.SignalWatcher();
   // 연습 모드에서는 정차 중에 프레임 루프를 멈춰 두므로(성능) 주행에 들어갈 때 다시 켠다
@@ -83,8 +83,10 @@ function startVoiceDrive(mode) {
 
 /** 주행이 끝나면 남은 발화를 멈추고 리플레이를 만든다 */
 function endVoiceDrive() {
-  speaker.stop(); speaking = false;
-  if (voice) voice.window = null; // 주차한 뒤에 지난 상황을 뒤늦게 말하지 않는다
+  voice?.dropped('CANCELLED');
+  if (voice) voice.window = null;
+  speaker.stop();
+  mockNavUntil = 0;
   replayRows = VOICE.buildReplay(replayRows, voice, 'MOCK');
   if (replayRows.length) {
     H.replays = [{ at: Date.now(), mode: appMode, goal: prep?.goal || null, rows: replayRows.slice(0, 40) }, ...(H.replays || [])].slice(0, 10);
@@ -93,25 +95,30 @@ function endVoiceDrive() {
   renderVoiceMeter();
 }
 
-/**
- * 상황 하나를 음성 규칙에 넘긴다. 말할 수 있으면 실제로 소리를 낸다.
- * 재생이 실패하거나(자동 재생 정책·다른 소리 재생 중) 끼어들 상황이면 **그 발화는 버린다.**
- */
-function offerVoice(code, atSec, kmh) {
-  if (!voice) return;
-  voice.queue(code, atSec, kmh); // 바로 말하지 않고 0.8초 모아서 가장 급한 것 하나만
+/** 발화 문구와 사건 종류가 달라도 같은 ID로 복기에 연결한다. */
+function recordVoiceEvent(event) {
+  const row = { ...event, eventId: ++nextVoiceEventId };
+  replayRows.push(row);
+  return row.eventId;
 }
-function flushVoice(atSec, opts) {
-  if (!voice) return;
-  const u = voice.flush(atSec, opts);
-  if (!u) return;
-  if (speaking) { voice.dropped('BUSY'); return; }
-  speaking = true;
-  speaker.speak(u.line).then((r) => {
-    speaking = false;
-    if (r === 'spoken') voice.committed(u); else voice.dropped(speaker.lastError || 'AUDIO_FOCUS');
-    renderVoiceMeter();
-  });
+
+async function playCoaching(guide, utterance) {
+  if (performance.now() < mockNavUntil) {
+    guide.dropped('AUDIO_FOCUS');
+  } else {
+    const result = await speaker.speak(utterance.line);
+    if (voice !== guide || guide.pending !== utterance) return;
+    if (result === 'spoken') {
+      guide.committed(utterance);
+      if (utterance.code === 'STEADY') {
+        replayRows.push({ eventId: utterance.eventId, t: utterance.atSec, code: 'STEADY',
+          title: VOICE.TITLES.STEADY, kmh: utterance.kmh, sensor: null, advice: '', good: true });
+      }
+    } else {
+      guide.dropped(speaker.lastError || 'ERROR');
+    }
+  }
+  renderVoiceMeter();
 }
 
 /** 왼쪽 콘솔의 음성 계기 — 앱 화면이 아니라 프로토타입 계측 영역이다 */
@@ -130,8 +137,9 @@ function renderVoiceMeter() {
 const SKIP_WHY = {
   OFF: '음성이 꺼져 있어요', NOT_THIS_GOAL: '오늘 목표가 아니에요', DRIVE_CAP: '이번 주행 횟수를 다 썼어요',
   TOO_SOON: '45초가 지나지 않았어요', SAME_CAP: '같은 지적을 이미 2번 했어요', ONCE_ONLY: '주행당 1번만 해요',
-  TOO_LONG: '문장이 너무 길어요', NO_LINE: '말할 문장이 없어요', LOWER_PRIORITY: '더 급한 상황을 먼저 말했어요',
+  TOO_LONG: '문장이 너무 길어요', NO_LINE: '말할 문장이 없어요', LOWER_PRIORITY: '더 급한 안내를 우선했어요',
   AUDIO_FOCUS: '내비·통화에 양보했어요(발화 버림)', BUSY: '다른 소리가 나는 중이었어요', UNAVAILABLE: '브라우저가 소리를 막았어요',
+  CANCELLED: '발화가 취소됐어요', TIMEOUT: '재생 완료를 확인하지 못했어요', ERROR: '음성을 재생하지 못했어요',
 };
 
 /** 브라우저 자동 재생 정책: 첫 조작 때 음성을 깨운다 */
@@ -907,10 +915,10 @@ function profileHtml() {
     <h3>주행 중 음성 길잡이 <small>F12</small></h3>
     <div class="set-row">${icon('sound', 22)}<span>주행 중 음성 길잡이<small>${voicePrefOn() ? '켜짐' : '꺼짐'}</small></span><button type="button" class="switch" id="setVoice" role="switch" aria-label="주행 중 음성 길잡이" aria-checked="${voicePrefOn(prep?.mode || 'solo')}"><span></span></button></div>
     <div class="set-row">${icon('note', 22)}<span>주행당 최대 횟수<small>많을수록 잔소리가 될 수 있어요. 간격 45초는 그대로</small></span>
-      <div class="seg" role="radiogroup" aria-label="주행당 최대 횟수">${[3, 5, 10, 20].map((k) => `<button type="button" role="radio" data-cap="${k}" aria-checked="${voiceCap() === k}">${k}</button>`).join('')}</div></div>
+      <div class="seg" role="radiogroup" aria-label="주행당 최대 횟수">${[3, 5].map((k) => `<button type="button" role="radio" data-cap="${k}" aria-checked="${voiceCap() === k}">${k}</button>`).join('')}</div></div>
     <div class="set-row">${icon('gear', 22)}<span>제한 속도 음성<small>내비가 이미 안내하니 기본은 꺼짐</small></span><button type="button" class="switch" id="setSpeedVoice" role="switch" aria-label="제한 속도 음성" aria-checked="${!!H.speedLimitVoice}"><span></span></button></div>
     <div class="set-row vm-test"><span>소리가 나오는지 확인<small>${esc(speaker.state().why)}</small></span><button type="button" class="mini" id="setVoiceTest">들어 보기</button></div>
-    <p class="caption">주행 중 금지는 ‘영상’이고, 오디오는 오디오 포커스 정책을 지키면 허용돼요. 내비·통화·경고음이 나오면 바로 양보하고 그 말은 버려요.</p>
+    <p class="caption">웹 모의 시연이에요. 차량에서의 주행 중 음성 재생은 Pleos 주행 제한과 오디오 정책을 별도로 확인해야 해요.</p>
     <h3>화면</h3>
     <div class="set-row">${icon('sound', 22)}<span>정차 중 효과음</span><button type="button" class="switch" id="setSound" role="switch" aria-label="정차 중 효과음" aria-checked="${H.sound}"><span></span></button></div>
     <div class="set-row">${icon('text', 22)}<span>큰 글씨</span><button type="button" class="switch" id="setLarge" role="switch" aria-label="큰 글씨" aria-checked="${H.largeText}"><span></span></button></div>
@@ -938,7 +946,11 @@ function bindOverlay(root) {
       H.voiceOn = !voicePrefOn();
       saveHistory();
       if (voice) voice.enabled = voicePrefOn(prep?.mode || 'solo');
-      if (!voicePrefOn(prep?.mode || 'solo')) speaker.stop();
+      if (!voicePrefOn(prep?.mode || 'solo')) {
+        voice?.dropped('CANCELLED');
+        if (voice) voice.window = null;
+        speaker.stop();
+      }
       renderVoiceMeter(); renderOverlay();
     };
     $$('[data-cap]', root).forEach((b) => (b.onclick = () => { H.voiceCap = +b.dataset.cap; saveHistory(); if (voice) voice.cap = H.voiceCap; renderOverlay(); }));
@@ -1193,13 +1205,14 @@ function bindConsole() {
   $('#c-navDuck').onclick = (e) => {
     speaker.unlock();
     const b = e.currentTarget; b.disabled = true; b.textContent = '내비 안내 중…';
-    speaker.stop();
-    speaking = true;
-    speaker.api?.speak?.(Object.assign(new SpeechSynthesisUtterance('잠시 후 우회전입니다.'), { lang: 'ko-KR', rate: 1 }));
     const dropped = voice?.dropped('AUDIO_FOCUS');
+    if (voice) voice.window = null;
+    speaker.stop('AUDIO_FOCUS');
+    mockNavUntil = performance.now() + 2600;
+    void speaker.speak('잠시 후 우회전입니다.');
     flashNote(dropped ? `내비에 양보: “${dropped.line}” 는 버렸어요` : '내비 안내가 끼어들면 그 말은 버려요');
     renderVoiceMeter();
-    setTimeout(() => { speaking = false; b.disabled = false; b.textContent = '내비 안내 끼어들기'; renderVoiceMeter(); }, 2600);
+    setTimeout(() => { b.disabled = false; b.textContent = '내비 안내 끼어들기'; renderVoiceMeter(); }, 2600);
   };
 
   let armed = false;
@@ -1741,32 +1754,28 @@ function pumpVoice() {
       wiperOn: V.wiperOn.value, lowBeamOn: V.lowBeamOn.value, gear: V.gear.value,
     });
     for (const code of codes) {
-      replayRows.push({ t: voiceSec, code, title: VOICE.TITLES[code] || code, kmh: V.speedKmh.value, sensor: null, advice: '' });
-      offerVoice(code, voiceSec, V.speedKmh.value);
+      const eventId = recordVoiceEvent({ t: voiceSec, code, title: VOICE.TITLES[code] || code, kmh: V.speedKmh.value, sensor: null, advice: '' });
+      voice.queue(code, voiceSec, V.speedKmh.value, eventId);
     }
   } else if (sim) {
-    // 시뮬레이션이 새로 남긴 기록만 처리한다
     while (seenSimEvents < sim.events.length) {
       const e = sim.events[seenSimEvents++];
-      replayRows.push(e);
-      // 교차로 접근은 '정보' 기록이지만 음성은 회전 주의를 연다(길 안내가 아니라 주의만)
-      if (e.code === 'JUNCTION_AHEAD') offerVoice(e.dir === 'LEFT' ? 'TURN_LEFT_CAUTION' : 'TURN_RIGHT_CAUTION', e.t, e.kmh);
-      else if (!e.good && !e.info) offerVoice(e.code, e.t, e.kmh);
+      const eventId = recordVoiceEvent(e);
+      if (e.code === 'JUNCTION_AHEAD') {
+        if (e.dir === 'LEFT' || e.dir === 'RIGHT') {
+          voice.queue(e.dir === 'LEFT' ? 'TURN_LEFT_CAUTION' : 'TURN_RIGHT_CAUTION', e.t, e.kmh, eventId);
+        }
+      } else if (!e.good && !e.info) voice.queue(e.code, e.t, e.kmh, eventId);
     }
   }
-  flushVoice(appMode === 'practice' ? voiceSec : (sim ? sim.t : voiceSec));
-  // 달리는 동안 오래 조용했으면 칭찬 한 번
-  const s = voice.considerSteady(voiceSec, V.speedKmh.value);
-  if (s) {
-    if (speaking) voice.dropped('BUSY');
-    else {
-      speaking = true;
-      speaker.speak(s.line).then((r) => {
-        speaking = false;
-        if (r === 'spoken') { voice.committed(s); replayRows.push({ t: s.atSec, code: 'STEADY', title: VOICE.TITLES.STEADY, kmh: s.kmh, sensor: null, advice: '', good: true }); }
-        else voice.dropped(speaker.lastError || 'AUDIO_FOCUS');
-        renderVoiceMeter();
-      });
+  const nowSec = appMode === 'practice' ? voiceSec : (sim?.t ?? voiceSec);
+  const utterance = voice.flush(nowSec);
+  if (utterance) void playCoaching(voice, utterance);
+  else if (!voice.pending && performance.now() >= mockNavUntil) {
+    const praise = voice.considerSteady(nowSec, V.speedKmh.value, nextVoiceEventId + 1);
+    if (praise) {
+      nextVoiceEventId++;
+      void playCoaching(voice, praise);
     }
   }
 }
