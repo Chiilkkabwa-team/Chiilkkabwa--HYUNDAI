@@ -175,7 +175,7 @@
 | 금지 파일 비교 | 최신 origin/dev와 **7개 모두 내용 변경 없음**: PleosVehicleSource, AaosVehicleSource, VehicleSignals, Signals, ChiilViewModel, AndroidManifest, app/build.gradle.kts. A01 갱신분은 dev에서 상속했으며 A02 수정이 아님 |
 | 정적 검토 | `git diff --check`/staged 검사 PASS. 신규 엔진의 Android/Pleos SDK/제어 API import·호출 0, 새 권한/의존성 0. 기존 공유 VehicleSnapshot/이벤트 소비자 변경 0 |
 | A02 에뮬레이터/실차/SDK 신호 | **NOT_VERIFIED / NOT_RUN**. 테스트의 EMULATOR/VEHICLE 출처 값은 provenance 전달용 합성 입력이며 실수신 증거가 아님. A01의 별도 에뮬레이터 검증 결과를 A02 PASS로 대체하지 않는다 |
-| 원격 CI·통합 | NOT_RUN. 사용자 요청은 dev 통합 준비까지이며, 기능 브랜치의 로컬 커밋만 준비. push/PR/병합하지 않았다 |
+| 원격 CI·통합 | push CI **PASS** ([run 43438750304](https://github.com/Chiilkkabwa-team/Chiilkkabwa--HYUNDAI/actions/runs/43438750304): Web unit tests 및 Android tests/both debug flavors SUCCESS). PR [#19](https://github.com/Chiilkkabwa-team/Chiilkkabwa--HYUNDAI/pull/19), base=dev 생성. PR CI 별도 실행 중, dev 병합은 아직 안 함. |
 
 기존 AAOS deprecated API 및 native symbol strip 경고는 앞선 전체 빌드에서 확인되었으며 A02 코드 오류가 아니다. APK/XML/빌드 캐시·개인 설정은 커밋하지 않는다.
 

@@ -66,5 +66,5 @@ Android 구현 정적 점검일: 2026-11-11 KST (당시 기준 main: de612636cc2
 
 - 최신 dev `b47e96d` 기반 `feature/a02-speed-events`에서 독립 Kotlin `SpeedEventEngine`/`SpeedEvents`와 JVM 테스트를 추가했다. 기존 VehicleSnapshot·A01 어댑터·UI·권한·Gradle 의존성은 수정하지 않았다. [A02 입력/출력·판정·연결 계약](A02_SPEED_EVENTS.md).
 - 명시적 속도 단위·타임스탬프·출처·상태에서 유효한 표본 쌍의 Δv/Δt를 계산한다. 급격한 속도 증가/감소와 원본 근거를 반환하며, 브레이크 조작·주변 위험을 판단하지 않는다. 중복 구간/쿨다운·히스테리시스·오류/신선성·출처/시간 단절을 처리한다.
-- 로컬 A02 34개 포함 mock/vehicle JVM 각각 **78/78**, 두 debug 빌드와 웹 **79/79 PASS**. 검증 근거는 VERIFICATION_LOG의 A02 절. `dev` 통합 준비 상태이며 push/병합은 하지 않았다.
+- 로컬 mock/vehicle JVM 각각 **78/78**, 두 debug 빌드, 웹 **79/79 PASS**. 원격 push CI에서도 Web unit tests 및 Android tests/both debug flavors SUCCESS 확인. PR #19로 dev 대상 검토 중이며 아직 병합하지 않았다.
 - 실제 차량/SDK·Emulator 입력·주행 수집 정책·노이즈/임계값 보정·B/C 연결은 **NOT_VERIFIED**. 앱 실신호 경로는 미연결이며 A01의 실수신 검증을 A02 실행 증거로 사용하지 않는다.

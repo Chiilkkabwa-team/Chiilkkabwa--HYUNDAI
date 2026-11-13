@@ -11,7 +11,7 @@
 
 입력 `SpeedSample(speed: Double?, timestampMs: Long, unit: SpeedUnit, source: SignalSource, status: SignalStatus)`는 기존 출처/상태 enum을 재사용한다. 단위는 반드시 `METERS_PER_SECOND` 또는 `KILOMETERS_PER_HOUR`로 지정한다. 속도는 비음수 크기이며 음수를 후진으로 추측하거나 abs 처리하지 않는다.
 
-시각은 같은 세션의 동일 밀리초 시계로 공급한다. 획득 시각을 권장하며 callback 도착 시각/센서 monotonic 시각/epoch 시각을 섞지 않는다. `nowMs`도 동일 시계여야 하며, 표본 시각과 처리 시계의 역전을 각각 차단한다. `SpeedSample.fromSignal(signal: Signal<Number>, unit)`는 value/status/source/receivedAtMs를 그대로 변환하므로, 기존 receivedAtMs가 epoch이면 nowMs도 같은 epoch를 사용해야 한다. 시계 기준이 바뀌면 새 고유 sessionId로 새 엔진을 만든다. 이 변환 함수는 지원·권한·실측 여부를 인증하지 않는다. 공급자가 확인하지 못한 신호를 OK로 올리지 않는다.
+시각은 같은 세션의 동일 밀리초 시계로 공급한다. 획득 시각을 권장하며 callback 도착 시각/센서 monotonic 시각/epoch 시각을 섞지 않는다. `nowMs`도 동일 시계여야 하며, 표본 시각과 처리 시계의 역전을 각각 차단한다. **현재 `Signal.receivedAtMs` 어댑터는 `System.currentTimeMillis()` 기반 벽시계 시각을 사용한다.** 따라서 `SpeedSample.fromSignal(signal, unit)`를 그대로 사용할 때는 `nowMs`도 같은 벽시계 기준이어야 한다. 단조 시계를 채택한다면 연결 계층에서 표본 획득 시각을 `elapsedRealtime()` 기준으로 별도 공급해야 하며 벽시계 timestamp와 섞으면 안 된다. 시계 기준이 바뀌면 새 고유 sessionId로 새 엔진을 만든다. 이 변환 함수는 지원·권한·실측 여부를 인증하지 않는다. 공급자가 확인하지 못한 신호를 OK로 올리지 않는다.
 
 반환은 세 종류다.
 
