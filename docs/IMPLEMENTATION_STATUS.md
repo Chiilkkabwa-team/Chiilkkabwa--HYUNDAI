@@ -48,3 +48,10 @@ Android 구현 정적 점검일: 2026-11-11 KST (당시 기준 main: de612636cc2
 **과거 기록(재검증 아님)**: 기존 CLAUDE.md와 docs/14에는 2026-11-08 기준 Android mock/vehicle 빌드 및 JVM 테스트 17개 성공 기록이 있다. 이번 작성 시점에 재실행하지 않았다.
 
 작성 원칙: '코드 존재' / '빌드 성공' / '단위 테스트 통과' / '모의 시연' / '에뮬레이터 수신' / '실차 검증'을 각각 별개로 표시한다. 해당 기능의 검증 로그가 없으면 완료로 승격하지 않는다.
+
+### A01 Issue #16 후속 (2026-11-13 / 코드 dd0a5a1)
+
+- `PleosSdkReadClient`에 실제 Vehicle 2.3.2의 Seat 벨트·Brake·TurnSignal 공개 읽기 capability/get/register/unregister를 연결했다. `PleosSignalSession`은 오류/타입/null/타임아웃, 초기 읽기와 이벤트 경쟁, 종료·재시작 후 콜백, 해제 배출을 관리한다. `VehicleSnapshot` 필드·단위·출처 계약과 매니페스트 권한은 변경하지 않았다.
+- Activity pause/resume에 구독을 연결하고 repository 중지 시 값을 폐기한다. AAOS callback은 시작 당시 sink를 캡처하여 이전 연결 이벤트를 격리한다. 동기 중지 스냅샷 반영으로 warmup 재개를 보완했다.
+- JVM 테스트 mock **44/44**, vehicle **44/44**, 양 debug APK 빌드 및 웹 **79/79** PASS. SDK 클래스/시그니처 확인과 컴파일을 통과한 상태이며 실제 callback 수신 완료를 뜻하지 않는다.
+- 기본 비활성화. 명시적 debug opt-in + EMULATOR에서만 시험 가능하고 실차/release는 차단한다. SDK 미응답 상태에는 추가 client 생성을 차단한다. 리소스 회수·실제 생명주기·권한·Pleos Emulator/실차는 **NOT_VERIFIED**. 자세한 근거/재현 명령은 SDK 노트 A01 절과 검증 로그 참고.

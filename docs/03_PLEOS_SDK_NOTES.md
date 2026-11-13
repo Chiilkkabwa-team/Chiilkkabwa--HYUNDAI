@@ -166,3 +166,45 @@ $ javap -p android/car/VehiclePropertyIds.class | grep -i "PEDAL\|GEAR_SEL\|PARK
 - 개인정보: PII 최소, 운전 중 행동 데이터 마케팅 금지, 공유 기기(프로필 전환·로그아웃)
 - 실차 판별: Build.DEVICE = CONNECT_S / CONNECT_L / CONNECT_W (실차만)
 - 속도는 PERF_VEHICLE_SPEED(클러스터와 동일), GPS 속도 쓰지 말 것
+
+## A01 Issue #16: 실제 SDK 2.3.2 연동 증거 (2026-11-13 KST)
+
+**코드 기준 `dd0a5a17d97457158598f112a0038563942707da`, 기반 dev `b66f28e70a32c4b474cb85ecc02841c1e3a6fb8e`.** 이전의 Pleos TODO 설명은 이 절로 대체한다. Seat 벨트·Brake·TurnSignal 읽기 어댑터는 구현·컴파일되었지만 **실제 수신은 NOT_VERIFIED**다. 다른 Pleos 필드는 계속 연동 미구현 `UNSUPPORTED`이며, 차종 미지원 실측을 뜻하지 않는다.
+
+### 아티팩트와 실제 시그니처
+
+로컬 `%USERPROFILE%/.gradle/caches/modules-2/files-2.1/ai.pleos.playground/Vehicle/2.3.2`의 AAR, sources.jar, javadoc.jar 존재 확인. ZIP을 작업용 tmp에 풀고 `jar tf` 및 `javap -public -classpath <AAR의 classes.jar> <클래스>`로 소스와 바이너리를 대조했다. SDK 바이너리/원문 소스/로컬 설정은 Git에 넣지 않았다.
+
+- `Vehicle-2.3.2.aar` SHA-256: `E11FDFE498CAD3ECC0D5A2A6992B0C4A4D135195F1455018127BC069FD5EF937`
+- `Vehicle-2.3.2-sources.jar` SHA-256: `62B5DD2C4C0523FD13C2E64040CD775BC89A14CE54F35A37560D0EB4EB3FAB40`
+- 진입점: `ai.pleos.playground.vehicle.Vehicle(Context)` / `initialize(): Unit` / `getSeat(): Seat` / `getBrake(): Brake` / `getTurnSignal(): TurnSignal` / `release(): Unit`.
+
+아래는 **실물에서 확인한 Kotlin 시그니처의 요약**이다. `failed` 인자는 모두 `(Exception) -> Unit`이다.
+
+| 도메인 | capability / 초기 읽기 / 구독 / 해제 | 값·영역·조회 권한 |
+|---|---|---|
+| Seat | `checkSeatBeltBuckledCapabilities((CapabilityConfig, List<SeatArea>) -> Unit, failed)` / `getCurrentSeatBeltBuckledState(SeatArea, (Boolean?) -> Unit, failed)` / `registerSeatBeltBuckledState(SeatArea, SeatBeltBuckledStateListener)` / `unregisterSeatBeltBuckledState(SeatArea, SeatBeltBuckledStateListener)` | `SeatArea(SeatValue.ROW_1_LEFT)` 단독 영역, 한국 LHD 에뮬레이터 시험 한정. `CAR_SEATS` |
+| Brake | `checkBrakePedalStatusCapabilities((CapabilityConfig) -> Unit, failed)` / `getCurrentBrakePedalStatus((Boolean?) -> Unit, failed)` / `registerBrakePedalStatus(BrakePedalStatusListener)` / `unregisterBrakePedalStatus(BrakePedalStatusListener)` | `true`=밟음. 연속 압력 값 아님. 글로벌 API라 area 인자 없음. `CAR_DRIVE` |
+| TurnSignal | `checkTurnSignalStateCapabilities((CapabilityConfig) -> Unit, failed)` / `getCurrentTurnSignalState((TurnSignalValue?) -> Unit, failed)` / `registerTurnSignalState(TurnSignalStateListener)` / `unregisterTurnSignalState(TurnSignalStateListener)` | `OFF/LEFT/RIGHT`만 존재. 앱의 `NONE/LEFT/RIGHT`에 매핑. HAZARD 추정 금지. `CAR_LIGHTS` |
+
+리스너는 `ai.pleos.playground.vehicle.listener` 패키지의 `onSeatBeltBuckledStateUpdated(Boolean?)`, `onBrakePedalStatusUpdated(Boolean?)`, `onTurnSignalStateUpdated(TurnSignalValue?)` 및 공통 `onFailed(Exception)`이다. `CapabilityConfig.accessType`이 `READ/READ_WRITE`인 경우만 읽는다. 운전석 단독 area가 없거나 WRITE/NONE이면 미지원으로 차단한다. `pleos.car.permission.*` 조회 권한은 기존 매니페스트 그대로이며 추가 권한은 없다.
+
+**배포물 주의:** sources/공식 문서의 `VehicleException`은 실제 AAR에서는 난독화되어 해당 공개 이름으로 import할 수 없다. `ErrorCode`는 runtime 의존 `vehicle-data:1.1.11`에 있다. 난독화 이름 import/리플렉션/숫자 오류 코드 우회는 하지 않았다. 앱은 공개 `Exception`만 받고, 권한 선확인 및 `SecurityException`, sources에서 확인한 정확한 오류명 메시지만 분류한다. 그 밖의 숫자·문자열·값 타입/변환 오류는 `UNKNOWN`으로 폐기한다. 메시지 이름도 플랫폼별로 보장된다고 주장하지 않으며 실제 오류 전달은 미검증이다.
+
+### 수명·안전 폴백과 기본 차단
+
+- capability 요청 순서: 벨트 → 브레이크 → 방향지시등. 각 신호는 capability 성공 후 초기 읽기 및 listener 등록. 실패는 센서별로 격리하며 다른 신호를 Mock으로 대체하지 않는다.
+- 최초 응답 전 `UNKNOWN`, 미지원 `UNSUPPORTED`, 권한 거부 `PERMISSION_DENIED`, 연결 오류/5초 응답 제한 초과 `DISCONNECTED`. null/잘못된 타입은 `UNKNOWN`. 모두 value=null이다.
+- SDK에 공개 연결 상태 listener가 없으므로 활성 중 1초마다 확인된 getter로 연결 상태를 확인한다. 타임아웃은 monotonic clock 기준. 요청이 진행 중이면 중복 요청하지 않고, 한 번 실패한 채널은 재시작 전까지 잠근다. 새 이벤트가 먼저 오면 이전 getter 결과/실패로 덮어쓰지 않는다.
+- pause에서 중지·값 폐기, resume에서 새 구독. repository generation 및 AAOS의 세션별 callback/sink가 이전 연결 이벤트를 거부한다. ViewModel은 중지 스냅샷을 동기 반영해 미션 재개가 StateFlow 중간 이벤트 전달에 의존하지 않게 했다.
+- stop은 먼저 세션을 닫아 늦은 이벤트를 거부한 뒤 각 listener를 해제한다. 하나의 해제 실패도 다른 해제를 막지 않는다. 진행 중 capability/get callback을 배출한 후 `release()`한다.
+- **공개 취소 API 부재 한계 / NOT_VERIFIED:** SDK가 끝내 응답하지 않으면 조기 release를 강행하지 않는다. 해당 source 인스턴스는 추가 client 생성을 차단하고 sink 참조를 버린다. 한 client는 응답 또는 프로세스 종료까지 남을 수 있다. 응답이 배출되면 release 후 다음 foreground 재시작 가능, 영구 미응답이면 앱 프로세스 재시작 필요. 에뮬레이터에서 자원 회수·연결 복구를 별도 검증해야 한다.
+- **기본 `PLEOS_SIGNALS_ENABLED=false`.** `-PenablePleosSignals=true`로 만든 debug에서만, 출처가 EMULATOR인 경우 시험한다. 실차와 release는 opt-in을 줘도 차단. 이 opt-in은 실환경 검증·출시 승인 표시가 아니다. AAOS 주차 게이트는 기존 경로를 유지하며 이 어댑터가 기어/주차브레이크/UX 제한을 발행하지 않는다.
+
+### 공식 근거와 남은 실측
+
+확인일 2026-11-13, [Vehicle 소개/버전/수명](https://document.pleos.ai/docs/pleos-only/connect-sdk-pleos/Vehicle/intro), [Seat](https://document.pleos.ai/docs/pleos-only/connect-sdk-pleos/Vehicle/vehicle/ai.pleos.playground.vehicle.api/seat/entry), [Brake](https://document.pleos.ai/docs/pleos-only/connect-sdk-pleos/Vehicle/vehicle/ai.pleos.playground.vehicle.api/brake/entry), [TurnSignal](https://document.pleos.ai/docs/pleos-only/connect-sdk-pleos/Vehicle/vehicle/ai.pleos.playground.vehicle.api/turn-signal/entry), [권한](https://document.pleos.ai/docs/pleos-only/connect-sdk-pleos/Vehicle/vehicle-permission), [오류](https://document.pleos.ai/docs/pleos-only/connect-sdk-pleos/Vehicle/vehicle-error-code), [호환성](https://document.pleos.ai/docs/pleos-only/vehicle-app-planning-guide/api-compatibility-availability). 온라인 API Reference 추출에는 시그니처 본문이 노출되지 않아 실제 AAR/sources 및 컴파일을 함께 근거로 삼았다. 공모전 O03 URL 재조회는 접근 실패; 기존 규정 대장을 참고했으며 이번 조회로 공모전 승인을 새로 확인한 것은 아니다.
+
+설치된 AVD는 `Medium_Phone_API_37.0` 하나, 이미지 tag는 `google_apis_playstore`; Pleos 이미지 없음. `adb devices -l`은 빈 목록. 따라서 앱 설치·Virtual Console→앱 callback·운전석 매핑·실제 권한/주차 게이트·앱 생명주기·실차는 모두 **NOT_VERIFIED**다. 일반 전화 AVD를 Pleos 검증에 대체하지 않았다.
+
+준비 후: opt-in vehicleDebug 빌드 → Pleos AVD에 설치 → `adb forward tcp:8088 tcp:8088` → P/주차브레이크/UX 해제 확인 → 벨트 미체결/체결, 브레이크 밟음/뗌, 방향지시등 좌/우/끔을 변경한다. `adb logcat -v time -s PleosVehicleSource AaosVehicleSource`의 `SDK callback sensor=... value=...`와 앱의 snapshot/미션·출처를 함께 기록한다. get 응답, callback 로그, 앱 화면 판정은 각각 구분한다. 이 절은 시험 절차이며 실행 결과가 아니다.
