@@ -21,6 +21,23 @@
 | 암호화 Room 저장 | 미구현. 현재 SharedPreferences JSON | 브라우저 localStorage | 미검증 |
 | Pleos Vehicle 신호 구독 | PleosVehicleSource의 TODO/UNSUPPORTED 상태 | 해당 없음 | 미검증 |
 
+### 2026-11-12 웹 모의 추가 (브랜치 `claude/confident-wright-u9iqdb`, **main 미병합**)
+11/12 회의 + 3인 기능 배정안 v2의 웹 부분. **전부 웹 모의**이고 Android·에뮬레이터·실차는 손대지 않았다.
+
+| 배정안 ID | 기능 | 웹 모의 | Android | 에뮬레이터/실차 |
+|---|---|---|---|---|
+| B01 | 겹친 상황 우선순위·칭찬·회전 주의 대사 | 구현 + 단위 테스트 | 미구현 | 미검증(S05) |
+| A04 | 가상 교차로 좌·우회전(판정: 깜빡이·차로·속도) | 구현 + 단위 테스트 | 해당 없음 | 해당 없음 |
+| C01 | 주차 후 속도 시간표(사건 점·브레이크 띠·말한 표시) | 구현 + 단위 테스트 | 미구현 | 미검증 |
+| C03 | 장면 재현 작은 창(시뮬레이션 재현 표기) | 구현 + 단위 테스트 | 미구현 | 미검증 |
+| A05 | 콘솔 핸들 그림·누른 만큼 깊어지는 페달·WASD·벨트 표시 | 구현(브라우저 조작 확인) | 해당 없음(웹 콘솔 전용) | 해당 없음 |
+| B04 | 미션 도움말(O/X)·운전 노트 | 구현 + 단위 테스트 | 미구현 | 해당 없음 |
+| C04 | 알림 남은 시간 테두리·온보딩 버전 | 구현 | 미구현 | 해당 없음 |
+| C05 | 서비스 소개(About Us)·구현 상태 표 | 구현 + 단위 테스트 | 해당 없음 | 해당 없음 |
+| B03 | Typecast·ElevenLabs 음성 | **안 함** — API 키·사용/배포 권리 확인 필요(S11) | — | — |
+| A06 | 3D 차량 | **안 함** — 자산 라이선스·성능 측정 먼저(S11) | — | — |
+| A01·A02·A03·B02 | Pleos 신호·속도 이벤트·NaviHelper·Android TTS | **안 함** — Android/에뮬레이터 작업 | — | — |
+
 주요 코드 근거:
 - app/src/main/java/com/chiilkkabwa/app/core/{signal,safety,mission,session}/
 - app/src/main/java/com/chiilkkabwa/app/data/vehicle/

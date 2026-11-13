@@ -2,7 +2,7 @@
 // 이 테스트가 깨지면 '주행 중에 너무 많이 말하는 앱'이 된다. 규칙을 바꾸려면 docs/01 F12도 같이 고친다.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { VoiceGuide, RULES, LINES, estimateSec, tooLongLines, buildReplay, REPLAY_EMPTY, SignalWatcher, THRESHOLDS, TITLES } from '../voice.js';
+import { VoiceGuide, RULES, LINES, PRIORITY, priorityOf, estimateSec, tooLongLines, buildReplay, REPLAY_EMPTY, SignalWatcher, THRESHOLDS, TITLES } from '../voice.js';
 
 const g = (o = {}) => new VoiceGuide({ goal: '출발·정지', mode: 'solo', ...o });
 
@@ -95,7 +95,7 @@ test('voice_speed_limit_off_by_default', () => {
 
 test('voice_steady_praise_once_after_quiet', () => {
   const v = g();
-  assert.equal(v.considerSteady(100), null, '10분이 지나지 않으면 칭찬하지 않는다');
+  assert.equal(v.considerSteady(RULES.steadyAfterSec - 1), null, '정해진 시간이 지나지 않으면 칭찬하지 않는다');
   const t = RULES.steadyAfterSec + 1;
   assert.ok(v.considerSteady(t)); v.committed();
   assert.equal(v.considerSteady(t + RULES.steadyAfterSec * 2), null, '주행당 1회');
@@ -105,7 +105,7 @@ test('voice_steady_praise_once_after_quiet', () => {
 test('voice_bad_event_resets_steady_timer', () => {
   const v = g();
   v.consider('HARSH_START', 500); v.committed();
-  assert.equal(v.considerSteady(RULES.steadyAfterSec + 10), null, '지적이 있었으면 10분을 다시 센다');
+  assert.equal(v.considerSteady(500 + RULES.steadyAfterSec - 1), null, '지적이 있었으면 처음부터 다시 센다');
   assert.ok(v.considerSteady(500 + RULES.steadyAfterSec + 1));
 });
 
@@ -255,4 +255,49 @@ test('watch_feeds_guide_end_to_end', () => {
   const r = buildReplay(rows, v);
   assert.deepEqual(r.map((x) => x.spoken), [true, true]);
   assert.deepEqual(r.map((x) => x.title), ['급출발', '급제동']);
+});
+
+// ── 11/12 회의: 겹친 상황 우선순위 · 칭찬 · 회전 주의(B01) ──
+test('voice_overlap_speaks_most_urgent_only', () => {
+  const v = g();
+  // 끼어든 차 → 0.3초 뒤 급제동: 급제동이 더 위험하므로 그것만 말한다
+  v.queue('NPC_CUTIN', 10.0, 40); v.queue('HARSH_BRAKE', 10.3, 38);
+  assert.equal(v.flush(10.5), null, '모으는 시간(0.8초) 안에는 아직 말하지 않는다');
+  const u = v.flush(10.9);
+  assert.equal(u.code, 'HARSH_BRAKE');
+  assert.ok(v.skipped.some((x) => x.code === 'NPC_CUTIN' && x.why === 'LOWER_PRIORITY'));
+});
+
+test('voice_priority_table_covers_every_line', () => {
+  for (const code of Object.keys(LINES)) assert.ok(code in PRIORITY, `${code} 우선순위 없음`);
+  assert.ok(priorityOf('CRASH') > priorityOf('HARSH_BRAKE'));
+  assert.ok(priorityOf('HARSH_BRAKE') > priorityOf('NPC_CUTIN'));
+  assert.ok(priorityOf('STEADY') < priorityOf('LANE_DRIFT'), '칭찬은 늘 맨 뒤');
+});
+
+test('voice_praise_only_while_moving', () => {
+  const v = g();
+  assert.equal(v.considerSteady(RULES.steadyAfterSec + 1, 0), null, '멈춰 있을 땐 칭찬하지 않는다');
+  assert.ok(v.considerSteady(RULES.steadyAfterSec + 1, 40));
+});
+
+test('voice_turn_caution_is_not_navigation', () => {
+  for (const code of ['TURN_LEFT_CAUTION', 'TURN_RIGHT_CAUTION']) {
+    const L = LINES[code];
+    assert.ok(L, code);
+    // 방향 지시(‘~하세요’, 거리 안내)는 내비 몫이다. 주의만 말한다.
+    assert.ok(!/하세요|미터|m 앞/.test(L.line), `${code}: "${L.line}"`);
+    assert.ok(estimateSec(L.line) <= RULES.maxSecPerLine);
+  }
+  assert.ok(g({ goal: '좌회전' }).consider('TURN_RIGHT_CAUTION', 5));
+  assert.equal(g({ goal: '주차' }).consider('TURN_RIGHT_CAUTION', 5), null, '다른 목표면 열리지 않는다');
+});
+
+test('watcher_turn_signal_at_low_speed_opens_turn_caution', () => {
+  const w = new SignalWatcher();
+  w.step({ tSec: 0, kmh: 18, turnSignal: 'NONE', gear: 'D' });
+  assert.deepEqual(w.step({ tSec: 0.1, kmh: 18, turnSignal: 'RIGHT', gear: 'D' }), ['TURN_RIGHT_CAUTION']);
+  const fast = new SignalWatcher();
+  fast.step({ tSec: 0, kmh: 70, turnSignal: 'NONE', gear: 'D' });
+  assert.deepEqual(fast.step({ tSec: 0.1, kmh: 70, turnSignal: 'LEFT', gear: 'D' }), [], '빠를 때 깜빡이는 차로 변경으로 본다');
 });

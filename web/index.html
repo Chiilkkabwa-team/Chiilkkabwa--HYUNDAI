@@ -24,6 +24,7 @@
     <select id="demoSpeed" aria-label="자동 시연 속도">
       <option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="3">3×</option>
     </select></label>
+  <button class="ghost" id="aboutBtn" type="button">소개</button>
   <button class="ghost" id="helpBtn" type="button">사용법</button>
 </header>
 
@@ -128,18 +129,23 @@
       <legend>가상 주행 <small>평가·강습 모드</small></legend>
       <div class="c-row c-col" id="r-accel"><span class="c-lab">가속 페달 <b id="v-accel">0</b>%</span>
         <div class="c-inline"><input type="range" id="c-accel" min="0" max="100" step="1" value="0" aria-label="가속 페달">
-          <button type="button" class="mini" id="c-accelHold">살살 가속</button></div>
+          <button type="button" class="pedal" id="c-accelHold" aria-label="가속 페달 — 누르고 있는 시간만큼 세게 밟혀요" title="누르고 있으면 점점 깊게(2.5초에 끝까지), 떼면 바로 떼요">
+            <svg viewBox="0 0 40 52" aria-hidden="true"><rect class="pd-base" x="4" y="44" width="32" height="6" rx="2"/><g class="pd-plate"><rect x="6" y="4" width="28" height="38" rx="6"/><path d="M12 14h16M12 22h16M12 30h16" /></g></svg>
+            <span class="pd-lab">꾹</span></button></div>
       </div>
-      <p class="c-note">키보드: ↑ 가속 · ↓ 브레이크 · ← → 핸들 · 스페이스 = 강습자 정지(강습 모드). 브레이크·핸들·방향지시등은 아래 운전석 조작을 같이 써요.</p>
+      <p class="c-note">키보드: W/↑ 가속 · S/↓ 브레이크 · A D/← → 핸들 · 스페이스 = 강습자 정지(강습 모드). 웹 체험판에만 있는 조작이에요 — 실제 차에는 없어요.</p>
+      <p class="c-hint" id="wasdHint" hidden><span>마우스로 핸들 돌리기가 불편하면 키보드 <b>W A S D</b>로도 달릴 수 있어요.</span><button type="button" class="mini" id="wasdHintX">알겠어요</button></p>
     </fieldset>
     <fieldset class="c-group">
       <legend>운전석</legend>
-      <div class="c-row" id="r-belt"><span class="c-lab">안전벨트 <small id="v-belt">체결</small></span>
+      <div class="c-row" id="r-belt"><span class="c-lab"><span class="buckle" aria-hidden="true"><i class="bk-tongue"></i><i class="bk-latch"></i></span>안전벨트 <small id="v-belt">체결</small></span>
         <button type="button" class="switch" id="c-belt" role="switch" aria-label="안전벨트" aria-checked="true"><span></span></button>
       </div>
       <div class="c-row c-col" id="r-brake"><span class="c-lab">브레이크 페달 <b id="v-brake">0</b>% <small id="v-brakeP">뗌</small></span>
         <div class="c-inline"><input type="range" id="c-brake" min="0" max="100" step="1" value="0" aria-label="브레이크 페달">
-          <button type="button" class="mini" id="c-brakeHold" title="누르고 있으면 끝까지, 떼면 천천히 떼요">꾹 밟기</button></div>
+          <button type="button" class="pedal" id="c-brakeHold" aria-label="브레이크 페달 — 누르고 있는 시간만큼 세게 밟혀요" title="누르고 있으면 점점 세게(1.6초에 끝까지), 떼면 천천히 떼요">
+            <svg viewBox="0 0 40 52" aria-hidden="true"><rect class="pd-base" x="4" y="44" width="32" height="6" rx="2"/><g class="pd-plate"><rect x="6" y="4" width="28" height="38" rx="6"/><path d="M12 14h16M12 22h16M12 30h16" /></g></svg>
+            <span class="pd-lab">꾹</span></button></div>
       </div>
       <div class="c-row" id="r-turn"><span class="c-lab">방향지시등</span>
         <div class="seg" id="c-turn" role="radiogroup" aria-label="방향지시등">
@@ -153,7 +159,11 @@
         <button type="button" class="switch" id="c-beam" role="switch" aria-label="전조등" aria-checked="false"><span></span></button>
       </div>
       <div class="c-row c-col" id="r-steer"><span class="c-lab">핸들 <b id="v-steer">0</b>° <small id="v-steerDir"></small></span>
-        <div class="c-inline"><input type="range" id="c-steer" min="-540" max="540" step="5" value="0" aria-label="핸들 각도">
+        <div class="c-inline steer-line">
+          <div class="wheel" id="c-wheel" role="slider" tabindex="0" aria-label="핸들(돌려서 조작)" aria-valuemin="-540" aria-valuemax="540" aria-valuenow="0" title="잡고 돌려요 · 키보드 ← →">
+            <svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="27" class="wh-rim"/><circle cx="32" cy="32" r="8" class="wh-hub"/><path d="M5 32h19M40 32h19M32 40v19" class="wh-spoke"/><rect x="29" y="2" width="6" height="8" rx="2" class="wh-top"/></svg>
+          </div>
+          <input type="range" id="c-steer" min="-540" max="540" step="5" value="0" aria-label="핸들 각도">
           <button type="button" class="mini" id="c-steerCenter">가운데</button></div>
       </div>
     </fieldset>

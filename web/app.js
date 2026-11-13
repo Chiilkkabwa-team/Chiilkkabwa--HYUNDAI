@@ -5,6 +5,9 @@ import * as SIM from './sim.js';
 import * as VOICE from './voice.js';
 import * as THEME from './theme.js';
 import * as OB from './onboarding.js';
+import * as RP from './replay.js';
+import * as LEARN from './learn.js';
+import { aboutHtml } from './about.js';
 
 // 캔버스에서 쓰는 색은 리터럴을 적지 않고 CSS 토큰에서 읽는다(테마를 따라가도록).
 // styles.css 의 :root / :root[data-theme="light"] 가 유일한 색 정의 자리다.
@@ -47,7 +50,8 @@ let watcher = null;        // 차량 신호에서 상황을 알아내는 감시�
 let replayRows = [];       // 이번 주행의 리플레이 항목
 let replayShown = false;   // 복기 화면 앞에 리플레이를 한 번 보여 줬는지
 let speaking = false;      // 재생 중 겹치지 않게
-let seenSimEvents = 0;     // 평가·강습 모드에서 이미 처리한 sim 기록 수
+let seenSimEvents = 0;
+let track = new RP.Track(); // 이번 주행의 속도·페달·가상 위치 시간표(메모리에만 — 저장하지 않는다)     // 평가·강습 모드에서 이미 처리한 sim 기록 수
 // 시계가 둘이다. 섞으면 급출발이 '완만한 가속'으로 보인다.
 //  voiceSec     = 빨리 감기(×30)를 반영한 '주행 경과 시간'. 음성 빈도 규칙·리플레이 시각에 쓴다.
 //                 (프로토타입에서 ×30을 켜면 45초 간격도 같이 압축돼 시연 안에서 규칙이 보인다)
@@ -63,6 +67,7 @@ const voiceCap = () => H.voiceCap || VOICE.RULES.maxPerDrive;
 /** 주행에 들어갈 때 음성·리플레이를 새로 시작한다 */
 function startVoiceDrive(mode) {
   voiceSec = 0; voiceRealSec = 0; seenSimEvents = 0; replayRows = []; replayShown = false; speaking = false;
+  track = new RP.Track(); RP.closePip();
   watcher = new VOICE.SignalWatcher();
   // 연습 모드에서는 정차 중에 프레임 루프를 멈춰 두므로(성능) 주행에 들어갈 때 다시 켠다
   startSimLoop();
@@ -79,6 +84,7 @@ function startVoiceDrive(mode) {
 /** 주행이 끝나면 남은 발화를 멈추고 리플레이를 만든다 */
 function endVoiceDrive() {
   speaker.stop(); speaking = false;
+  if (voice) voice.window = null; // 주차한 뒤에 지난 상황을 뒤늦게 말하지 않는다
   replayRows = VOICE.buildReplay(replayRows, voice, 'MOCK');
   if (replayRows.length) {
     H.replays = [{ at: Date.now(), mode: appMode, goal: prep?.goal || null, rows: replayRows.slice(0, 40) }, ...(H.replays || [])].slice(0, 10);
@@ -93,7 +99,11 @@ function endVoiceDrive() {
  */
 function offerVoice(code, atSec, kmh) {
   if (!voice) return;
-  const u = voice.consider(code, atSec, kmh);
+  voice.queue(code, atSec, kmh); // 바로 말하지 않고 0.8초 모아서 가장 급한 것 하나만
+}
+function flushVoice(atSec, opts) {
+  if (!voice) return;
+  const u = voice.flush(atSec, opts);
   if (!u) return;
   if (speaking) { voice.dropped('BUSY'); return; }
   speaking = true;
@@ -120,7 +130,7 @@ function renderVoiceMeter() {
 const SKIP_WHY = {
   OFF: '음성이 꺼져 있어요', NOT_THIS_GOAL: '오늘 목표가 아니에요', DRIVE_CAP: '이번 주행 횟수를 다 썼어요',
   TOO_SOON: '45초가 지나지 않았어요', SAME_CAP: '같은 지적을 이미 2번 했어요', ONCE_ONLY: '주행당 1번만 해요',
-  TOO_LONG: '문장이 너무 길어요', NO_LINE: '말할 문장이 없어요',
+  TOO_LONG: '문장이 너무 길어요', NO_LINE: '말할 문장이 없어요', LOWER_PRIORITY: '더 급한 상황을 먼저 말했어요',
   AUDIO_FOCUS: '내비·통화에 양보했어요(발화 버림)', BUSY: '다른 소리가 나는 중이었어요', UNAVAILABLE: '브라우저가 소리를 막았어요',
 };
 
@@ -184,6 +194,9 @@ let prep = null; // 준비 단계 상태
 let review = null; // 복기 초안
 let overlay = null; // 'history' | 'profile' | 'cert' | 'intro'
 let obStep = 0;     // 온보딩 단계
+let wikiPage = 0;   // 운전 노트 챕터
+// 온보딩 내용이 바뀌면 숫자를 올린다 → 예전에 닫은 사람에게도 한 번 더 뜬다(11/12 회의: '들어가자마자 안 뜨더라')
+const INTRO_V = 2;
 let judgeState = null; // { judge, progress, doneAt }
 let lastGate = null;
 
@@ -225,7 +238,7 @@ function flushToasts() {
   if (toastBusy || !toastQueue.length || session.phase === C.Phase.DRIVING_LOCK) return;
   const b = toastQueue.shift(); const meta = C.Badges[b.badge];
   const el = document.createElement('div');
-  el.className = 'toast';
+  el.className = 'toast timed'; el.style.setProperty('--life', '2s');
   el.innerHTML = `${badgeArt(meta, true, 48)}<div><small>배지</small><b>${meta.title}${b.mockOnly ? ' <em>(모의)</em>' : ''}</b></div>`;
   $('#toasts').appendChild(el); toastBusy = true; chime('badge');
   setTimeout(() => { el.classList.add('out'); setTimeout(() => { el.remove(); toastBusy = false; }, 250); }, 2000);
@@ -388,7 +401,8 @@ Screens.mission = () => ({
     el.innerHTML = `<div class="screen mission">
       <div class="m-head"><span class="m-count">운전석 워밍업 <b>${n}</b>/${total}</span>
         <div class="dots">${prep.missions.map((m, i) => `<i class="${i < prep.missionIdx ? 'd' : i === prep.missionIdx ? 'c' : ''}"></i>`).join('')}</div>
-        ${meta.optional ? '<span class="tag soft">선택</span>' : ''}${srcChip('MOCK')}</div>
+        ${meta.optional ? '<span class="tag soft">선택</span>' : ''}${srcChip('MOCK')}
+        ${LEARN.HELP[j.id] ? `<button type="button" class="icon-btn m-info" id="mInfo" aria-label="${j.title} 도움말 — 단계와 O/X 예시">${infoIco}도움말</button>` : ''}</div>
       <div class="m-card">
         <div class="m-ill" id="mIll">${icon(meta.icon, 84)}<div class="m-live" id="mLive"></div></div>
         <div class="m-text">
@@ -401,6 +415,7 @@ Screens.mission = () => ({
       <div class="actions" id="mActions"></div>
     </div>`;
     this.key = null;
+    $('#mInfo')?.addEventListener('click', () => openOverlay('help'));
   },
   update() {
     const p = judgeState.progress; if (!p) return;
@@ -548,6 +563,8 @@ Screens.parking = () => ({
     this.keys = (e) => {
       if (overlay) return;
       const down = e.type === 'keydown';
+      const k0 = ({ KeyW: 'ArrowUp', KeyS: 'ArrowDown', KeyA: 'ArrowLeft', KeyD: 'ArrowRight' })[e.code];
+      if (k0) { const ev = e; e = { key: k0, type: ev.type, preventDefault: () => ev.preventDefault() }; }
       if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); if (this.done) return; this.move = down ? (e.key === 'ArrowUp' ? 1 : -1) : 0; if (down) this.dir = this.move; }
       if (down && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
         e.preventDefault();
@@ -764,6 +781,8 @@ Screens.lock = () => ({
   },
 });
 
+const infoIco = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 10.5v6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><circle cx="12" cy="7.4" r="1.3" fill="currentColor"/></svg>';
+
 // A-9 주행 리플레이(F13) — 점수·등급 없음. 사실과 조언만.
 const SENSOR_LABEL = { front: '전방', rear: '후방', side: '측방' };
 Screens.replay = () => ({
@@ -775,19 +794,22 @@ Screens.replay = () => ({
         <h1>오늘 주행 돌아보기</h1>
         <p class="sub">${rows.length ? `기록된 순간 ${rows.length}개${spokenN ? ` · 그중 ${spokenN}개는 주행 중에 말해 드렸어요` : ''}` : '같이 보면서 이야기해 봐요'}</p>
       </div></div>
-      ${rows.length ? `<ol class="rp-list">${rows.map((r) => `<li class="rp ${r.kind}">
+      ${timelineSection(rows, false)}
+      ${rows.length ? `<ol class="rp-list">${rows.map((r, i) => `<li class="rp ${r.kind}">
         <span class="rp-t">${fmtT(r.atSec)}</span>
         <div class="rp-body">
           <b>${esc(r.title)}</b>
           ${r.spoken ? `<span class="rp-spoke" title="주행 중에 음성으로 말한 항목">${icon('sound', 16)} 말했어요</span>` : ''}
           <small class="rp-meta">${r.kmh}km/h${r.sensor ? ` · ${SENSOR_LABEL[r.sensor]} 센서(가상)` : ''} · ${srcChip(r.source)}</small>
           ${r.advice ? `<p class="rp-adv">${esc(r.advice)}</p>` : ''}
+          ${sceneBtn(i, r.atSec)}
         </div></li>`).join('')}</ol>`
         : `<p class="rp-empty">${mascot('happy', 64)}<span>${VOICE.REPLAY_EMPTY}</span></p>`}
       <p class="caption">점수가 아니라 그 순간의 사실이에요. 기기 안에만 저장되고, 내보내기는 직접 하실 때만 해요.</p>
       <div class="actions"><div></div>${btn('rpNext', '복기 계속', 'primary big')}</div>
     </div>`;
-    $('#rpNext').onclick = () => { replayShown = true; render(); };
+    $('#rpNext').onclick = () => { RP.closePip(); replayShown = true; render(); };
+    bindTimeline(el, rows, false);
   },
 });
 
@@ -841,11 +863,14 @@ function renderOverlay() {
   const root = $('#modalRoot');
   if (!overlay || session.phase === C.Phase.DRIVING_LOCK) { root.innerHTML = ''; root.classList.remove('open'); return; }
   root.classList.add('open');
-  const body = { history: historyHtml, profile: profileHtml, cert: certHtml, intro: introHtml }[overlay]();
-  root.innerHTML = `<div class="modal-scrim" data-close></div><div class="modal${overlay === 'intro' ? ' modal-ob' : ''}" role="dialog" aria-modal="true" aria-label="${{ history: '내 기록', profile: '설정', cert: '수료 카드', intro: '치일까봐 둘러보기' }[overlay]}" tabindex="-1">
+  const body = { history: historyHtml, profile: profileHtml, cert: certHtml, intro: introHtml,
+    help: () => LEARN.helpHtml(judgeState?.judge?.id, judgeState?.judge?.title || '도움말'), wiki: () => LEARN.wikiHtml(wikiPage), about: aboutHtml }[overlay]();
+  root.innerHTML = `<div class="modal-scrim" data-close></div><div class="modal${overlay === 'intro' ? ' modal-ob' : ''}" role="dialog" aria-modal="true" aria-label="${{ history: '내 기록', profile: '설정', cert: '수료 카드', intro: '치일까봐 둘러보기', help: '미션 도움말', wiki: '운전 노트', about: '서비스 소개' }[overlay]}" tabindex="-1">
     <button type="button" class="icon-btn modal-x" data-close aria-label="닫기">${icon('close', 22)}</button>${body}</div>`;
-  $$('[data-close]', root).forEach((b) => (b.onclick = () => { if (overlay === 'intro') { H.introSeen = true; saveHistory(); } closeOverlay(); }));
+  $$('[data-close]', root).forEach((b) => (b.onclick = () => { if (overlay === 'intro') { H.introSeen = true; H.introV = INTRO_V; saveHistory(); } closeOverlay(); }));
   bindOverlay(root);
+  $$('[data-wiki]', root).forEach((b) => (b.onclick = () => { wikiPage = LEARN.wikiIndex(b.dataset.wiki); openOverlay('wiki'); }));
+  $$('[data-page]', root).forEach((b) => (b.onclick = () => { wikiPage = +b.dataset.page; renderOverlay(); }));
   setTimeout(() => $('.modal', root)?.focus?.(), 0);
 }
 function historyHtml() {
@@ -889,6 +914,8 @@ function profileHtml() {
     <h3>화면</h3>
     <div class="set-row">${icon('sound', 22)}<span>정차 중 효과음</span><button type="button" class="switch" id="setSound" role="switch" aria-label="정차 중 효과음" aria-checked="${H.sound}"><span></span></button></div>
     <div class="set-row">${icon('text', 22)}<span>큰 글씨</span><button type="button" class="switch" id="setLarge" role="switch" aria-label="큰 글씨" aria-checked="${H.largeText}"><span></span></button></div>
+    <h3>배우기</h3>
+    <div class="set-row">${icon('note', 22)}<span>운전 노트<small>출발 전·언덕·차로 바꾸기·교차로·주차 — 정차 중에만 열려요</small></span><button type="button" class="mini" data-wiki="before">열기</button></div>
     <h3>기록</h3>
     <button type="button" class="btn danger" id="delBtn">${icon('trash', 20)} 이 기기의 기록 모두 지우기</button>
     <p class="caption">서버·계정·위치·차대번호를 쓰지 않아요. 기록은 이 브라우저에만 있어요.</p>`;
@@ -932,7 +959,7 @@ function bindOverlay(root) {
     };
   }
   if (overlay === 'intro') {
-    const finish = (then) => { H.introSeen = true; saveHistory(); closeOverlay(); then?.(); };
+    const finish = (then) => { H.introSeen = true; H.introV = INTRO_V; saveHistory(); closeOverlay(); then?.(); };
     const go = (k) => {
       obStep = Math.max(0, Math.min(OB.STEPS.length - 1, k));
       renderOverlay();
@@ -1076,7 +1103,53 @@ function syncConsole() {
   $('#c-brake').value = V.brakePedalPct.value; $('#v-brake').textContent = Math.round(V.brakePedalPct.value); $('#v-brakeP').textContent = V.brakePressed.value ? '밟음' : '뗌';
   $('#c-steer').value = V.steeringDeg.value; $('#v-steer').textContent = Math.abs(V.steeringDeg.value);
   $('#v-steerDir').textContent = V.steeringDeg.value > 0 ? '오른쪽' : V.steeringDeg.value < 0 ? '왼쪽' : '가운데';
+  const wh = $('#c-wheel'); wh.style.setProperty('--deg', `${V.steeringDeg.value}deg`); wh.setAttribute('aria-valuenow', String(V.steeringDeg.value));
+  wh.setAttribute('aria-valuetext', `${Math.abs(V.steeringDeg.value)}도 ${$('#v-steerDir').textContent}`);
+  $('#c-brakeHold').style.setProperty('--press', String(V.brakePedalPct.value / 100));
+  $('#c-accelHold').style.setProperty('--press', String(V.accelPedalPct.value / 100));
 }
+/** 누르고 있는 동안 upMs에 걸쳐 0→100, 떼면 downMs에 걸쳐 0으로 */
+function holdPedal(el, get, set, upMs, downMs) {
+  let raf = null; const stop = () => { if (raf) { cancelAnimationFrame(raf); raf = null; } };
+  el.addEventListener('pointerdown', (e) => {
+    e.preventDefault(); stop(); el.classList.add('down'); el.setPointerCapture?.(e.pointerId);
+    let last = performance.now();
+    const up = (t) => { const v = get() + ((t - last) / upMs) * 100; last = t; set(Math.min(100, v)); if (v < 100) raf = requestAnimationFrame(up); };
+    raf = requestAnimationFrame(up);
+  });
+  const release = () => {
+    if (!el.classList.contains('down')) return; el.classList.remove('down'); stop();
+    const t0 = performance.now(), v0 = get();
+    const down = (t) => { const k = Math.min(1, (t - t0) / downMs); set(v0 * (1 - k)); if (k < 1) raf = requestAnimationFrame(down); else raf = null; };
+    raf = requestAnimationFrame(down);
+  };
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((ev) => el.addEventListener(ev, release));
+}
+
+/** 핸들 그림: 잡고 돌린 각도만큼(1:1) 돌아간다. 한 바퀴 넘게도 돌릴 수 있다(±540°). */
+function bindWheel(el) {
+  let drag = null;
+  const ang = (e) => { const r = el.getBoundingClientRect(); return (Math.atan2(e.clientY - (r.top + r.height / 2), e.clientX - (r.left + r.width / 2)) * 180) / Math.PI; };
+  el.addEventListener('pointerdown', (e) => { e.preventDefault(); el.setPointerCapture?.(e.pointerId); drag = { a: ang(e), v: V.steeringDeg.value, acc: 0, t0: performance.now() }; el.classList.add('down'); });
+  el.addEventListener('pointermove', (e) => {
+    if (!drag) return;
+    const a = ang(e); let d = a - drag.a; if (d > 180) d -= 360; if (d < -180) d += 360;
+    drag.a = a; drag.acc += d; setSteer(drag.v + drag.acc); tick();
+  });
+  const end = () => { if (!drag) return; const long = performance.now() - drag.t0 > 250; drag = null; el.classList.remove('down'); if (long) maybeWasdHint(); };
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((ev) => el.addEventListener(ev, end));
+  el.addEventListener('keydown', (e) => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    e.preventDefault(); e.stopPropagation(); setSteer(V.steeringDeg.value + (e.key === 'ArrowLeft' ? -15 : 15)); tick();
+  });
+}
+
+/** 마우스로 핸들·페달을 한참 만지면, 가상 주행 중에 한 번만 키보드 안내(콘솔 안 — 앱 화면은 건드리지 않는다) */
+function maybeWasdHint() {
+  if (H.wasdHintSeen || appMode === 'practice' || demo.running) return;
+  $('#wasdHint').hidden = false;
+}
+
 function bindConsole() {
   $$('#c-gear button').forEach((b) => (b.onclick = () => {
     if (sim && simRunning() && sim.ego.v > 0.4 && (b.dataset.v === 'P' || b.dataset.v === 'R')) { flashNote('차가 완전히 멈춘 다음 옮길 수 있어요'); return; }
@@ -1092,15 +1165,15 @@ function bindConsole() {
   $('#c-speed').oninput = (e) => { const v = +e.target.value; setV('speedKmh', v); setV('uxRestricted', v > 0, { onlyIfChanged: true }); syncConsole(); tick(); };
   $('#c-brake').oninput = (e) => { stopRamp(); setBrake(+e.target.value); tick(); };
   $('#c-steer').oninput = (e) => { setSteer(+e.target.value); tick(); };
+  $('#c-steer').addEventListener('pointerdown', () => { const t0 = performance.now(); addEventListener('pointerup', () => { if (performance.now() - t0 > 250) maybeWasdHint(); }, { once: true }); });
   $('#c-steerCenter').onclick = () => { setSteer(0); tick(); };
-  // 꾹 밟기: 누르는 동안 끝까지, 떼면 0.9초에 걸쳐 천천히
-  let ramp = null; const stopRamp = () => { if (ramp) { cancelAnimationFrame(ramp); ramp = null; } };
-  const hb = $('#c-brakeHold');
-  hb.addEventListener('pointerdown', (e) => { e.preventDefault(); stopRamp(); const t0 = performance.now(), v0 = V.brakePedalPct.value;
-    const up = (t) => { const k = Math.min(1, (t - t0) / 250); setBrake(v0 + (100 - v0) * k); if (k < 1) ramp = requestAnimationFrame(up); }; ramp = requestAnimationFrame(up); hb.classList.add('down'); });
-  const release = () => { if (!hb.classList.contains('down')) return; hb.classList.remove('down'); stopRamp(); const t0 = performance.now(), v0 = V.brakePedalPct.value;
-    const down = (t) => { const k = Math.min(1, (t - t0) / 900); setBrake(v0 * (1 - k)); if (k < 1) ramp = requestAnimationFrame(down); else ramp = null; }; ramp = requestAnimationFrame(down); };
-  ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => hb.addEventListener(ev, release));
+  // 페달 그림(11/12 회의 A05): 마우스 클릭은 0/1뿐이라 세기를 못 준다 → **누르고 있는 시간만큼 깊게**.
+  // 짧게 톡 = 살살, 길게 = 세게. 슬라이더는 그대로 두어 정확한 값도 넣을 수 있다.
+  holdPedal($('#c-brakeHold'), () => V.brakePedalPct.value, setBrake, 1600, 900);
+  holdPedal($('#c-accelHold'), () => V.accelPedalPct.value, setAccel, 2500, 250);
+  bindWheel($('#c-wheel'));
+  $('#c-belt').addEventListener('click', () => { if (!V.driverBeltBuckled.value) return; const r = $('#r-belt'); r.classList.remove('clack'); void r.offsetWidth; r.classList.add('clack'); });
+  $('#wasdHintX').onclick = () => { $('#wasdHint').hidden = true; H.wasdHintSeen = true; saveHistory(); };
   // 예외 재현
   $('#statusRows').innerHTML = STATUS_KEYS.map((k) => `<label class="st-row"><span>${SIGNALS[k].label}</span>
     <select data-k="${k}">${Object.entries(STATUS_LABEL).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select></label>`).join('');
@@ -1177,7 +1250,7 @@ function guide(s) {
         if (p?.kind === 'done') return ['잘했어요 앱에서 <b>[다음]</b>을 눌러요.', null];
         if (p?.kind === 'unavailable') return ['신호를 읽을 수 없어 앱이 건너뛰기를 안내해요.', null];
         if (id === 'SEAT_BELT') return [V.driverBeltBuckled.value ? '<b>안전벨트</b>를 한 번 풀었다가 다시 매요.' : '이제 <b>안전벨트</b>를 매요.', 'r-belt'];
-        if (id === 'BRAKE_PRESS_RELEASE') return [p?.step === 2 ? '이제 <b>꾹 밟기</b>에서 손을 떼요(천천히 떼짐).' : '<b>꾹 밟기</b>를 누르고 있거나 페달을 끝까지 밀어요.', 'r-brake'];
+        if (id === 'BRAKE_PRESS_RELEASE') return [p?.step === 2 ? '이제 <b>페달 그림</b>에서 손을 떼요(천천히 떼짐).' : '<b>페달 그림</b>을 꾹 누르고 있거나(누른 만큼 깊게) 막대를 끝까지 밀어요.', 'r-brake'];
         if (id === 'TURN_SIGNAL') return [['방향지시등 <b>◀ 왼쪽</b>', '방향지시등 <b>오른쪽 ▶</b>', '방향지시등 <b>끔</b>'][(p?.step || 1) - 1], 'r-turn'];
         if (id === 'WIPER') return ['<b>와이퍼</b>를 켜 보세요.', 'r-wiper'];
         if (id === 'LOW_BEAM') return ['<b>전조등</b>을 켜 보세요.', 'r-beam'];
@@ -1232,7 +1305,7 @@ function tick() {
   flushToasts();
 }
 function onPhaseChange(from, to) {
-  if (to === C.Phase.DRIVING_LOCK) { overlay = null; $('#toasts').innerHTML = ''; toastBusy = false; review = null; }
+  if (to === C.Phase.DRIVING_LOCK) { RP.closePip(); overlay = null; $('#toasts').innerHTML = ''; toastBusy = false; review = null; }
   if (to === C.Phase.REVIEW) review = null;
   if (appMode !== 'practice' && to === C.Phase.DRIVING_LOCK && Math.abs(V.steeringDeg.value) > 5) { setSteer(0); flashNote('핸들을 가운데로 맞추고 출발해요'); }
   if (appMode !== 'practice' && to === C.Phase.DRIVING_LOCK) { sim = new SIM.DriveSim(appMode === 'eval' ? { lka: 'off', acc: false, cap: null } : { ...simSettings }, (Date.now() % 997) + 1); simReport = null; }
@@ -1246,7 +1319,7 @@ function onPhaseChange(from, to) {
   if (from === C.Phase.DRIVING_LOCK) endVoiceDrive();
 }
 function flashNote(t) {
-  const el = document.createElement('div'); el.className = 'toast note'; el.textContent = t; $('#toasts').appendChild(el);
+  const el = document.createElement('div'); el.className = 'toast note timed'; el.style.setProperty('--life', '1.6s'); el.textContent = t; $('#toasts').appendChild(el);
   setTimeout(() => el.remove(), 1600);
 }
 
@@ -1500,12 +1573,15 @@ Screens.coach = () => ({
   },
 });
 
-function evItem(e) {
+function evItem(e, i) {
   const sensor = e.sensor ? `<em class="sens">${SENSOR_LABEL[e.sensor]} 센서(가상)</em>` : '';
   const tag = e.pts > 0 ? `<b class="pts bad">−${e.pts}</b>` : e.good ? '<b class="pts good">잘함</b>' : '<b class="pts info">기록</b>';
   const spoke = voice?.didSpeak(e.code, e.t) ? `<span class="rp-spoke" title="주행 중에 음성으로 말한 항목">${icon('sound', 16)} 말했어요</span>` : '';
-  return `<li class="${e.pts > 0 ? 'bad' : e.good ? 'good' : 'info'}"><span class="t">${fmtT(e.t)}</span>${tag}<div><b>${e.title}</b> ${sensor}${spoke}<small>${e.kmh}km/h · ${srcChip('MOCK')} · ${e.advice}</small></div></li>`;
+  return `<li class="${e.pts > 0 ? 'bad' : e.good ? 'good' : 'info'}"><span class="t">${fmtT(e.t)}</span>${tag}<div><b>${e.title}</b> ${sensor}${spoke}<small>${e.kmh}km/h · ${srcChip('MOCK')} · ${e.advice}</small>${sceneBtn(i, e.t)}</div></li>`;
 }
+
+// 리포트 사건 → 리플레이 항목 모양(그래프·재현 창이 같은 모양을 쓴다). 순서는 r.events와 같다.
+const reportRows = (r) => r.events.map((e) => ({ atSec: e.t, title: e.title, kind: e.pts > 0 ? 'note' : e.good ? 'good' : 'info', spoken: !!voice?.didSpeak(e.code, e.t), source: 'MOCK' }));
 
 // ── 주행 리포트 ──
 Screens.report = () => ({
@@ -1532,6 +1608,7 @@ Screens.report = () => ({
         <span>${c.minus ? `−${c.minus}점 · ${c.bad}번` : '깔끔했어요'}${c.good ? ` · 잘함 ${c.good}` : ''}</span>
         ${c.key === 'lane' && r.laneKeepPct != null ? `<div class="holdbar"><i style="width:${r.laneKeepPct}%"></i></div>` : ''}</div>`).join('')}</section>
       ${r.advice.length ? `<section class="panel advice"><h2>다음엔 이것만</h2>${r.advice.map((a, i) => `<p><b>${i + 1}.</b> ${a.advice} <small>(${a.title})</small></p>`).join('')}</section>` : ''}
+      ${timelineSection(reportRows(r), true)}
       <section class="panel"><h2>상황별 기록 <small>${r.events.length}건 · 시간순</small></h2>
         <ul class="ev-list">${r.events.map(evItem).join('') || '<li class="muted">기록된 상황이 없어요. 짧게 달렸거나 아주 안정적이었어요.</li>'}</ul></section>
       <div class="actions two">
@@ -1540,7 +1617,8 @@ Screens.report = () => ({
       </div>
       <p class="caption">가상 시뮬레이션 점수예요. 실제 운전 실력 평가나 면허 기준이 아니에요.</p>
     </div>`;
-    $('#againBtn').onclick = () => { session = C.onReviewDone(session); prep = newPrep(); simReport = null; sim = null; render(); };
+    bindTimeline(el, reportRows(r), true);
+    $('#againBtn').onclick = () => { RP.closePip(); session = C.onReviewDone(session); prep = newPrep(); simReport = null; sim = null; render(); };
     $('#histBtn').onclick = () => openOverlay('history');
   },
 });
@@ -1567,6 +1645,7 @@ function drawSimView() {
   ctx.setLineDash([3 * ppm, 6 * ppm]); ctx.lineDashOffset = -((e.s * ppm) % (9 * ppm));
   for (const x of [-1.75, 1.75]) { ctx.beginPath(); ctx.moveTo(X(x), 0); ctx.lineTo(X(x), Hh); ctx.stroke(); }
   ctx.setLineDash([]);
+  drawJunctions(ctx, sv, W, Hh, ppm, X, Y);
   // 센서 범위
   const sn = sv.sensors(); const hot = sv.flash && sv.t < sv.flash.until ? sv.flash.sensor : null;
   const warnF = Number.isFinite(sn.front) && e.v > 2 && sn.front < e.v * 1.2 + 4;
@@ -1600,6 +1679,38 @@ function drawSimView() {
       <span class="hchip ${sv.settings.acc ? 'on' : ''}">크루즈 ${sv.settings.acc ? sv.settings.accSet : '끔'}</span>` : '<span class="hchip">평가 중 · 보조 끔</span>'}</div>
       ${sv.stopReq ? '<div class="hud-stop">강습자 정지 요청 — 천천히 멈춰요</div>' : ''}
       ${recent ? `<div class="hud-ev ${recent.pts > 0 ? 'bad' : recent.good ? 'good' : ''}">${recent.sensor ? `${{ front: '전방', rear: '후방', side: '측방' }[recent.sensor]} 센서 · ` : ''}${recent.title}${recent.pts ? ` −${recent.pts}` : ''}</div>` : ''}`;
+  }
+}
+// 가상 교차로(A04): 가로지르는 도로 + 횡단보도 + 정지선 + 회전 차로 화살표
+function drawJunctions(ctx, sv, W, Hh, ppm, X, Y) {
+  const e = sv.ego; const first = SIM.nextJunction(e.s - 40);
+  for (const J of [first, SIM.junctionAt(first.k + 1)]) {
+    const yTop = Y(J.s + SIM.JUNCTION_W), yBot = Y(J.s);
+    if (yBot < -40 || yTop > Hh + 40) continue;
+    ctx.fillStyle = T('--road-asphalt'); ctx.fillRect(0, yTop, W, yBot - yTop);
+    ctx.strokeStyle = T('--road-line'); ctx.lineWidth = Math.max(2, ppm * 0.15);
+    // 가로 도로 가운데 점선
+    ctx.setLineDash([3 * ppm, 4 * ppm]); ctx.beginPath(); ctx.moveTo(0, (yTop + yBot) / 2); ctx.lineTo(X(-5.25), (yTop + yBot) / 2); ctx.moveTo(X(5.25), (yTop + yBot) / 2); ctx.lineTo(W, (yTop + yBot) / 2); ctx.stroke(); ctx.setLineDash([]);
+    // 횡단보도(정지선 앞 4m)와 정지선
+    ctx.fillStyle = T('--road-line');
+    for (let x = -5; x < 5.2; x += 1) ctx.fillRect(X(x), Y(J.s - 1), 0.5 * ppm, 3 * ppm);
+    ctx.fillRect(X(-5.25), Y(J.s - 5), 10.5 * ppm, Math.max(2, 0.3 * ppm));
+    // 회전 차로 바닥 화살표(30m 전) — 맨 오른쪽/왼쪽 차로
+    const lx = (J.dir === 'RIGHT' ? 1 : -1) * SIM.LANE_W; const ay = Y(J.s - 30); const sgn = J.dir === 'RIGHT' ? 1 : -1;
+    ctx.strokeStyle = T('--road-line'); ctx.lineWidth = Math.max(2, ppm * 0.22); ctx.beginPath();
+    ctx.moveTo(X(lx), ay + 2.5 * ppm); ctx.lineTo(X(lx), ay); ctx.quadraticCurveTo(X(lx), ay - 1 * ppm, X(lx + sgn * 0.9), ay - 1 * ppm); ctx.stroke();
+    ctx.fillStyle = T('--road-line'); ctx.beginPath(); ctx.moveTo(X(lx + sgn * 1.4), ay - 1 * ppm); ctx.lineTo(X(lx + sgn * 0.8), ay - 1.5 * ppm); ctx.lineTo(X(lx + sgn * 0.8), ay - 0.5 * ppm); ctx.closePath(); ctx.fill();
+    // 이름표
+    const label = `가상 교차로 · ${J.dir === 'RIGHT' ? '우회전' : '좌회전'} 구간`;
+    ctx.font = `600 ${Math.max(11, ppm * 0.75)}px Pretendard Variable, sans-serif`; ctx.textAlign = 'center';
+    ctx.fillStyle = T('--road-line'); ctx.fillText(label, W / 2, (yTop + yBot) / 2 + ppm * 0.3);
+  }
+  // 방금 돈 교차로: 1.6초 동안 회전 궤적을 그려 '돌았다'를 보여 준다(주행 화면은 가상 시뮬레이션이다)
+  const lt = sv.lastTurn;
+  if (lt && sv.t - lt.t < 1.6) {
+    const J = SIM.junctionAt(lt.k); const sgn = lt.dir === 'RIGHT' ? 1 : -1; const k = (sv.t - lt.t) / 1.6;
+    ctx.strokeStyle = TA('--primary', 0.55 * (1 - k)); ctx.lineWidth = SIM.CAR_W * ppm * 0.6; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(X(e.x), Y(J.s)); ctx.quadraticCurveTo(X(e.x), Y(J.s + SIM.JUNCTION_W / 2), X(e.x + sgn * 7), Y(J.s + SIM.JUNCTION_W / 2)); ctx.stroke(); ctx.lineCap = 'butt';
   }
 }
 function carTop(ctx, cx, cy, ppm, color, ego, signal, t) {
@@ -1638,11 +1749,14 @@ function pumpVoice() {
     while (seenSimEvents < sim.events.length) {
       const e = sim.events[seenSimEvents++];
       replayRows.push(e);
-      if (!e.good && !e.info) offerVoice(e.code, e.t, e.kmh);
+      // 교차로 접근은 '정보' 기록이지만 음성은 회전 주의를 연다(길 안내가 아니라 주의만)
+      if (e.code === 'JUNCTION_AHEAD') offerVoice(e.dir === 'LEFT' ? 'TURN_LEFT_CAUTION' : 'TURN_RIGHT_CAUTION', e.t, e.kmh);
+      else if (!e.good && !e.info) offerVoice(e.code, e.t, e.kmh);
     }
   }
-  // 오래 조용했으면 칭찬 한 번
-  const s = voice.considerSteady(voiceSec);
+  flushVoice(appMode === 'practice' ? voiceSec : (sim ? sim.t : voiceSec));
+  // 달리는 동안 오래 조용했으면 칭찬 한 번
+  const s = voice.considerSteady(voiceSec, V.speedKmh.value);
   if (s) {
     if (speaking) voice.dropped('BUSY');
     else {
@@ -1657,6 +1771,34 @@ function pumpVoice() {
   }
 }
 
+/** 주행 중 시간표 한 장(초당 10장). 사건 시각과 같은 시계를 쓴다(sim: sim.t, 연습: voiceSec) */
+function recordTrack() {
+  const base = { kmh: V.speedKmh.value, brake: V.brakePedalPct.value, accel: V.accelPedalPct.value, steer: V.steeringDeg.value, sig: V.turnSignal.value };
+  if (sim && appMode !== 'practice') {
+    track.push({ t: sim.t, ...base, kmh: sim.ego.v * 3.6, x: sim.ego.x, s: sim.ego.s,
+      npcs: sim.npcs.filter((n) => Math.abs(n.s - sim.ego.s) < 60).map((n) => [n.id, n.x, n.s, !!(n.cutter && sim.t - (sim.cutIn.at || 0) < 8)]) });
+  } else track.push({ t: voiceSec, ...base });
+}
+
+/** 복기 화면 공통: 속도 시간표 + 사건 점 + '장면 보기'. 주차 후 화면에서만 부른다. */
+function timelineSection(rows, hasSim) {
+  if (track.frames.length < 2) return '';
+  return `<section class="panel tl"><h2>속도 시간표 <small>점을 누르면 그 장면을 다시 봐요</small></h2>
+    ${RP.timelineSvg(track.frames, rows)}${RP.timelineLegend(hasSim)}</section>`;
+}
+function bindTimeline(root, rows, hasSim) {
+  const open = (i, opener) => {
+    const r = rows[i]; if (!r) return;
+    RP.openPip(root.querySelector('.screen') || root, { frames: track.around(r.atSec), row: r, kind: hasSim ? 'sim' : 'signals', reduced: reduceMotion, opener, sourceLabel: C.SourceLabel[r.source || 'MOCK'] });
+  };
+  $$('.tl-mk', root).forEach((g) => {
+    g.addEventListener('click', () => open(+g.dataset.i, g));
+    g.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(+g.dataset.i, g); } });
+  });
+  $$('[data-scene]', root).forEach((b) => (b.onclick = () => open(+b.dataset.scene, b)));
+}
+const sceneBtn = (i, atSec) => (track.hasScene(atSec) ? `<button type="button" class="mini scene-btn" data-scene="${i}">장면 보기</button>` : '');
+
 let simLast = performance.now();
 let simLoopOn = false; let lastIdleDraw = 0;
 const keysDown = new Set();
@@ -1666,7 +1808,7 @@ function simLoop(t) {
   // 연습 모드에서는 주행 중이 아닐 때 루프를 멈춘다(성능). 주행 중에는 음성 감시 때문에 돌려야 한다.
   if (appMode === 'practice' && !simRunning() && !driving) { simLoopOn = false; return; }
   const dt = Math.min(0.06, (t - simLast) / 1000); simLast = t;
-  if (driving) { voiceSec += dt * timeScale; voiceRealSec += dt; pumpVoice(); }
+  if (driving) { voiceSec += dt * timeScale; voiceRealSec += dt; pumpVoice(); recordTrack(); }
   if (simRunning()) {
     sim.input.accel = V.accelPedalPct.value / 100; sim.input.brake = V.brakePedalPct.value / 100;
     sim.input.steer = V.steeringDeg.value; sim.input.signal = V.turnSignal.value; sim.input.gear = V.gear.value;
@@ -1684,15 +1826,20 @@ function simLoop(t) {
 }
 startSimLoop();
 
-// 키보드 운전(가상 주행 중): ↑ 가속 · ↓ 브레이크 · ←→ 핸들 · 스페이스 = 강습자 정지(강습 모드)
+// 키보드 운전(가상 주행 중): ↑/W 가속 · ↓/S 브레이크 · ←→/A D 핸들 · 스페이스 = 강습자 정지(강습 모드)
+const WASD = { KeyW: 'ArrowUp', KeyS: 'ArrowDown', KeyA: 'ArrowLeft', KeyD: 'ArrowRight' };
 function keyDrive(e) {
   if (!simRunning() || overlay || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName || '')) return;
   const down = e.type === 'keydown';
+  if (document.activeElement?.getAttribute?.('role') === 'slider') return; // 핸들 그림에 포커스면 그쪽이 받는다
+  // W A S D도 같은 뜻(11/12 회의). e.code로 봐서 한글 입력 상태(ㅈㅁㄴㅇ)에서도 된다
+  const key = WASD[e.code] || e.key;
   const map = { ArrowUp: 1, ArrowDown: 1, ArrowLeft: 1, ArrowRight: 1 };
   if (e.key === ' ' && down && appMode === 'coach') { e.preventDefault(); sim.requestStop(!sim.stopReq); return; }
-  if (!map[e.key]) return;
+  if (!map[key]) return;
   e.preventDefault();
-  if (down) keysDown.add(e.key); else keysDown.delete(e.key);
+  if (down) keysDown.add(key); else keysDown.delete(key);
+  if (down && WASD[e.code] && !H.wasdHintSeen) { H.wasdHintSeen = true; saveHistory(); $('#wasdHint').hidden = true; }
   setAccel(keysDown.has('ArrowUp') ? 45 : 0);
   setBrake(keysDown.has('ArrowDown') ? 55 : 0);
   setSteer(keysDown.has('ArrowLeft') ? -110 : keysDown.has('ArrowRight') ? 110 : 0);
@@ -1760,6 +1907,20 @@ async function startSimDemo() {
     sim.npcs.push({ id: 900, s: sim.ego.s - 13, x: 0, v: sim.ego.v + 2, vd: sim.ego.v + 2 });
     await step('이번엔 신호 없이, 뒤차가 가까운데 오른쪽으로 끼어들면…', 600); await steerTo(0, null);
     await step('후방 센서 감지: 무리한 끼어들기(−8) + 방향지시등 없음(−3)', 2200);
+    // 가상 교차로 우회전(A04): 맨 오른쪽 차로 → 교차로 앞에서 속도 줄이고 깜빡이 → 천천히 돌기
+    {
+      const J = SIM.nextJunction(sim.ego.s + 110); const R = J.dir === 'RIGHT';
+      await step(`다음 교차로에서 ${R ? '우' : '좌'}회전 — ${R ? '맨 오른쪽' : '맨 왼쪽'} 차로로 미리 옮겨요`, 300); await steerTo(R ? 1 : -1, J.dir);
+      await waitFor(() => J.s - sim.ego.s < 75, 40000);
+      await step(`${R ? '우' : '좌'}회전 구간 — 속도를 줄이고 깜빡이 켜기. 음성: “${VOICE.LINES[R ? 'TURN_RIGHT_CAUTION' : 'TURN_LEFT_CAUTION'].line}”`, 300);
+      setAccel(0); await ramp(setBrake, 0, 25, 500);
+      await waitFor(() => sim.ego.v * 3.6 < 20, 9000); setBrake(0); setAccel(8);
+      setV('turnSignal', J.dir); syncConsole();
+      await waitFor(() => sim.junction.k >= J.k, 20000);
+      setV('turnSignal', 'NONE'); syncConsole();
+      const good = sim.lastTurn?.k === J.k && sim.events.some((x) => x.code === 'TURN_GOOD' && x.t >= sim.lastTurn.t);
+      await step(good ? '천천히, 알맞은 차로에서 돌았어요 — 교차로 회전 잘함' : '회전 기록이 남았어요 — 주차 후 리포트에서 다시 봐요', 1600); setAccel(25);
+    }
     if (coach) {
       await step('강습자: “최고 40km/h로 제한”', 600); $$('#coachCtl .seg[data-name="cap"] button')[2]?.click(); setAccel(60);
       await sleep(2600);
@@ -1795,6 +1956,7 @@ $('#consoleFab .fab-ico').innerHTML = icon('console', 22);
 $('#historyBtn').onclick = () => openOverlay('history');
 $('#profileBtn').onclick = () => openOverlay('profile');
 $('#helpBtn').onclick = () => { obStep = 0; openOverlay('intro'); };
+$('#aboutBtn').onclick = () => openOverlay('about');
 $('#demoSpeed').onchange = (e) => { demoSpeed = +e.target.value || 1; };
 $('#demoBtn').onclick = () => (demo.running ? stopDemo('멈췄어요') : startDemo());
 addEventListener('keydown', (e) => { if (e.key === 'Escape' && overlay) closeOverlay(); });
@@ -1806,10 +1968,8 @@ $('#themeBtn').onclick = () => THEME.toggle();
 bindConsole(); syncConsole();
 $$('#modeSeg button').forEach((b) => (b.onclick = () => setMode(b.dataset.v)));
 $('#c-accel').oninput = (e) => { setAccel(+e.target.value); };
-(() => { const hb = $('#c-accelHold'); const on = (e) => { e.preventDefault(); setAccel(40); hb.classList.add('down'); }; const off = () => { if (!hb.classList.contains('down')) return; hb.classList.remove('down'); setAccel(0); };
-  hb.addEventListener('pointerdown', on); ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => hb.addEventListener(ev, off)); })();
 applyMode();
 render();
 setInterval(tick, 100);
 if (new URLSearchParams(location.search).has('demo')) setTimeout(startDemo, 200);
-else if (!H.introSeen) setTimeout(() => { obStep = 0; openOverlay('intro'); }, 300);
+else if (!H.introSeen || (H.introV || 1) < INTRO_V) setTimeout(() => { obStep = 0; openOverlay('intro'); }, 300);
