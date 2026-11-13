@@ -127,6 +127,14 @@
 
     <fieldset class="c-group" id="simGroup" hidden>
       <legend>가상 주행 <small>평가·강습 모드</small></legend>
+      <div class="c-row c-col" id="r-maneuver"><span class="c-lab">다음 교차로 가상 진행</span>
+        <div class="seg" id="c-maneuver" role="radiogroup" aria-label="다음 교차로 가상 진행 방향">
+          <button type="button" role="radio" data-v="LEFT" aria-checked="false">좌회전</button>
+          <button type="button" role="radio" data-v="STRAIGHT" aria-checked="true">직진</button>
+          <button type="button" role="radio" data-v="RIGHT" aria-checked="false">우회전</button>
+        </div>
+      </div>
+      <p class="c-note">직선 도로 위 2D Mock 판정이에요. 가상 진행과 깜빡이는 별도로 선택해요. 교차로 진입 후 진행 선택은 직진으로 돌아가요. 실제 회전·차선 위험을 감지하지 않아요.</p>
       <div class="c-row c-col" id="r-accel"><span class="c-lab">가속 페달 <b id="v-accel">0</b>%</span>
         <div class="c-inline"><input type="range" id="c-accel" min="0" max="100" step="1" value="0" aria-label="가속 페달">
           <button type="button" class="pedal" id="c-accelHold" aria-label="가속 페달 — 누르고 있는 시간만큼 세게 밟혀요" title="누르고 있으면 점점 깊게(2.5초에 끝까지), 떼면 바로 떼요">

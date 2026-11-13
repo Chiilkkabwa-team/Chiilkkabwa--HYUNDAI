@@ -69,6 +69,13 @@ Android 구현 정적 점검일: 2026-11-11 KST (당시 기준 main: de612636cc2
 - 로컬 mock/vehicle JVM 각각 **78/78**, 두 debug 빌드, 웹 **79/79 PASS**. 원격 push CI에서도 Web unit tests 및 Android tests/both debug flavors SUCCESS 확인. PR #19로 dev 대상 검토 중이며 아직 병합하지 않았다.
 - 실제 차량/SDK·Emulator 입력·주행 수집 정책·노이즈/임계값 보정·B/C 연결은 **NOT_VERIFIED**. 앱 실신호 경로는 미연결이며 A01의 실수신 검증을 A02 실행 증거로 사용하지 않는다.
 
+### A04 웹 가상 교차로 보완 (2026-11-13 / def35eb)
+
+- `feature/a04-intersection-turns`, 기반 dev `1140c74`. 기존 2D 교차로 배치를 재사용해 가상 진행과 깜빡이 독립 선택, 접근/진입 분리, 진입 속도·가상 차로·구간/신호 불일치, 중복 억제와 다음 교차로 처리를 보완했다. 모든 교차로 기록과 복기에 방향·시뮬레이션 시각·근거·MOCK 출처를 보존한다.
+- 기존 네 교차로 이벤트 계약·음성 우선순위는 유지했다. 새 신호/구간 불일치 및 직진/판정 보류 기록은 [A04 계약·실측](A04_INTERSECTION_TURNS.md)에 정리했다. 웹 외 Kotlin·Manifest·Gradle은 무변경이다.
+- 웹 전체 **105/105 PASS**, headless Chrome 평가·강습·연습 자동 시연 회귀 PASS, 1440px/390px 콘솔의 독립 조작·넘침 없음·브라우저 오류0 확인. 시연의 늦은 감속 결함도 수정 후 재검증했다.
+- S07/S10 PASS는 **웹 2D Mock 범위**다. 실제 회전 물리·3D·보행자/통행권·실제 차선 위험은 구현/검증하지 않았다. Android/Pleos Emulator/실차 검증으로 표시하지 않는다.
+
 ### A01 신뢰성 후속 재검증 (2026-11-13 KST23시 / dev1140c74)
 
 [상세 보고서](A01_RELIABILITY_FOLLOWUP.md). 앱 코드 변경 없음. 공식 콘솔48개 카드·경고등 비교에서 벨트true 및 실제 주차브레이크ON 입력 경로가 없어 전체 워밍업은 계속 BLOCKED/NOT_VERIFIED다. 안전 조건을 완화하지 않았다. Settings에서325.96초 중단 후 같은 PID로 화면·새 신호 복귀는 PASS. Sleep/Display OFF에서 전체 검은 캡처 및 Wake 복구를 관측했지만 기존 장시간 검은 화면 사건의 원인/해결 완료는 NOT_VERIFIED다. 두 JVM 각각78/78, 양debug빌드, 웹79/79 PASS. 기본off·debug EMULATOR opt-in·실차/release 차단 유지. 증거는 `docs/evidence/a01-2026-11-13-reliability/`.

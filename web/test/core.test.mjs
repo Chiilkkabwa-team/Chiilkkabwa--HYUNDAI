@@ -169,14 +169,14 @@ test('sim_junction_ahead_is_announced_once', () => {
 });
 test('sim_slow_right_turn_from_right_lane_is_good', () => {
   const s = new Sim.DriveSim(); s.npcs = []; s.cutIn.done = true;
-  toJunction(s, 0); s.ego.x = Sim.LANE_W; s.ego.v = 5; s.input.signal = 'RIGHT';
+  toJunction(s, 0); s.ego.x = Sim.LANE_W; s.ego.v = 5; s.input.signal = 'RIGHT'; s.input.maneuver = 'RIGHT';
   run(s, 20, (x) => { x.input.accel = 0.05; });
   assert.ok(s.events.some((e) => e.code === 'TURN_GOOD'));
   assert.ok(!s.events.some((e) => e.code === 'TURN_FAST'));
 });
 test('sim_fast_turn_from_wrong_lane_is_noted', () => {
   const s = new Sim.DriveSim(); s.npcs = []; s.cutIn.done = true;
-  toJunction(s, 1); s.ego.x = Sim.LANE_W; s.ego.v = 14; s.input.signal = 'LEFT'; // 좌회전인데 오른쪽 차로·50km/h
+  toJunction(s, 1); s.ego.x = Sim.LANE_W; s.ego.v = 14; s.input.signal = 'LEFT'; s.input.maneuver = 'LEFT'; // 좌회전인데 오른쪽 차로·50km/h
   run(s, 8, (x) => { x.input.accel = 0.2; });
   const codes = s.events.map((e) => e.code);
   assert.ok(codes.includes('TURN_FAST')); assert.ok(codes.includes('TURN_WRONG_LANE'));

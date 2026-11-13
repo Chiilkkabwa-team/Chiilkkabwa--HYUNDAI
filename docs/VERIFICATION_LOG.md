@@ -203,6 +203,31 @@
 
 남은 일: 실제 속도 공급의 지원·권한·단위·획득 시각 검증, 단일 시계 계약/누락 timeout/세션 수명 연결, 실제 주기·측정 노이즈에 맞는 임계값·필터 보정, B/C eventId/시간 매핑과 정책 검증. 현재 결과는 두 표본 사이의 평균 속도 변화이며 브레이크 사용이나 도로 위험을 확정하지 않는다.
 
+## 2026-11-13 A04 — 웹 가상 교차로 판정과 시연 회귀
+
+- 역할/격리: 사용자 배정 A04, 독립 Worktree `feature/a04-intersection-turns`, 기반 `1140c7487f9e5cde39be1ecc41e7caef8d25e145`. 코드 `def35ebb897747d4a17901729f52a04cc4ee92c0`. 문서 후속 커밋은 실행 코드 변경 없음.
+- 환경/일시: Windows, Node24.22.1, Chrome157.0.8103.51/Playwright headless. 2026-11-13 KST 약23:14~23:34. **웹 Mock만** 실행. Android 신호·A02 엔진·Manifest/Gradle·음성 우선순위 정책 무변경.
+- [기존 분석·판정·공유 계약·안전 한계](A04_INTERSECTION_TURNS.md), [실제 브라우저 출력](evidence/a04-2026-11-13/browser-results.json). 화면은 로컬 저장소 밖 `output/a04`에 보존.
+
+| 실행 | 결과 | 판정 |
+|---|---|---|
+| 변경 전 `node --test web/test/*.test.mjs` | 기존79/79 | PASS(기준) |
+| 추가 교차로 테스트를 기존 코드에 실행 | 초기20개 중18실패, 반대 신호·근거/출처·저속/중복 등 재현 | 결함 확인 |
+| 최종 `node --test web/test/*.test.mjs` | 105/105, 실패0/건너뜀0. A04 전용26개 포함 | PASS |
+| `node --check web/app.js`, `node --check web/test/junction.browser.cjs`, `git diff --check` | 구문·공백 오류 없음 | PASS |
+| `NODE_PATH=<기존 Playwright 경로> node web/test/junction.browser.cjs` | 독립 Chrome/임시 localhost, 1440×900 및390×900의 진행/깜빡이 독립 입력·화면 넘침 없음·2D Mock 문구 확인 | PASS |
+| 기존 평가·강습 자동 시연3× | 첫 실행: 감속이 늦어 목표 교차로를 직진 통과, 정상 회전 검사 실패. 먼 교차로 선택/150m 전 감속/저속 유지/대기 보완 후 각각 TURN_GOOD 및 주차 후 report 도달 | 수정 후 PASS |
+| 기존 연습 자동 시연3× | 복기 저장 후 goal 화면 도달 | PASS |
+| 브라우저 오류 수집 | 위5시나리오 모두 pageerror/console error0, 요청 실패0 | PASS |
+| 실제 음성·실차/Emulator | 테스트 브라우저 음성/효과음 끔. Android/실차 실행 안 함 | NOT_VERIFIED/NOT_APPLICABLE |
+
+정상 좌/우·무신호 직진·반대 신호 양방향·무신호 회전·구간/차로 불일치·차체 경계·과속25km/h 경계·정지/저속 접근·중복·다음 교차로·프레임 건너뜀·저속 차로 변경 오인 방지·진입점 보간·JSON 복기 근거/Mock 출처 보존을 검사했다. 시뮬레이션 `t`는 경과 초, 진입 속도/차로는 2D 프레임 선형 보간이다. 법규/실차 안전 속도·실제 위험 판단으로 표현하지 않는다.
+
+- **S07 PASS / S10 PASS(웹 Mock 한정):** 방향·시각·단위·가상 근거와 출처 보존, 콘솔/리포트/문서에 2D Mock 표시. 실제 회전/차선 위험 감지 주장 없음. 근거: SAFETY_RULES S07/S10, COMPLIANCE_REGISTER P06; 공식 SDK/차량 지원 승인을 새로 받은 것이 아님.
+- S01/S09 PASS(변경 정적): 차량 제어/권한/SDK·외부 전송/새 개인정보 수집 없음. 나머지 S-ID의 변경 범위와 NOT_APPLICABLE 사유는 A04 문서 참조. 제품 전체 규정/성능 인증 아님.
+- G1~G4 PASS: 배정 범위/독립 브랜치·공유 계약·Mock 설계·단위/브라우저 실행 증거 확보. G5는 최신 origin/dev와 충돌 및 CI 확인 후 웹 변경만 통합. `main=c4c15686a30e788143ccc88d8ebaa52500d3187b` 보존.
+- 남은 한계: 3D/실제 회전 물리·보행자·신호등 통행권·실차 차로 위험은 범위 밖. 시연 점수는 가상 교통에 따라 달라짐. 브라우저 검사는 Chrome/Playwright 설치가 필요하며 기존 CI의 Node 단위 검사와 구분한다.
+
 ## 2026-11-13 KST23:20~23:33 — A01 신뢰성 후속 / Issue #16
 
 - 브랜치 `fix/a01-signal-reliability`, 기반/시험 코드 `1140c7487f9e5cde39be1ecc41e7caef8d25e145`. 앱 코드 변경 없음. [결과·공식 근거·재현 조건](A01_RELIABILITY_FOLLOWUP.md), [증거 목록](evidence/a01-2026-11-13-reliability/README.md).
@@ -224,3 +249,7 @@
 호스트 ColorBuffer 및 EGL 오류는 정상 화면에서도 나타났고 Settings에도 EGL 경고가 있었다. 이 문자열을 원인 확정이나 앱 수정 근거로 삼지 않았다. 화면 데이터·시계·PID·경과 시간은 실제 수집 자료이며 편집한 이미지로 대체하지 않았다. 단계별 상태만 발췌하고 SDK/APK/AVD/전체 로그/위치·개인정보는 커밋하지 않는다. 콘솔 경고등Off,브레이크0,기어P를 유지한 뒤 앱·우리 로그 수집·AVD 종료,기존 데이터 보존.
 
 규정/게이트(이번 변경 범위): S01 PASS(제어API/권한/VHAL 추가0), S02 PASS(기존공개API·공식콘솔 입력만/공식 승인 새 주장 없음), S03 PASS(잠금·중단 폐기/게이트해제는 NOT_VERIFIED), S04 중단/복귀 한정PASS·전체주행정책NOT_VERIFIED, S05 NOT_VERIFIED(실차·주행·음성차단 유지), S06 NOT_APPLICABLE(음성 변경 없음), S07 PASS(실측·출처·불명 구분), S08 잠금유지PASS·전체미션NOT_VERIFIED, S09 PASS(합성 고정신호·필요 진단만/계정·위치·비밀정보 배제), S10 PASS(빌드·실수신·화면·실차 분리), S11 NOT_VERIFIED(장시간/GPU/성능 미확정), S12 NOT_APPLICABLE(제출·릴리스 없음/main 보존). 공식 근거 범위는 SAFETY_RULES/COMPLIANCE_REGISTER와 상세 보고서 링크 참조. G1/G2/G3 PASS(배정·공식근거·제한 유지), G4 위 표 범위만PASS 및 나머지 명시적BLOCKED, G5 문서·증거만 통합하며 실차/미션 활성화 없음. Issue #16은 열린 상태 유지.
+
+### A04 최신 dev 통합 전 충돌 확인
+
+PR #20 최초 CI에서 웹 및 Android 테스트/양debug빌드 SUCCESS를 확인했다. 병합 직전 A01 문서 PR #21이 dev `1e690022d725a1f65ea171f55194e8c68200c989`로 먼저 들어와 두 검증 대장의 끝부분이 충돌했다. 양쪽 A01/A04 절을 모두 보존해 해결했다. 웹·Android 실행 코드 차이는 없으며 웹105/105를 다시 확인했다. 갱신 head의 CI와 최종 병합 상태는 PR #20/Actions 이력으로 추적한다.
