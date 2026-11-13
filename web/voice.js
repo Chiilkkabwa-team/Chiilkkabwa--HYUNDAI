@@ -94,7 +94,7 @@ export class VoiceGuide {
    * @param {boolean} [o.speedLimitOn] 제한 속도 음성(기본 꺼짐)
    */
   constructor({ goal = null, mode = 'solo', enabled = null, speedLimitOn = false, maxPerDrive = RULES.maxPerDrive } = {}) {
-    this.cap = maxPerDrive;   // 주행당 최대 발화 수(설정으로 3·5·10·20)
+    this.cap = Math.min(maxPerDrive, RULES.maxPerDrive);
     this.goal = goal;
     this.mode = mode;
     // 멘토가 타고 있으면 기본 꺼짐. 사람이 말하는데 기계가 끼어들면 안 된다.
@@ -107,30 +107,40 @@ export class VoiceGuide {
     this.skipped = [];    // 왜 말하지 않았는지(T13 점검·디버그 패널용)
     this.pending = null;  // 포커스 대기 중인 발화
     this.lastQuietAt = 0; // 마지막 지적 시각(STEADY 판정)
-    this.window = null;   // 모으는 중인 상황들 {t0, items:[{code,tSec,kmh}]}
+    this.window = null;   // 모으는 중인 상황들 {t0, items:[{code,tSec,kmh,eventId}]}
   }
 
   /**
    * 상황을 바로 말하지 않고 짧게(windowSec) 모은다. flush()가 가장 급한 하나를 고른다.
    * 끼어들기 직후 급제동처럼 1초 안에 이어지는 상황을 한 번에 비교하기 위해서다.
    */
-  queue(code, tSec, kmh = 0) {
+  queue(code, tSec, kmh = 0, eventId = null) {
+    this.noteEvent(code, tSec);
     if (!this.window) this.window = { t0: tSec, items: [] };
-    this.window.items.push({ code, tSec, kmh });
+    this.window.items.push({ code, tSec, kmh, eventId });
   }
 
-  /** 모으는 시간이 끝났으면 가장 급한 하나로 consider()한다. 나머지는 'LOWER_PRIORITY'로 남긴다. */
+  /** 발화 가능한 상황만 비교하고 각 미발화 사유를 남긴다. */
   flush(tSec, { force = false } = {}) {
     const w = this.window;
     if (!w || (!force && tSec - w.t0 < RULES.windowSec)) return null;
     this.window = null;
-    const items = w.items.slice().sort((a, b) => priorityOf(b.code) - priorityOf(a.code) || a.tSec - b.tSec);
-    const [top, ...rest] = items;
-    for (const r of rest) {
-      if (LINES[r.code] && !LINES[r.code].once) this.lastQuietAt = Math.max(this.lastQuietAt, r.tSec);
-      this.skipped.push({ code: r.code, atSec: r.tSec, why: 'LOWER_PRIORITY' });
+    const eligible = [];
+    for (const item of w.items) {
+      const why = this.blockedReason(item.code, tSec);
+      if (why) this.skipped.push({ code: item.code, atSec: item.tSec, eventId: item.eventId, why });
+      else eligible.push(item);
     }
-    return this.consider(top.code, top.tSec, top.kmh);
+    eligible.sort((a, b) => priorityOf(b.code) - priorityOf(a.code) || a.tSec - b.tSec);
+    const [top, ...rest] = eligible;
+    for (const item of rest) {
+      this.skipped.push({ code: item.code, atSec: item.tSec, eventId: item.eventId, why: 'LOWER_PRIORITY' });
+    }
+    return top ? this.prepare(top.code, top.tSec, top.kmh, top.eventId, tSec) : null;
+  }
+
+  noteEvent(code, tSec) {
+    if (LINES[code] && !LINES[code].once) this.lastQuietAt = Math.max(this.lastQuietAt, tSec);
   }
 
   /** 이 코드가 지금 열려 있는가(목표 한정 + 기본 꺼짐 항목) */
@@ -146,6 +156,7 @@ export class VoiceGuide {
   blockedReason(code, tSec) {
     if (!this.enabled) return 'OFF';
     if (!LINES[code]) return 'NO_LINE';
+    if (this.pending) return 'BUSY';
     if (!this.opensFor(code)) return 'NOT_THIS_GOAL';
     if (this.spokenCount >= this.cap) return 'DRIVE_CAP';
     if (tSec - this.lastAtSec < RULES.minIntervalSec) return 'TOO_SOON';
@@ -156,32 +167,34 @@ export class VoiceGuide {
     return null;
   }
 
-  /**
-   * 상황 하나를 보고 말할지 정한다.
-   * @returns {{code,line,sec,atSec,kmh}|null} 말할 발화 또는 null
-   */
-  consider(code, tSec, kmh = 0) {
-    if (LINES[code] && !LINES[code].once) this.lastQuietAt = tSec;
+  /** 상황 하나가 발화 조건을 충족하면 재생할 문장을 반환한다. */
+  consider(code, tSec, kmh = 0, eventId = null) {
+    this.noteEvent(code, tSec);
     const why = this.blockedReason(code, tSec);
-    if (why) { this.skipped.push({ code, atSec: tSec, why }); return null; }
-    const u = { code, line: LINES[code].line, sec: +estimateSec(LINES[code].line).toFixed(2), atSec: tSec, kmh: Math.round(kmh) };
-    this.pending = u;
-    return u;
+    if (why) { this.skipped.push({ code, atSec: tSec, eventId, why }); return null; }
+    return this.prepare(code, tSec, kmh, eventId, tSec);
+  }
+
+  prepare(code, atSec, kmh, eventId, offeredAtSec) {
+    const line = LINES[code].line;
+    const utterance = { code, eventId, line, sec: +estimateSec(line).toFixed(2), atSec, offeredAtSec, kmh: Math.round(kmh) };
+    this.pending = utterance;
+    return utterance;
   }
 
   /** 달리는 동안 오래(steadyAfterSec) 지적이 없었으면 칭찬 한 번 */
-  considerSteady(tSec, kmh = RULES.steadyMinKmh) {
+  considerSteady(tSec, kmh = RULES.steadyMinKmh, eventId = null) {
     if (tSec - this.lastQuietAt < RULES.steadyAfterSec) return null;
     if (kmh < RULES.steadyMinKmh) return null;
     if (this.window) return null; // 지적을 모으는 중이면 칭찬하지 않는다
-    return this.consider('STEADY', tSec);
+    return this.consider('STEADY', tSec, kmh, eventId);
   }
 
-  /** 실제로 재생이 시작됐을 때만 부른다 — 여기서 카운터가 올라간다 */
+  /** 현재 발화가 정상 종료됐을 때만 호출한다. */
   committed(u = this.pending) {
-    if (!u) return null;
+    if (!u || this.pending !== u) return null;
     this.spokenCount += 1;
-    this.lastAtSec = u.atSec;
+    this.lastAtSec = u.offeredAtSec;
     this.perCode[u.code] = (this.perCode[u.code] || 0) + 1;
     this.log.push(u);
     this.pending = null;
@@ -196,7 +209,7 @@ export class VoiceGuide {
   dropped(why = 'AUDIO_FOCUS') {
     if (!this.pending) return null;
     const u = this.pending; this.pending = null;
-    this.skipped.push({ code: u.code, atSec: u.atSec, why });
+    this.skipped.push({ code: u.code, atSec: u.atSec, eventId: u.eventId, why });
     return u;
   }
 
@@ -204,8 +217,8 @@ export class VoiceGuide {
   remaining() { return Math.max(0, this.cap - this.spokenCount); }
 
   /** 이 코드를 말했는가(리플레이 "말했어요" 표시) */
-  didSpeak(code, atSec) {
-    return this.log.some((x) => x.code === code && Math.abs(x.atSec - atSec) < 0.6);
+  didSpeak(eventId) {
+    return eventId != null && this.log.some((x) => x.eventId === eventId);
   }
 }
 
@@ -270,7 +283,7 @@ export class SignalWatcher {
     // 교차로 회전 주의: 천천히 가다가(3~35km/h) 방향지시등을 새로 켰다 = 곧 돈다.
     // 차로 변경은 보통 더 빠를 때라 구분한다. 길 안내가 아니라 주의만 말한다(11/12 회의).
     const sig = s.turnSignal || 'NONE';
-    if (driving && sig !== 'NONE' && (p.turnSignal || 'NONE') === 'NONE'
+    if (driving && (sig === 'LEFT' || sig === 'RIGHT') && p.turnSignal === 'NONE'
         && s.kmh >= THRESHOLDS.turnMinKmh && s.kmh <= THRESHOLDS.turnMaxKmh) {
       const code = sig === 'LEFT' ? 'TURN_LEFT_CAUTION' : 'TURN_RIGHT_CAUTION';
       if (this.#open(code, s.tSec)) out.push(code);
@@ -305,6 +318,7 @@ export function buildReplay(events = [], voice = null, source = 'MOCK') {
     .slice()
     .sort((a, b) => a.t - b.t)
     .map((e) => ({
+      eventId: e.eventId ?? null,
       atSec: e.t,
       title: e.title,
       kmh: e.kmh,
@@ -312,7 +326,7 @@ export function buildReplay(events = [], voice = null, source = 'MOCK') {
       advice: (LINES[e.code] && LINES[e.code].advice) || e.advice || '',
       sensor: e.sensor || null,
       kind: e.good ? 'good' : e.info ? 'info' : 'note',
-      spoken: voice ? voice.didSpeak(e.code, e.t) : false,
+      spoken: voice ? voice.didSpeak(e.eventId) : false,
       source,
     }));
 }
@@ -334,6 +348,7 @@ export class Speaker {
     this.ready = false;
     this.unlocked = false;   // 사용자 조작이 한 번 있었는지(브라우저 자동 재생 정책)
     this.lastError = null;
+    this.finishActive = null;
     this.onState = null;     // 화면에 상태를 알리는 콜백(잠금 화면 캡션)
     if (this.api) this.#pickVoice();
   }
@@ -376,26 +391,33 @@ export class Speaker {
   speak(text, { rate = 1, pitch = 1, volume = 1 } = {}) {
     return new Promise((resolve) => {
       if (!this.supported || !this.unlocked) { this.lastError = 'UNAVAILABLE'; return resolve('dropped'); }
+      if (this.finishActive || this.api.speaking || this.api.pending) { this.lastError = 'BUSY'; return resolve('dropped'); }
+      let timeout;
+      const finish = (error = null) => {
+        if (this.finishActive !== finish) return;
+        clearTimeout(timeout);
+        this.finishActive = null;
+        this.lastError = error;
+        resolve(error ? 'dropped' : 'spoken');
+      };
+      this.finishActive = finish;
       try {
-        // 이미 말하는 중이면 겹치지 않게 **새 발화를 버린다**(끼어들지 않는다)
-        if (this.api.speaking || this.api.pending) { this.lastError = 'BUSY'; return resolve('dropped'); }
         const u = new SpeechSynthesisUtterance(String(text));
         if (this.voice) { u.voice = this.voice; u.lang = this.voice.lang; } else u.lang = 'ko-KR';
         u.rate = rate; u.pitch = pitch; u.volume = volume;
-        let settled = false;
-        const done = (r) => { if (!settled) { settled = true; resolve(r); } };
-        u.onend = () => done('spoken');
-        u.onerror = (e) => { this.lastError = e?.error || 'ERROR'; done('dropped'); };
+        u.onend = () => finish();
+        u.onerror = (e) => finish(e?.error || 'ERROR');
+        timeout = setTimeout(() => this.stop('TIMEOUT'), (estimateSec(text) / rate + 1.5) * 1000);
         this.api.speak(u);
-        // 일부 브라우저는 onend를 주지 않는다 → 추정 길이 + 여유 1.5초 뒤 성공으로 본다
-        setTimeout(() => done('spoken'), (estimateSec(text) + 1.5) * 1000);
       } catch (e) {
-        this.lastError = String(e?.message || e);
-        resolve('dropped');
+        finish(String(e?.message || e) || 'ERROR');
       }
     });
   }
 
-  /** 주행이 끝나면(또는 음성을 끄면) 남은 발화를 모두 멈춘다 */
-  stop() { try { this.api?.cancel(); } catch { /* 무시 */ } }
+  /** 취소 처리 이후 도착하는 이전 콜백은 무시한다. */
+  stop(reason = 'CANCELLED') {
+    this.finishActive?.(reason);
+    try { this.api?.cancel(); } catch { /* 무시 */ }
+  }
 }
