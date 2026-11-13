@@ -32,7 +32,8 @@ class AaosVehicleSource(private val context: Context) : VehicleSource {
     private val label = VehicleRepository.realSourceLabel()
 
     /** 정상 신호만 기록하고, 비정상 상태·잘못된 타입은 항상 fail-closed. */
-    private val callback = object : CarPropertyManager.CarPropertyEventCallback {
+    private var callback: CarPropertyManager.CarPropertyEventCallback? = null
+    private fun callbackFor(sink: SnapshotSink) = object : CarPropertyManager.CarPropertyEventCallback {
         override fun onChangeEvent(v: CarPropertyValue<*>) {
             val at = now()
             val available = v.status == CarPropertyValue.STATUS_AVAILABLE
@@ -76,13 +77,13 @@ class AaosVehicleSource(private val context: Context) : VehicleSource {
         }
     }
 
-    private val uxListener = CarUxRestrictionsManager.OnUxRestrictionsChangedListener { r: CarUxRestrictions ->
-        val at = System.currentTimeMillis()
-        sink?.update { it.copy(uxRestricted = Signal.ok(r.isRequiresDistractionOptimization, label, at)) }
-    }
-
     override fun start(sink: SnapshotSink) {
         this.sink = sink
+        // 이전 Binder callback은 이전 repository 세션 sink만 참조한다.
+        callback = callbackFor(sink)
+        val uxListener = CarUxRestrictionsManager.OnUxRestrictionsChangedListener { r: CarUxRestrictions ->
+            sink.update { it.copy(uxRestricted = Signal.ok(r.isRequiresDistractionOptimization, label, now())) }
+        }
         val c = try {
             Car.createCar(context)
         } catch (e: Exception) {
@@ -242,10 +243,10 @@ class AaosVehicleSource(private val context: Context) : VehicleSource {
     override fun stop() {
         // stop() 후 도착한 이벤트는 현재 sink에 반영되지 않도록 먼저 차단한다.
         sink = null
-        try { props?.unregisterCallback(callback) } catch (e: Exception) { Log.w(TAG, "AAOS unregister property failed", e) }
+        try { callback?.let { props?.unregisterCallback(it) } } catch (e: Exception) { Log.w(TAG, "AAOS unregister property failed", e) }
         try { ux?.unregisterListener() } catch (e: Exception) { Log.w(TAG, "AAOS unregister UX failed", e) }
         try { car?.disconnect() } catch (e: Exception) { Log.w(TAG, "AAOS disconnect failed", e) }
-        car = null; props = null; ux = null
+        car = null; props = null; ux = null; callback = null
     }
 
     private fun now() = System.currentTimeMillis()
