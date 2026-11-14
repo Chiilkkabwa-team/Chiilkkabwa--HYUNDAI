@@ -986,3 +986,29 @@ body:not([data-mode="practice"]) .sim-canvas {
   .about-table [role=row] { grid-template-columns: 1fr 1fr; }
 }
 .learn .caption { margin-top: 12px; }
+
+/* ════════ C04 (2026-11-13): 잠금 이유·하단 바 안내·체험판 안내 ════════ */
+/* 하단 바 말풍선 — 시스템 영역에 뜬다(앱 화면을 가리지 않게 하단 바 바로 위) */
+.display { position: relative; }
+.gnb-tip {
+  position: absolute; left: 50%; bottom: 84px; transform: translateX(-50%);
+  max-width: min(520px, calc(100% - 32px)); margin: 0; padding: 10px 16px;
+  border-radius: 12px; background: var(--text); color: var(--bg);
+  font-size: .95rem; line-height: 1.5; text-align: center; z-index: 5;
+  box-shadow: 0 8px 24px var(--shadow-2);
+  animation: gnbTipIn .16s ease-out both;
+}
+.gnb-tip.still { animation: none; }   /* 주행 중에는 움직이지 않는다 */
+@keyframes gnbTipIn { from { opacity: 0; transform: translate(-50%, 4px); } to { opacity: 1; transform: translate(-50%, 0); } }
+.pleos-gnb [role="button"] { cursor: pointer; }
+.pleos-gnb [role="button"]:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; border-radius: 10px; }
+/* 주행 중 잠긴 앱 버튼 — 흐리게 + 열쇠 대신 글로 이유(title) */
+.icon-btn.is-locked { opacity: .45; cursor: not-allowed; }
+/* 잠금 화면: 멈췄는데 왜 안 열리는지 */
+.lock-why { display: flex; gap: 10px; align-items: flex-start; max-width: 32rem; margin: 16px auto 0; padding: 12px 16px;
+  border-radius: 12px; background: var(--surface2); color: var(--sub); font-size: 1rem; line-height: 1.6; text-align: left; }
+.lock-why svg { flex: none; margin-top: 2px; color: var(--muted); }
+.lock-why b { color: var(--text); font-weight: 600; }
+/* 주행 중 열린 체험판 안내 창 맨 위 한 줄 */
+.site-note { margin: 0 48px 16px 0; padding: 10px 14px; border-radius: 12px; background: var(--warn); color: var(--warn-text); font-size: .95rem; line-height: 1.55; }
+@media (prefers-reduced-motion: reduce) { .gnb-tip { animation: none; } }

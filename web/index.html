@@ -71,7 +71,8 @@
     </div>
     <!-- 하단 바(GNB): 실제 Pleos Connect에서는 시스템이 제공한다. 여기서는 앱이 어디에 놓이는지 보여 주는 장식이다. -->
     <!-- GNB — Pleos 해부도: ①운전석 공조 ②앱 조작(고정 내비·편집 슬롯·앱 라이브러리·최근 앱) ③조수석 공조. 시스템이 그리는 영역이라 앱은 직접 그리지 않는다(웹판 장식). -->
-    <nav class="pleos-gnb" aria-label="시스템 하단 바(장식)">
+    <!-- C04: 누르면 "데모에서는 열리지 않음"을 하단 바 위 말풍선으로 알린다(차 앱 화면 밖, 시스템 영역). -->
+    <nav class="pleos-gnb" aria-label="시스템 하단 바(데모에서는 치일까봐만 열려요)">
       <div class="gnb-zone gnb-drv">
         <span class="gnb-ico" data-ico="gear" title="차량 설정"></span>
         <span class="gnb-climate"><span class="gc-minus">−</span><b>22.5</b><span class="gc-plus">+</span></span>
@@ -91,6 +92,7 @@
         <span class="gnb-climate"><span class="gc-minus">−</span><b>22.5</b><span class="gc-plus">+</span></span>
       </div>
     </nav>
+    <p class="gnb-tip" id="gnbTip" role="status" aria-live="polite" hidden></p>
   </div>
 
   <aside class="console" id="console" aria-label="가상 차량 콘솔">

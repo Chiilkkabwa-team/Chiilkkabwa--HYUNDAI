@@ -211,7 +211,7 @@ let overlay = null; // 'history' | 'profile' | 'cert' | 'intro'
 let obStep = 0;     // 온보딩 단계
 let wikiPage = 0;   // 운전 노트 챕터
 // 온보딩 내용이 바뀌면 숫자를 올린다 → 예전에 닫은 사람에게도 한 번 더 뜬다(11/12 회의: '들어가자마자 안 뜨더라')
-const INTRO_V = 2;
+const INTRO_V = 3; // 3: C04 온보딩 문구 개편(2026-11-13) — 이전에 본 사람에게도 한 번 더 보여 준다
 let judgeState = null; // { judge, progress, doneAt }
 let lastGate = null;
 
@@ -786,6 +786,7 @@ Screens.lock = () => ({
       <p class="lock-tag">${appMode === 'eval' ? '평가 중' : '연습 중'}</p>
       <h1>화면은 잠시 쉴게요.<br>도로만 보세요.</h1>
       <p class="sub">${appMode === 'eval' ? '센서(가상)가 상황을 기록하고 있어요. 주차하면 상황별 조언을 보여 줘요.' : '주차하면 오늘 연습을 함께 돌아봐요.'}</p>
+      <p class="lock-why">${icon('pbrake', 20)}<span>멈췄는데도 안 열리나요? 신호 대기처럼 잠깐 멈춘 건 주차가 아니에요. <b>기어 P</b>에 두고 <b>주차 브레이크</b>를 걸면 열려요. 내 기록·설정도 그때 열려요</span></p>
       ${voice?.enabled
         ? `<p class="lock-voice">${icon('sound', 22)} 필요할 때만 한마디 할게요 · 최대 ${voice.cap}회<br><small>내비·통화·경고음이 나오면 바로 양보해요</small></p>`
         : `<p class="lock-voice off">${icon('mentor', 22)} ${(prep?.mode || 'solo') === 'mentor' ? '함께 타신 분이 있어 음성은 꺼 뒀어요' : '음성 길잡이는 꺼져 있어요'}</p>`}
@@ -874,14 +875,20 @@ function finishReview(graduate) {
 // ── 오버레이(내 기록·설정·수료 카드·사용법) ──────────────────
 function openOverlay(name) { overlay = name; renderOverlay(); }
 function closeOverlay() { overlay = null; renderOverlay(); }
+// C04: 머리말의 '소개'·'사용법'은 차량 앱이 아니라 웹 체험판을 설명하는 창이다(차 화면 밖).
+// 그래서 가상 주행 중에도 연다. 대신 열려 있는 동안 가상 주행 시간을 멈춘다.
+// '내 기록'·'나'·도움말 같은 앱 안의 창은 주행 중에는 열지 않는다(S04).
+const SITE_OVERLAYS = ['intro', 'about'];
+const siteOverlayOpen = () => !!overlay && SITE_OVERLAYS.includes(overlay);
 function renderOverlay() {
   const root = $('#modalRoot');
-  if (!overlay || session.phase === C.Phase.DRIVING_LOCK) { root.innerHTML = ''; root.classList.remove('open'); return; }
+  const blocked = session.phase === C.Phase.DRIVING_LOCK && !siteOverlayOpen();
+  if (!overlay || blocked) { root.innerHTML = ''; root.classList.remove('open'); return; }
   root.classList.add('open');
   const body = { history: historyHtml, profile: profileHtml, cert: certHtml, intro: introHtml,
     help: () => LEARN.helpHtml(judgeState?.judge?.id, judgeState?.judge?.title || '도움말'), wiki: () => LEARN.wikiHtml(wikiPage), about: aboutHtml }[overlay]();
   root.innerHTML = `<div class="modal-scrim" data-close></div><div class="modal${overlay === 'intro' ? ' modal-ob' : ''}" role="dialog" aria-modal="true" aria-label="${{ history: '내 기록', profile: '설정', cert: '수료 카드', intro: '치일까봐 둘러보기', help: '미션 도움말', wiki: '운전 노트', about: '서비스 소개' }[overlay]}" tabindex="-1">
-    <button type="button" class="icon-btn modal-x" data-close aria-label="닫기">${icon('close', 22)}</button>${body}</div>`;
+    <button type="button" class="icon-btn modal-x" data-close aria-label="닫기">${icon('close', 22)}</button>${session.phase === C.Phase.DRIVING_LOCK ? '<p class="site-note">웹 체험판 안내예요. 이 창이 열려 있는 동안 가상 주행은 멈춰 있어요. 실제 차에서는 주행 중에 이런 창이 뜨지 않아요</p>' : ''}${body}</div>`;
   $$('[data-close]', root).forEach((b) => (b.onclick = () => { if (overlay === 'intro') { H.introSeen = true; H.introV = INTRO_V; saveHistory(); } closeOverlay(); }));
   bindOverlay(root);
   $$('[data-wiki]', root).forEach((b) => (b.onclick = () => { wikiPage = LEARN.wikiIndex(b.dataset.wiki); openOverlay('wiki'); }));
@@ -1063,6 +1070,7 @@ function render() {
 const STEPS = [['goal', '목표'], ['mission', '워밍업'], ['pedal', '페달'], ['parking', '가상 주차'], ['pact', '약속'], ['go', '출발']];
 let chromeKey = '';
 function renderChrome() {
+  syncAppButtons();
   const s = snapshot();
   const ph = session.phase;
   const modeName = { practice: '연습', eval: '평가', coach: '강습' }[appMode];
@@ -1816,7 +1824,7 @@ function simLoop(t) {
   const driving = session.phase === C.Phase.DRIVING_LOCK;
   // 연습 모드에서는 주행 중이 아닐 때 루프를 멈춘다(성능). 주행 중에는 음성 감시 때문에 돌려야 한다.
   if (appMode === 'practice' && !simRunning() && !driving) { simLoopOn = false; return; }
-  const dt = Math.min(0.06, (t - simLast) / 1000); simLast = t;
+  const dt = siteOverlayOpen() ? 0 : Math.min(0.06, (t - simLast) / 1000); simLast = t;   // 체험판 안내를 읽는 동안 가상 주행 정지
   if (driving) { voiceSec += dt * timeScale; voiceRealSec += dt; pumpVoice(); recordTrack(); }
   if (simRunning()) {
     sim.input.accel = V.accelPedalPct.value / 100; sim.input.brake = V.brakePedalPct.value / 100;
@@ -1967,8 +1975,51 @@ tickClock(); setInterval(tickClock, 20000);
 $('#historyBtn .ib-ico').innerHTML = icon('star', 22);
 $('#profileBtn .ib-ico').innerHTML = icon('user', 22);
 $('#consoleFab .fab-ico').innerHTML = icon('console', 22);
-$('#historyBtn').onclick = () => openOverlay('history');
-$('#profileBtn').onclick = () => openOverlay('profile');
+// C04: 앱 안의 창(내 기록·설정)은 주행 중에 열지 않는다(S04). 전에는 누르면 아무 반응이 없다가
+// 주차하는 순간 갑자기 떴다(누른 기록이 남아서) → 주행 중에는 누른 것을 무시하고, 버튼에 이유를 적어 둔다.
+function appOverlayLocked() { return session.phase === C.Phase.DRIVING_LOCK; }   // 함수 선언: renderChrome이 먼저 불려도 안전
+function syncAppButtons() {
+  const locked = appOverlayLocked();
+  for (const id of ['historyBtn', 'profileBtn']) {
+    const b = $('#' + id); if (!b) continue;
+    b.setAttribute('aria-disabled', String(locked));
+    b.classList.toggle('is-locked', locked);
+    b.title = locked ? '주행 중에는 열지 않아요. 기어 P + 주차 브레이크를 걸면 열려요' : '';
+  }
+}
+$('#historyBtn').onclick = () => { if (!appOverlayLocked()) openOverlay('history'); };
+
+// ── C04: 하단 바(시스템 영역) — 데모에서 열리지 않는 버튼을 누르면 이유를 말해 준다 ──
+// 전에는 아무 반응이 없어 고장처럼 보였다. 말풍선은 앱 화면이 아니라 하단 바 위(시스템 영역)에 띄운다.
+// 주행 중에는 움직임 없이 글자만 바뀐다(S04 — 앱 화면은 그대로).
+const GNB_NAME = { road: '내비', music: '미디어', phone: '전화', grid: '앱 라이브러리', home: '홈', gear: '차량 설정', defrost: '서리 제거', seatHeat: '시트 열선' };
+let gnbTipTimer = 0;
+/** 받침에 맞는 조사: 내비는 / 홈은 / 공조 온도는 */
+const eunNeun = (w) => { const c = w.charCodeAt(w.length - 1); return c >= 0xAC00 && c <= 0xD7A3 && (c - 0xAC00) % 28 ? `${w}은` : `${w}는`; };
+function gnbNotice(text) {
+  const tip = $('#gnbTip'); if (!tip) return;
+  tip.textContent = text; tip.hidden = false;
+  tip.classList.toggle('still', session.phase === C.Phase.DRIVING_LOCK);
+  clearTimeout(gnbTipTimer); gnbTipTimer = setTimeout(() => { tip.hidden = true; }, 2600);
+}
+function bindGnb() {
+  const items = $$('.pleos-gnb .gnb-app, .pleos-gnb .gnb-ico, .pleos-gnb .gnb-climate');
+  for (const el of items) {
+    const key = el.dataset.ico;
+    const self = el.classList.contains('on');
+    const name = el.classList.contains('gnb-climate') ? '공조 온도' : (GNB_NAME[key] || el.textContent.trim() || el.title);
+    el.setAttribute('role', 'button'); el.tabIndex = 0;
+    el.setAttribute('aria-label', self ? '치일까봐 — 지금 열려 있는 앱' : `${name} — 데모에서는 열리지 않아요`);
+    const go = () => gnbNotice(self ? '지금 보고 있는 치일까봐예요'
+      : el.classList.contains('gnb-climate') || ['defrost', 'seatHeat', 'gear'].includes(key)
+        ? `${eunNeun(name)} 차가 직접 다루는 기능이라 데모에서는 바꿀 수 없어요. 치일까봐는 차를 조작하지 않아요`
+        : `${eunNeun(name)} 실제 차에서 열리는 앱이에요. 이 데모에서는 치일까봐만 열려요`);
+    el.addEventListener('click', go);
+    el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+  }
+}
+bindGnb();
+$('#profileBtn').onclick = () => { if (!appOverlayLocked()) openOverlay('profile'); };
 $('#helpBtn').onclick = () => { obStep = 0; openOverlay('intro'); };
 $('#aboutBtn').onclick = () => openOverlay('about');
 $('#demoSpeed').onchange = (e) => { demoSpeed = +e.target.value || 1; };
