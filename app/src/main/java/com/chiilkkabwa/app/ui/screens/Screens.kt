@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -35,6 +36,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.chiilkkabwa.app.core.mission.CarPose
@@ -45,6 +48,7 @@ import com.chiilkkabwa.app.core.review.Goals
 import com.chiilkkabwa.app.core.review.PactOptions
 import com.chiilkkabwa.app.core.review.ReviewChips
 import com.chiilkkabwa.app.core.safety.GateState
+import com.chiilkkabwa.app.core.safety.SafetyGate
 import com.chiilkkabwa.app.core.session.Phase
 import com.chiilkkabwa.app.core.signal.CarDimensions
 import com.chiilkkabwa.app.core.signal.Gear
@@ -68,12 +72,26 @@ fun AppRoot(
     ui: UiState,
     onVoicePreview: (() -> Unit)? = null,
     voicePreviewStatus: String? = null,
+    wikiForeground: Boolean = false,
 ) {
+    val wikiAvailable = wikiForeground && canOpenDrivingWiki(ui)
+    var wikiOpen by remember(wikiAvailable) { mutableStateOf(false) }
+    if (wikiAvailable && wikiOpen) {
+        Box(Modifier.fillMaxSize().background(Tokens.Bg).padding(24.dp)) {
+            DrivingWiki(onClose = { wikiOpen = false })
+        }
+        return
+    }
     Box(Modifier.fillMaxSize().background(Tokens.Bg).padding(24.dp)) {
         when (ui.session.phase) {
             Phase.DRIVING_LOCK -> DrivingLockScreen()
             Phase.CHECKING -> GateScreen(ui, onStart = {})
-            Phase.READY -> GateScreen(ui, vm::startPractice, onVoicePreview, voicePreviewStatus)
+            Phase.READY -> GateScreen(
+                ui, vm::startPractice, onVoicePreview, voicePreviewStatus,
+                onOpenWiki = if (wikiAvailable) {
+                    { if (canOpenDrivingWiki(vm.ui.value)) wikiOpen = true }
+                } else null,
+            )
             Phase.PREPARING -> if (ui.gate is GateState.Locked) GateScreen(ui, onStart = {}) else PrepRouter(vm, ui)
             // 복기 중 주차 확인이 깨지면(E3) 복기 대신 확인 화면을 보여 준다. 기록은 남아 있다
             Phase.REVIEW -> if (ui.session.lockReason != null) GateScreen(ui, onStart = {}) else ReviewScreen(ui, vm::saveReview)
@@ -82,6 +100,10 @@ fun AppRoot(
         if (ui.mockMode) DebugPanel(vm, ui, Modifier.align(Alignment.BottomEnd))
     }
 }
+
+internal fun canOpenDrivingWiki(ui: UiState): Boolean =
+    ui.session.phase == Phase.READY && ui.gate is GateState.Ready &&
+        SafetyGate.evaluate(ui.snapshot) is GateState.Ready
 
 @Composable
 private fun PrepRouter(vm: ChiilViewModel, ui: UiState) = when (ui.step) {
@@ -124,10 +146,22 @@ fun GateScreen(
     onStart: () -> Unit,
     onVoicePreview: (() -> Unit)? = null,
     voicePreviewStatus: String? = null,
+    onOpenWiki: (() -> Unit)? = null,
 ) {
     val s = ui.snapshot
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Title("연습 준비를 확인할게요")
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.weight(1f)) { Title("연습 준비를 확인할게요") }
+            if (onOpenWiki != null) {
+                IconButton(
+                    onClick = onOpenWiki,
+                    modifier = Modifier.size(Tokens.TouchMin)
+                        .semantics { contentDescription = "운전 지식 위키 열기" },
+                ) {
+                    Text("ⓘ", color = Tokens.TextMain, fontSize = Tokens.Title)
+                }
+            }
+        }
         CheckRow("기어 P", s.gear.isUsable && s.gear.value == Gear.PARK)
         CheckRow("주차 브레이크", s.parkingBrakeOn.isUsable && s.parkingBrakeOn.value == true)
         CheckRow("주행 제한 없음", s.uxRestricted.isUsable && s.uxRestricted.value == false)
