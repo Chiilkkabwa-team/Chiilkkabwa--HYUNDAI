@@ -1,0 +1,129 @@
+{
+  "baseline": "01eff12a2ecdbd4ae3e0fdb78f6031504aa13540",
+  "codeCommit": "19e4ec3e8e4cad17012984a10b7c2124dc6efb3a",
+  "dateKst": "2026-11-15",
+  "environment": {
+    "os": "Windows",
+    "jdk": "Temurin17.0.20",
+    "gradle": "8.10.2",
+    "node": "24.22.1"
+  },
+  "artifacts": [
+    {
+      "name": "Vehicle-2.3.2.aar",
+      "sha256": "E11FDFE498CAD3ECC0D5A2A6992B0C4A4D135195F1455018127BC069FD5EF937"
+    },
+    {
+      "name": "Vehicle-2.3.2-sources.jar",
+      "sha256": "62B5DD2C4C0523FD13C2E64040CD775BC89A14CE54F35A37560D0EB4EB3FAB40"
+    }
+  ],
+  "emulator": {
+    "status": "NOT_VERIFIED",
+    "handoff": false,
+    "accessed": false,
+    "installed": false,
+    "started": false,
+    "stopped": false
+  },
+  "publicContracts": {
+    "wiper": "FRONT_WINDSHIELD; WiperState.ON/OFF only",
+    "lowBeam": "LowBeamLightState ON/OFF only; DAYTIME_RUNNING UNKNOWN",
+    "passenger": "ROW_1_RIGHT Boolean",
+    "tripDistance": "Float meters /1000 -> Float km",
+    "tripTime": "Int minutes widened to Long *60 -> seconds",
+    "steering": "public front-wheel degrees, left negative; NOT steering-wheel rotation. Not connected.",
+    "dimensions": "CarInfo public methods only CRN/VIN; no dimension getter, no internal capability access"
+  },
+  "red": {
+    "sensorCompile": "Expected unresolved channel/helper references before implementation",
+    "optionalMissionCases": 6,
+    "optionalMissionAssertionFailures": 6
+  },
+  "green": {
+    "Mock": {
+      "tests": 226,
+      "failures": 0,
+      "errors": 0,
+      "newCases": {
+        "TEST-com.chiilkkabwa.app.data.vehicle.OptionalMissionRecoveryTest.xml": [
+          "every_invalid_toggle_state_discards_old_baseline_and_never_silently_skips",
+          "nonfinite_future_and_old_steering_cannot_bridge_the_center_hold",
+          "toggles_require_a_baseline_after_unknown_start_then_a_new_change",
+          "future_and_pre_start_toggle_readings_do_not_complete_or_replace_baseline",
+          "invalid_steering_discards_hold_for_all_statuses_and_demands_new_observation",
+          "steering_source_change_cannot_combine_mock_and_emulator_hold"
+        ],
+        "TEST-com.chiilkkabwa.app.data.vehicle.PleosOptionalSignalsTest.xml": [
+          "trip_converts_documented_meters_and_minutes_without_type_or_overflow_guessing",
+          "wiper_capability_requires_exact_front_area_read_access_and_known_off_on",
+          "optional_permission_or_connection_failure_clears_value_and_blocks_late_event",
+          "wiper_uses_actual_state_and_rejects_service_unknown_and_switch_mode",
+          "capability_false_never_registers_optional_sensor_and_core_keeps_working",
+          "null_and_wrong_type_invalidate_previous_optional_values",
+          "wiper_and_low_beam_callbacks_feed_existing_optional_judges",
+          "all_new_listeners_unregister_release_and_old_session_cannot_change_restart",
+          "new_optional_callback_wins_over_older_initial_read",
+          "optional_observations_preserve_source_time_gate_and_core_channel_order",
+          "low_beam_capability_never_substitutes_daytime_running_for_low_beam",
+          "optional_timeout_cannot_be_restored_by_late_read_or_callback",
+          "passenger_requires_exact_front_right_and_read_access",
+          "optional_check_permission_and_registration_errors_do_not_break_core_channels"
+        ]
+      }
+    },
+    "Vehicle": {
+      "tests": 226,
+      "failures": 0,
+      "errors": 0,
+      "newCases": {
+        "TEST-com.chiilkkabwa.app.data.vehicle.OptionalMissionRecoveryTest.xml": [
+          "every_invalid_toggle_state_discards_old_baseline_and_never_silently_skips",
+          "nonfinite_future_and_old_steering_cannot_bridge_the_center_hold",
+          "toggles_require_a_baseline_after_unknown_start_then_a_new_change",
+          "future_and_pre_start_toggle_readings_do_not_complete_or_replace_baseline",
+          "invalid_steering_discards_hold_for_all_statuses_and_demands_new_observation",
+          "steering_source_change_cannot_combine_mock_and_emulator_hold"
+        ],
+        "TEST-com.chiilkkabwa.app.data.vehicle.PleosOptionalSignalsTest.xml": [
+          "trip_converts_documented_meters_and_minutes_without_type_or_overflow_guessing",
+          "wiper_capability_requires_exact_front_area_read_access_and_known_off_on",
+          "optional_permission_or_connection_failure_clears_value_and_blocks_late_event",
+          "wiper_uses_actual_state_and_rejects_service_unknown_and_switch_mode",
+          "capability_false_never_registers_optional_sensor_and_core_keeps_working",
+          "null_and_wrong_type_invalidate_previous_optional_values",
+          "wiper_and_low_beam_callbacks_feed_existing_optional_judges",
+          "all_new_listeners_unregister_release_and_old_session_cannot_change_restart",
+          "new_optional_callback_wins_over_older_initial_read",
+          "optional_observations_preserve_source_time_gate_and_core_channel_order",
+          "low_beam_capability_never_substitutes_daytime_running_for_low_beam",
+          "optional_timeout_cannot_be_restored_by_late_read_or_callback",
+          "passenger_requires_exact_front_right_and_read_access",
+          "optional_check_permission_and_registration_errors_do_not_break_core_channels"
+        ]
+      }
+    },
+    "web": {
+      "tests": 126,
+      "failures": 0,
+      "skipped": 0
+    },
+    "defaultBuild": {
+      "tasks": 86,
+      "rerunTasks": true,
+      "seconds": 42,
+      "mockDebug": "PASS",
+      "vehicleDebug": "PASS",
+      "signalsFlag": false,
+      "naviFlag": false,
+      "speedFlag": false
+    },
+    "optInBuild": {
+      "seconds": 6,
+      "vehicleDebug": "PASS",
+      "signalsFlag": true,
+      "releaseSignalsFlag": false,
+      "deviceInstalled": false
+    }
+  }
+}

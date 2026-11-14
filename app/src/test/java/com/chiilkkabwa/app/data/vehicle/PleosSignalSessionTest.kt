@@ -75,7 +75,7 @@ class PleosSignalSessionTest {
 
     @Test fun checks_in_belt_brake_turn_order_and_records_typed_observations() {
         val f = Fixture(); f.start()
-        assertEquals(listOf(PleosSensor.BELT, PleosSensor.BRAKE, PleosSensor.TURN), f.client.checks.keys.toList())
+        assertEquals(listOf(PleosSensor.BELT, PleosSensor.BRAKE, PleosSensor.TURN), f.client.checks.keys.take(3))
         f.client.supportAll()
         f.client.events.getValue(PleosSensor.BELT).first(true)
         f.client.events.getValue(PleosSensor.BRAKE).first(false)
@@ -158,7 +158,7 @@ class PleosSignalSessionTest {
         old.throwOnRemove = true
         f.session.stop()
         assertEquals(SignalStatus.DISCONNECTED, f.snapshot.driverBeltBuckled.status)
-        assertEquals(3, old.removed.size)
+        assertEquals(PleosSensor.entries.size, old.removed.size)
         assertEquals(0, old.released)
         old.events.getValue(PleosSensor.BELT).first(true)
         assertNull(f.snapshot.driverBeltBuckled.value)

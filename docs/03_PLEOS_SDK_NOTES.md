@@ -2,7 +2,7 @@
 
 **중요한 최신 정정(2026-11-13):** 이 노트는 11월 5~8일의 SDK 조사 기록이며, **주행 중 오디오 허용·SDK 제공 상태를 확정하는 최신 규정이 아니다**. 공식 공모전 범위는 [COMPLIANCE_REGISTER.md](COMPLIANCE_REGISTER.md) §4·§5·§10과 [SAFETY_RULES.md](SAFETY_RULES.md) S02·S05·S06을 우선한다. 아래 §5-0과 §6의 과거 허용 단정은 에뮬레이터/플랫폼 검증 전까지 `NOT_VERIFIED`다.
 
-> TL;DR — 표준 데이터(기어·주행 제한·페달)는 AAOS Car API, 차량 특화(벨트·브레이크 상태·방향지시등·핸들·트립·차체)는 Pleos Vehicle SDK. 모두 **읽기**만. 아래 '확인 상태'는 2026-11-05 기준 **문서 확인만** 됨 → Day1에 갱신.
+> TL;DR — 표준 데이터(기어·주행 제한·페달)는 AAOS Car API, 차량 특화(벨트·브레이크 상태·방향지시등·핸들·트립·차체)는 Pleos Vehicle SDK. 모두 **읽기**만. 아래 선택 센서6행은 2026-11-15의 실제 SDK/코드/JVM 확인으로 갱신했다. 나머지 과거 행과 실수신 기록은 각 날짜·후속 절을 구분해 참고한다.
 
 ## 1. 확인 상태 표 (Day1에 채울 것)
 상태 단계: 문서 → 계정(My Project에서 사용 가능) → 에뮬레이터 수신 → 서비스 검증
@@ -12,15 +12,15 @@
 | 기어 | AAOS GEAR_SELECTION | android.car.permission.CAR_POWERTRAIN | ✅ | — | ☐ | 숫자 대신 VehicleGear.GEAR_PARK 등 상수로 비교 |
 | 주차 브레이크 | AAOS PARKING_BRAKE_ON / Pleos Brake | CAR_POWERTRAIN / pleos CAR_DRIVE | ✅ | ☐ | ☐ | Virtual Console Safety |
 | 안전벨트 | Pleos Seat seat-belt-buckled-state | pleos.car.permission.CAR_SEATS | ✅ | ☐ | ☐ | 운전석 area 값 확인 |
-| 조수석 착석 | Pleos Seat seat-occupancy | CAR_SEATS | ✅ | ☐ | ☐ | |
+| 조수석 착석 | Seat.getCurrentSeatOccupancy / registerSeatOccupancy(ROW_1_RIGHT) | CAR_SEATS(기존) | SDK2.3.2 확인 | 미검증 | NOT_VERIFIED | Boolean, 코드/JVM PASS. 2026-11-15 |
 | 브레이크 페달 상태 | Pleos Brake current-brake-pedal-status(get/register/capability) | pleos CAR_DRIVE | ✅ | ☐ | ☐ | **on/off인지 연속값인지** |
 | 페달 압력 | AAOS ACCELERATOR/BRAKE_PEDAL_COMPRESSION_PERCENTAGE | android.car.permission.READ_CAR_PEDALS(위험, 런타임) | ✅ | ☐(심사 승인) | ☐ | Float 0~100, CONTINUOUS |
 | 방향지시등 | Pleos TurnSignal turn-signal-state | pleos CAR_LIGHTS | ✅ | ☐ | ☐ | 값 매핑(LEFT/RIGHT/HAZARD) |
-| 와이퍼 | Pleos Wiper wiper-state/switch | pleos CAR_WINDOWS | ✅ | ☐ | ☐ | |
-| 전조등 | Pleos Light low beam | pleos CAR_LIGHTS | ✅ | ☐ | ☐ | |
-| 핸들 각도 | Pleos SteeringWheel steering-wheel-angle | **상수 미확인** | ✅ | ☐ | ☐ | 부호·단위·정차 갱신 |
-| 트립 거리·시간 | Pleos Odometer trip current distance/time | pleos CAR_DRIVE | ✅ | ☐ | ☐ | 단위(km? m?), 주행 중 리셋 여부 |
-| 차체 크기 | Pleos CarInfo | pleos CAR_INFO | ✅(외부 크기) | ☐ | ☐ | 필드명 확인 |
+| 와이퍼 | Wiper.getCurrentWiperState / registerWiperState(FRONT_WINDSHIELD) | CAR_WINDOWS(기존) | SDK2.3.2 확인 | 미검증 | NOT_VERIFIED | 실제 ON/OFF만; OTHER/SERVICE UNKNOWN. 코드/JVM PASS |
+| 전조등 | Light.getCurrentLowBeamLightState / registerLowBeamLightState | CAR_LIGHTS(기존) | SDK2.3.2 확인 | 미검증 | NOT_VERIFIED | 실제 LowBeam ON/OFF만, DRL UNKNOWN. 코드/JVM PASS |
+| 핸들 각도 | SteeringWheel.getCurrentSteeringWheelAngle는 전륜각 | CAR_DRIVE(실제선언) | SDK2.3.2 확인 | 미검증 | NOT_VERIFIED | 좌음수/degrees; 핸들회전각 아님. steeringDeg 연결 BLOCKED |
+| 트립 거리·시간 | Odometer.get/registerTripCurrentDrivingDistance·Time | CAR_DRIVE(기존) | SDK2.3.2 확인 | 미검증 | NOT_VERIFIED | Float m→km / Int분→Long초. 코드/JVM PASS |
+| 차체 크기 | 실제2.3.2 CarInfo public에 치수 API 없음 | 새권한없음 | BLOCKED | 미검증 | NOT_VERIFIED | VIN/내부capability 대신 사용하지 않음; 기존 isDefault 폴백 |
 
 ### A01 AAOS 신호 구독 내구성 작업 (2026-11-13 / 부분 구현)
 
@@ -259,3 +259,7 @@ opt-in debug EMULATOR에서만 최종 snapshot 진단을 추가했다. `SDK call
 ## A02 AAOS 속도 입력 후속 — 2026-11-14
 
 공개 PERF_VEHICLE_SPEED(Float signed m/s)/CAR_SPEED 및 elapsedRealtime ns 계약을 로컬 stub와 실제 Pleos2.1.0에서 확인했다. 전용 속도 관측 타입으로 기존 epoch Signal과 분리하고, 기본OFF/debug EMULATOR opt-in의 독립 소스를 기존 엔진에 연결했다. 실제 전진 속도·증가/감소 이벤트는 관측했지만 후진 음수·실차·주행 정책·임계값 보정은 미검증이다. CAR_SPEED 단순 permission 목록 누락과 실제 정의 부재를 혼동하지 않는다. [상세 API·시계·실측·차단](A02_SPEED_BRIDGE.md), [원본 증거](evidence/a02-2026-11-14/README.md).
+
+## A01 선택 센서 실제 SDK 확인 — 2026-11-15
+
+최신dev01eff12 기준으로 위 선택 센서6행을 실제 Vehicle2.3.2 AAR/sources/javap와 컴파일/JVM 결과로 갱신했다. 과거 SDK 소개의 폭넓은 설명을 실제 메서드로 간주하지 않는다. 전륜각/핸들각 계약 차이와 public치수 부재는 연결보류다. AVD 미인계로 접근/설치/실행0, 실수신은 전부 NOT_VERIFIED. [정확한 API·권한·단위·폴백·안전·검증](A01_OPTIONAL_SIGNALS.md). 기본OFF/debug EMULATOR opt-in/실차·release 차단 유지.

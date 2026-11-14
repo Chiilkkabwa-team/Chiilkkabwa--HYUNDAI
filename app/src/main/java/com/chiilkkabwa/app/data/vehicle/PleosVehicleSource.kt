@@ -8,7 +8,7 @@ import android.util.Log
 import com.chiilkkabwa.app.BuildConfig
 
 /**
- * A01 읽기 전용 Seat/Brake/TurnSignal. 실수신 검증 전 기본 비활성화.
+ * A01 읽기 전용 Seat/Brake/TurnSignal/Wiper/Light/Trip. 실수신 검증 전 기본 비활성화.
  * -PenablePleosSignals=true 디버그 빌드 + EMULATOR에서만 시험. 실차는 항상 차단.
  * AAOS 주차 조건·UX 제한·페달 압력 필드는 덮어쓰지 않는다.
  */
