@@ -112,3 +112,7 @@ A02 통합 후 갱신: B01/B02/B04 dev44bfe68를 반영해 Android 양JVM **138/
 - 실제 앱 SDK초기화·경로호출·검색callback·기본내비안내는 모두 NOT_VERIFIED. 현재 타작업 일반Android 기기를 사용하지 않았고 Pleos의 실제 정차신호가 준비되지 않아 UI시험진입점·실제호출을 보류했다. 기본비활성 기반만 통합 대상.
 
 A05 A03 통합 재검증: dev9a72969를 dbce435에 반영. 공통문서2곳 충돌은 A02/A03/A05 전부 보존. 웹126/126,양JVM164/164,양debug빌드,390/1440 조작 PASS. A03·Android·Gradle 및 B/C보호diff0. 최종통합/CI는 PR#28 이력 참조.
+
+### A01 입력 제약 후속 (2026-11-14)
+
+최신dev2a70830 기반 fix/a01-emulator-input-blockers / 전용 A01-Inputs. 필수3미션의 과거/미래 벨트값·중단전관측과 브레이크/깜빡이 부분진행 재사용을 최소 차단. 코드8469119f48c5ed60db9b3d5eb6d721dacf536f80. 양JVM178/178(신규14),양debug빌드,웹126/126 PASS. 실제2.1.0/Service2.3.22/SDK2.3.2 초기false/OFF와 PBfalse 잠금 재확인. 벨트true·실PBON·전체Emulator워밍업은BLOCKED,Mock6미션완료와구분. [공식경로·증거·안전·외부조건](A01_INPUT_BLOCKERS.md). A02/A03/B·C/웹/Manifest/Gradle/SafetyGate변경0. Issue#16열림,main·기존Worktree보존.

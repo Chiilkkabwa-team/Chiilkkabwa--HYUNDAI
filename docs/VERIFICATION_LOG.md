@@ -465,3 +465,13 @@ NaviProgress.signalSource/requestDataSource 부재 compile RED→최소필드 �
 기준dev9a729698f87f93d78fb4a948f63db49ea8307277, 병합dbce4354d54093e519ea7d402712e2213d5e7e5c. 두 공통 문서 양쪽 기록 전부 보존, 제품코드 충돌0. [명령·환경·안전·검증 상세](A05_CONTROL_POLISH.md#최신-dev-a03-충돌-해결-재검증-2026-11-14). 웹126/126, 양JVM164/164,두debug빌드 PASS(offline rerun86tasks/26초). A05조작390/1440 PASS. A03/Android/Gradle/B·C보호diff0. 전체회귀/최종PR·CI는 아래 후속결과와 PR#28/Actions로 추적.
 
 최종 후속 결과: node web/test/junction.browser.cjs 전체 PASS(평가/강습 TURN_GOOD 기록 후 report, 연습 reviewsSaved 후 goal, 390/1440 조작). 브라우저 오류0/요청실패0. A04 26개를 포함한 웹126개 PASS. 원본 결과는 build/a05-junction-evidence/browser-results.json 및 추적 evidence/a05-2026-11-14/junction-results.json. 최종 코드 dbce435 기준이며 이후 커밋은 이 문서/증거만 변경한다. G4/G5 로컬 회귀·보호 범위 검사는 PASS; 원격CI·병합은 PR#28의 최종 HEAD와 Actions 결과로 확인한다.
+
+## 2026-11-14 A01 — 입력 제약 재조사·워밍업 관측 회귀
+
+기준dev2a70830a83b1f1ae2a1453cbf2131bb0b52e96b8,전용fix/a01-emulator-input-blockers,최종코드8469119f48c5ed60db9b3d5eb6d721dacf536f80. [공식근거/재현/등급/지원질문](A01_INPUT_BLOCKERS.md),[최소증거](evidence/a01-2026-11-14-inputs/README.md).
+
+Windows/Temurin17.0.20/Gradle8.10.2/Node24.22.1. .\gradlew.bat --offline --rerun-tasks :app:testMockDebugUnitTest :app:testVehicleDebugUnitTest :app:assembleMockDebug :app:assembleVehicleDebug — BUILD SUCCESSFUL20초/86tasks실행,XML양178/178·오류실패0. node --test web/test/*.test.mjs —126/126·실패건너뜀0. RED13중6 assertion→GREEN13후 중단전true회귀1 RED→최종14모두PASS. 초기테스트fixture의JVM SystemClock예외는기존주입시계로분리해해결. A02/A03테스트도전체회귀에포함. git diff --check PASS;보호범위diff0.
+
+실환경: 코드50bddf1 opt-in APK를기존A01 AVD에install-r,새COLD PID31744. SDK BRAKEfalse/BELTfalse/TURNOFF와앱snapshot OKfalse/NONE,gearP/uxfalse/PBfalse→PARKING_BRAKE_OFF 잠금·시작비활성확인. 원본시각은epoch로그,Signal.receivedAtMs개별필드는trace미포함. exactcapabilityconfig는이번로그미포함,실제읽기권한granted및기존capabilitygating구독수신만확인. 버클/PBON입력없음은공식48카드/실제48카드/동일공식이미지metadata대조;경고등토글반복0. 세실완료조건은BLOCKED/NOT_VERIFIED. Mock JVM6미션성공은sourceMOCK,실기/실차와분리.
+
+Awake/DisplayON/resumed/정상화면확인;검은화면미재현·기존원인해결NOT_VERIFIED. A01앱/우리forward18088/우리AVD만정상종료,data/snapshot보존. C02/다른Worktree수정0. 기본debug·release/A02/A03플래그false확인. 안전S01~S12/G1~G5는전용문서표참조:실제미확인경로를PASS로승격하지않고기본차단유지. 최종PR HEAD/CI/dev병합·병합후CI는PR/Actions이력으로추적한다. main변경0.

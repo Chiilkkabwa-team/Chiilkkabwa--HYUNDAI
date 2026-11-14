@@ -1,0 +1,13 @@
+--------- beginning of main
+         1794652901.496 31744 31744 I AaosVehicleSource: VehiclePropertyIds.BRAKE_PEDAL_COMPRESSION_PERCENTAGE not available in this platform
+         1794652901.496 31744 31744 I AaosVehicleSource: VehiclePropertyIds.ACCELERATOR_PEDAL_COMPRESSION_PERCENTAGE not available in this platform
+         1794652901.779 31744 31744 W AaosVehicleSource: AAOS pedal property IDs unavailable: keeping conditional pedal missions disabled
+         1794652901.816 31744 31744 I AaosVehicleSource: Supported AAOS properties: [PARKING_BRAKE_ON, PARKING_BRAKE_AUTO_APPLY, GEAR_SELECTION, CURRENT_GEAR, EV_BRAKE_REGENERATION_LEVEL, EV_STOPPING_MODE, WHEEL_TICK, PERF_VEHICLE_SPEED, PERF_VEHICLE_SPEED_DISPLAY]
+         1794652901.816 31744 31744 D PleosVehicleSource: SDK session start source=EMULATOR
+         1794652901.817 31744 31744 D A01SignalTrace: gate=Locked(reason=UNKNOWN_STATE) gear=UNKNOWN/null parkingBrake=UNKNOWN/null ux=OK/false belt=UNKNOWN/null brake=UNKNOWN/null turn=UNKNOWN/null source=EMULATOR
+         1794652905.031 31744 31744 D A01SignalTrace: gate=Locked(reason=UNKNOWN_STATE) gear=OK/PARK parkingBrake=UNKNOWN/null ux=OK/false belt=UNKNOWN/null brake=UNKNOWN/null turn=UNKNOWN/null source=EMULATOR
+         1794652905.032 31744 31744 D A01SignalTrace: gate=Locked(reason=PARKING_BRAKE_OFF) gear=OK/PARK parkingBrake=OK/false ux=OK/false belt=UNKNOWN/null brake=UNKNOWN/null turn=UNKNOWN/null source=EMULATOR
+         1794652905.702 31744 31775 D PleosVehicleSource: SDK callback sensor=BRAKE value=false
+         1794652905.754 31744 31775 D PleosVehicleSource: SDK callback sensor=BELT value=false
+         1794652905.812 31744 31777 D PleosVehicleSource: SDK callback sensor=TURN value=OFF
+         1794652906.334 31744 31744 D A01SignalTrace: gate=Locked(reason=PARKING_BRAKE_OFF) gear=OK/PARK parkingBrake=OK/false ux=OK/false belt=OK/false brake=OK/false turn=OK/NONE source=EMULATOR
