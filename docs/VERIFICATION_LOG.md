@@ -593,3 +593,20 @@ A02 PR#35 최종 동기화: CI 대기 중 A01 PR#34 dev3c0c824ca35951891f72d9c8f
 | 기기·에뮬레이터 화면 | 미실행 | NOT_VERIFIED |
 
 규정: S09 PASS(기기 내 저장·프로필 분리·삭제, 백업 꺼짐) / 암호화 저장 NOT_IMPLEMENTED, S03·S04 PASS(주행·연습 중 프로필 변경 차단), 에뮬레이터 NOT_VERIFIED
+
+
+## 2026-11-15 C01 — Android 주차 후 속도 시간표
+
+- 담당 역할: C / 브랜치 `feature/c01-android-timeline` ← `origin/dev` 8e3e9ab
+- 환경: Linux 클라우드 컨테이너, JDK 21, Gradle 8.10.2, Android SDK 35. 에뮬레이터 없음
+- 구현: `core/review/DriveTimeline.kt` — 주행 잠금 동안 스냅샷의 `speed`(A02 `VehicleSpeedObservation`)를 약 1초 간격(최대 3600점)으로 모으고, 사건은 A02 `SpeedEventBridge`를 그대로 써서 판정. 다시 주차하면 복기 화면에 정적 그래프·사건 점·글 목록·출처 라벨. mock 디버그 패널에 속도 0/20/50 버튼
+- **수집 경계(S05)**: 새 구독·백그라운드 수집을 만들지 않았다. A02가 켜 둔 속도 신호가 앱에 들어올 때만 쌓이고, vehicle 기본값(A02 opt-in 꺼짐)에서는 "속도 기록 없음"이 뜬다. 공식상 DO 미선언 앱의 주행 중 사용은 NOT_ALLOWED, 백그라운드 수집 허용은 NOT_VERIFIED(A02_DRIVING_LIFECYCLE.md) — 이 판단을 바꾸지 않는다
+- 저장: 메모리만(S09). 복기를 저장해도 시간표는 저장하지 않는다
+- 발견해 막은 함정: 스냅샷은 속도와 무관한 값이 바뀌어도 다시 온다. 같은 표본이 A02 엔진에 다시 들어가면 `NON_INCREASING_TIME`으로 거부되며 기준이 초기화돼 사건을 놓친다 → 같은 sessionId·같은 timestamp는 건너뛴다(테스트로 고정)
+
+| 시험 | 명령 | 결과 |
+|---|---|---|
+| Android 단위 + 빌드 | `./gradlew :app:testMockDebugUnitTest :app:assembleMockDebug :app:assembleVehicleDebug` | PASS 241/241(신규 `DriveTimelineTest` 6개: 1초 간격, A02 급감속 판정, 중복 표본, 신호 없음, 새 세션 새 기준, 초기화·상한), 두 플레이버 빌드 |
+| 화면 렌더 / 에뮬레이터 | 미실행 | NOT_VERIFIED |
+
+규정: S03·S04 PASS(시간표는 REVIEW에서만, 주차 확인이 깨지면 E3 잠금으로 함께 닫힘), S05 경계 유지(NOT_VERIFIED 그대로), S07 PASS(“속도 변화만 본 기록, 페달·주변 상황 판단 아님” 표기, 출처 라벨), S09 PASS(메모리만), S10 PASS

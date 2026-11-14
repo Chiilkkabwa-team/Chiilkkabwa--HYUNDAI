@@ -334,6 +334,7 @@ fun ReviewScreen(ui: UiState, onSave: (String?, String?, String?, Boolean) -> Un
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Title("수고했어요!")
         sum?.let { Body("오늘 연습 ${it.durationMin}분" + (it.distanceKm?.let { d -> " · %.1fkm".format(d) } ?: "") + if (!it.durationFromVehicle) " (앱 기준 시간)" else "") }
+        TimelineSection(ui.timeline)
         Body("오늘 어땠어요?", Tokens.TextMain)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) { ReviewChips.learner.forEach { Chip(it, it == learner) { learner = it } } }
         if (ui.mentorMode) {
@@ -347,6 +348,31 @@ fun ReviewScreen(ui: UiState, onSave: (String?, String?, String?, Boolean) -> Un
             Box(Modifier.weight(1f)) { BigButton("혼자 운전 시작할래요", ghost = true) { onSave(learner, mentor, next, true) } }
         }
     }
+}
+
+/** C01: 주차 후에만 보이는 정적 속도 시간표. 사건 점 + 글 목록(그래프를 못 보는 사람도 같은 내용을 읽는다) */
+@Composable
+private fun TimelineSection(tl: com.chiilkkabwa.app.core.review.DriveTimeline) {
+    if (!tl.hasData) {
+        Body("이번 주행의 속도 기록은 없어요. 속도 신호가 꺼져 있거나 받지 못했어요", Tokens.TextSub)
+        return
+    }
+    val maxT = tl.points.last().tSec.coerceAtLeast(1f)
+    val maxK = (tl.points.maxOf { it.kmh }.coerceAtLeast(20f) / 10f).let { kotlin.math.ceil(it) * 10f }
+    Body("속도 시간표 · ${tl.sources.joinToString { it.label }}", Tokens.TextMain)
+    Canvas(Modifier.fillMaxWidth().height(140.dp).clip(RoundedCornerShape(12.dp)).background(Tokens.Surface)) {
+        val pad = 12.dp.toPx()
+        fun at(t: Float, k: Float) = Offset(pad + (size.width - 2 * pad) * t / maxT, size.height - pad - (size.height - 2 * pad) * k / maxK)
+        tl.points.zipWithNext { a, b -> drawLine(Tokens.Primary, at(a.tSec, a.kmh), at(b.tSec, b.kmh), strokeWidth = 3.dp.toPx()) }
+        tl.marks.forEach { drawCircle(if (it.type == com.chiilkkabwa.app.core.event.SpeedEventType.RAPID_SPEED_DECREASE) Tokens.Lock else Tokens.Warn, 7.dp.toPx(), at(it.tSec, it.toKmh)) }
+    }
+    Text("최고 %.0fkm/h · 가로 %d분 %02d초".format(tl.points.maxOf { it.kmh }, maxT.toInt() / 60, maxT.toInt() % 60), color = Tokens.TextSub, fontSize = Tokens.Caption)
+    if (tl.marks.isEmpty()) Body("급하게 속도가 바뀐 순간은 없었어요")
+    tl.marks.take(5).forEach { m ->
+        val what = if (m.type == com.chiilkkabwa.app.core.event.SpeedEventType.RAPID_SPEED_DECREASE) "속도가 빠르게 줄었어요" else "속도가 빠르게 늘었어요"
+        Body("%d:%02d  %s  %.0f → %.0fkm/h".format(m.tSec.toInt() / 60, m.tSec.toInt() % 60, what, m.fromKmh, m.toKmh))
+    }
+    Text("속도 변화만 본 기록이에요. 페달 조작이나 주변 상황을 판단한 것이 아니에요", color = Tokens.TextSub, fontSize = Tokens.Caption)
 }
 
 @Composable
@@ -377,6 +403,8 @@ fun DebugPanel(vm: ChiilViewModel, ui: UiState, modifier: Modifier) {
             Dbg("핸들 0") { m.setSteering(0f) }; Dbg("핸들 -540") { m.setSteering(-540f) }; Dbg("핸들 +540") { m.setSteering(540f) }
             Dbg("브레이크 27%") { m.setBrakePct(27f) }; Dbg("브레이크 0") { m.setBrakePct(0f) }
             Dbg("주행 +3.2km/14분") { m.addTrip(3.2f, 840) }
+            // C01 시간표 시험용(mock 전용): 0→50→20처럼 눌러 급가속·급감속 표본을 만든다
+            listOf(0, 20, 50).forEach { k -> Dbg("속도 $k") { m.setSpeedMps(k / 3.6f) } }
             Dbg("브레이크 미지원") { m.breakSignal(SignalStatus.UNSUPPORTED) }
         }
     }
