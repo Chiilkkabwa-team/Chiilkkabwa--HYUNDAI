@@ -38,6 +38,7 @@ import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.chiilkkabwa.app.core.mission.CarPose
+import com.chiilkkabwa.app.data.store.PracticeStore
 import com.chiilkkabwa.app.core.mission.ParkingSim
 import com.chiilkkabwa.app.core.mission.ParkingSlot
 import com.chiilkkabwa.app.core.mission.Progress
@@ -72,8 +73,8 @@ fun AppRoot(
     Box(Modifier.fillMaxSize().background(Tokens.Bg).padding(24.dp)) {
         when (ui.session.phase) {
             Phase.DRIVING_LOCK -> DrivingLockScreen()
-            Phase.CHECKING -> GateScreen(ui, onStart = {})
-            Phase.READY -> GateScreen(ui, vm::startPractice, onVoicePreview, voicePreviewStatus)
+            Phase.CHECKING -> GateScreen(ui, onStart = {}, profiles = vm)
+            Phase.READY -> GateScreen(ui, vm::startPractice, onVoicePreview, voicePreviewStatus, profiles = vm)
             Phase.PREPARING -> if (ui.gate is GateState.Locked) GateScreen(ui, onStart = {}) else PrepRouter(vm, ui)
             // 복기 중 주차 확인이 깨지면(E3) 복기 대신 확인 화면을 보여 준다. 기록은 남아 있다
             Phase.REVIEW -> if (ui.session.lockReason != null) GateScreen(ui, onStart = {}) else ReviewScreen(ui, vm::saveReview)
@@ -124,9 +125,11 @@ fun GateScreen(
     onStart: () -> Unit,
     onVoicePreview: (() -> Unit)? = null,
     voicePreviewStatus: String? = null,
+    profiles: ChiilViewModel? = null,   // 안전 확인 단계에서만 넘긴다(복기 잠금 화면에서는 null → 프로필 줄 숨김)
 ) {
     val s = ui.snapshot
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        profiles?.let { ProfileRow(ui, it) }
         Title("연습 준비를 확인할게요")
         CheckRow("기어 P", s.gear.isUsable && s.gear.value == Gear.PARK)
         CheckRow("주차 브레이크", s.parkingBrakeOn.isUsable && s.parkingBrakeOn.value == true)
@@ -139,6 +142,21 @@ fun GateScreen(
         }
         ui.profile.nextGoal?.let { Body("지난번 목표: $it — 이어서 해 볼까요?") }
     }
+}
+
+/** C02: 누구의 연습인지. 칩으로 전환·추가, 지우기는 두 번 눌러 확인 */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ProfileRow(ui: UiState, vm: ChiilViewModel) {
+    var confirm by remember(ui.profile.id) { mutableStateOf(false) }
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        (ui.profiles.ifEmpty { listOf(ui.profile) }).forEach { p -> Chip(p.displayName, p.id == ui.profile.id) { vm.switchProfile(p.id) } }
+        if (ui.profiles.size < PracticeStore.ALIASES.size) Chip("+ 추가", false) { vm.addProfile() }
+        Chip(if (confirm) "한 번 더 누르면 ${ui.profile.displayName} 기록 삭제" else "기록 지우기", false) {
+            if (confirm) vm.deleteCurrentProfile() else confirm = true
+        }
+    }
+    Body("기록은 이 기기에만, 사람마다 따로 저장돼요")
 }
 
 @Composable
