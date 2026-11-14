@@ -465,3 +465,28 @@ NaviProgress.signalSource/requestDataSource 부재 compile RED→최소필드 �
 기준dev9a729698f87f93d78fb4a948f63db49ea8307277, 병합dbce4354d54093e519ea7d402712e2213d5e7e5c. 두 공통 문서 양쪽 기록 전부 보존, 제품코드 충돌0. [명령·환경·안전·검증 상세](A05_CONTROL_POLISH.md#최신-dev-a03-충돌-해결-재검증-2026-11-14). 웹126/126, 양JVM164/164,두debug빌드 PASS(offline rerun86tasks/26초). A05조작390/1440 PASS. A03/Android/Gradle/B·C보호diff0. 전체회귀/최종PR·CI는 아래 후속결과와 PR#28/Actions로 추적.
 
 최종 후속 결과: node web/test/junction.browser.cjs 전체 PASS(평가/강습 TURN_GOOD 기록 후 report, 연습 reviewsSaved 후 goal, 390/1440 조작). 브라우저 오류0/요청실패0. A04 26개를 포함한 웹126개 PASS. 원본 결과는 build/a05-junction-evidence/browser-results.json 및 추적 evidence/a05-2026-11-14/junction-results.json. 최종 코드 dbce435 기준이며 이후 커밋은 이 문서/증거만 변경한다. G4/G5 로컬 회귀·보호 범위 검사는 PASS; 원격CI·병합은 PR#28의 최종 HEAD와 Actions 결과로 확인한다.
+
+## 2026-11-14 A02 — 속도 표본 품질 Shadow 및 오프라인 재현
+
+- 배정A/Codex1, `fix/a02-speed-sample-quality`, 전용worktree chiilkkabwa-codex1-a02-quality/a01-pleos, 기준dev2a70830a83b1f1ae2a1453cbf2131bb0b52e96b8. 최종코드/PR/병합SHA는 이 항목의 후속 및 PR이력으로 추적한다. main 기준c4c15686a30e788143ccc88d8ebaa52500d3187b.
+- Windows PowerShell/Temurin17.0.20.101/Gradle8.10.2/AndroidSDK35/Node24.18.1. 기존 캐시 사용 `--offline`. 새 SDK/대형의존성/제어/권한/앱 연결0. [전체방법·비교·S/G등급](A02_SAMPLE_QUALITY.md), [재현자료](evidence/a02-quality-2026-11-14/README.md).
+
+| 실제 실행 | 결과 |
+|---|---|
+| 변경 전 양JVM/양debug | 각164/164 PASS, BUILD SUCCESSFUL(13초) |
+| 변경 전 web | node --test web/test/*.test.mjs —126/126 PASS |
+| TDD 신규타입/파서 | compile RED(Unresolved reference)→구현 후15/15 GREEN. 초기 gentle-decrease 기대오류 수정: 1km/h/100ms는 감소threshold미만. 임계값 변경0 |
+| 변경 후 .\gradlew.bat --offline :app:testMockDebugUnitTest :app:testVehicleDebugUnitTest :app:assembleMockDebug :app:assembleVehicleDebug | 양JVM179/179,실패/오류0,두debug BUILD SUCCESSFUL(9초,86tasks) |
+| 변경 후 node --test web/test/*.test.mjs | 126/126 PASS |
+| 리플레이 filtered JUnit | 원본29관측/29consumed 분리, 원본로그변경0, cold 재현/CSV/합성10시나리오 PASS |
+| 신규 Emulator/실차/정답 정확도 | NOT_VERIFIED. 이번 실행은 오프라인 증거 재사용이며 실제 오탐률 인증 아님 |
+
+기존 증가1@699902ms는101ms/2.750275m/s²로 재현되며 창평균/지속성Shadow는0. 실측 감소는기존799168ms→창799404455800ns→지속성799779340800ns(약611ms지연). 감소발췌의기록된증가시각798801ms와cold재현798204ms는미기록이전cooldown/episode가없어동일시각보장불가. 로그에없는처리시각은receiptNs를분석now로쓴다고명시. 소비결과로과거상태추측안함.
+
+합성의일정참값+계단노이즈/1kmh양자화/불균일100–200ms/완만±1/강한±5/단발스파이크/정속/누락콜백/동일·역전시각/invalid상태·권한거부/음수/세션·출처·종료후지연을검증. +3m/s²는Shadow누락이므로EXPERIMENTAL독립후보만유지. 원본근거·시계·legacy동일성·메모리32상한·cooldown우회차단도PASS. 기존엔진/bridge/활성화gate·A02_SPEED_EVENTS·A01/A03/B/C/Web/MainActivity/Manifest/Gradle변경0.
+
+S01/S02/S07/S09/S10/S12 변경범위PASS; S03/S04/S06/S08/S11 오프라인범위NOT_APPLICABLE(실환경성능NOT_VERIFIED); S05주행수집/서비스정책NOT_VERIFIED로기존차단유지. 출처·공모전/플랫폼/팀적용범위·제한은전용문서표참조. G1/G2/G3 PASS, G4단위/빌드/웹/오프라인만PASS·새실환경NOT_VERIFIED. G5리뷰/원격CI/통합은후속기록. 빌드성공을실신호/실차PASS로전환하지않음.
+
+작업중환경차단: 기본sandbox는기존Gradle캐시lock쓰기불가. 승인된캐시접근으로RED진행후자동승인검토서비스가크레딧부족으로한차례실행거절. 사용자재개후같은테스트를정상실행했고상기결과확인. 이거절은기능FAIL이나안전거절이아님. 로컬로그는.gitignore의.gradle/a02-quality/에보존하며캐시/산출물은커밋하지않음.
+
+A02 Shadow 리뷰 후속(2026-11-15 KST): 독립 read-only 리뷰 Critical/Important0. 리뷰에서 지적된 정규200ms의 최소5표본 미충족을 추가테스트1 FAIL로 재현한 뒤 창 축소 시5개를 보존하도록 수정. 200ms +5m/s²는800ms에후보1개로GREEN. 기존실측비교동일. 최종재실행은양JVM180/180(신규16),양debug빌드 BUILD SUCCESSFUL(5초,86tasks),실패/오류0. 생성합성비교11개. 정상입력메모리상한검증을32개절단분기실행증거로과장하지않도록설명보완. 최종실행로그.gradle/a02-quality/review-final-android.log. 원격통합은다음후속기록.

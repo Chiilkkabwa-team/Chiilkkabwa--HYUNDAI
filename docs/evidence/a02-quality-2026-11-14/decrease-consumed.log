@@ -1,0 +1,15 @@
+11-13 21:04:15.102  8702  8702 D A02SpeedTrace: consumed evaluated mps=24.72222328186035 sampleMs=798100 event=null suppression=null
+11-13 21:04:15.207  8702  8702 D A02SpeedTrace: consumed evaluated mps=25.0 sampleMs=798204 event=null suppression=COOLDOWN
+11-13 21:04:15.414  8702  8702 D A02SpeedTrace: consumed evaluated mps=25.0 sampleMs=798405 event=null suppression=null
+11-13 21:04:15.516  8702  8702 D A02SpeedTrace: consumed evaluated mps=25.0 sampleMs=798511 event=null suppression=null
+11-13 21:04:15.702  8702  8702 D A02SpeedTrace: consumed evaluated mps=25.0 sampleMs=798700 event=null suppression=null
+11-13 21:04:15.803  8702  8702 D A02SpeedTrace: consumed evaluated mps=25.27777862548828 sampleMs=798801 event=RAPID_SPEED_INCREASE suppression=null
+11-13 21:04:15.908  8702  8702 D A02SpeedTrace: consumed evaluated mps=25.27777862548828 sampleMs=798906 event=null suppression=null
+11-13 21:04:16.037  8702  8702 D A02SpeedTrace: consumed evaluated mps=25.0 sampleMs=799028 event=null suppression=null
+11-13 21:04:16.172  8702  8702 D A02SpeedTrace: consumed evaluated mps=24.44444465637207 sampleMs=799168 event=RAPID_SPEED_DECREASE suppression=null
+11-13 21:04:16.303  8702  8702 D A02SpeedTrace: consumed evaluated mps=23.88888931274414 sampleMs=799301 event=null suppression=ONGOING_EPISODE
+11-13 21:04:16.406  8702  8702 D A02SpeedTrace: consumed evaluated mps=22.5 sampleMs=799404 event=null suppression=ONGOING_EPISODE
+11-13 21:04:16.522  8702  8702 D A02SpeedTrace: consumed evaluated mps=21.111112594604492 sampleMs=799515 event=null suppression=ONGOING_EPISODE
+11-13 21:04:16.639  8702  8702 D A02SpeedTrace: consumed evaluated mps=19.44444465637207 sampleMs=799637 event=null suppression=ONGOING_EPISODE
+11-13 21:04:16.782  8702  8702 D A02SpeedTrace: consumed evaluated mps=17.77777862548828 sampleMs=799779 event=null suppression=ONGOING_EPISODE
+11-13 21:04:16.906  8702  8702 D A02SpeedTrace: consumed evaluated mps=17.22222328186035 sampleMs=799905 event=null suppression=ONGOING_EPISODE
