@@ -477,3 +477,12 @@ NaviProgress.signalSource/requestDataSource 부재 compile RED→최소필드 �
 - vehicleDebug merged manifest Activity exported=false,vehicleRelease manifest/컴파일class의NaviProbe미포함 확인. test APK targetPackage=com.chiilkkabwa.app. 이정적보호/컴파일은실제장치실행증거아님.
 - 실제SDK생성/initialize/onConnected/onFailed/timeout/remove/release,실제정차신호·권한·경로함수/검색callback/기본내비안내: 전부NOT_VERIFIED. 장비사유실제요청BLOCKED. 브레이크false/불명/STALE/권한거부/수명/순서·중복은합성JVM으로만PASS.
 - S01/S02(공개SDK·컴파일)/S03(JVM)/S04(정적·JVM)/S07/S09/S10 PASS 범위명시. S02실권한·승인/S04실기/S05 NOT_VERIFIED;S06/S08/S11 변경없음NOT_APPLICABLE;S12 main/기존작업보존·제출없음. G1~G3 PASS(배정·공식근거·Debug차단),G4로컬만PASS/실기NOT_VERIFIED,G5기본off Debug기반만통합. 공식근거·S01~S12상세는전용문서참조.
+## 2026-11-14 A01 — 입력 제약 재조사·워밍업 관측 회귀
+
+기준dev2a70830a83b1f1ae2a1453cbf2131bb0b52e96b8,전용fix/a01-emulator-input-blockers,최종코드8469119f48c5ed60db9b3d5eb6d721dacf536f80. [공식근거/재현/등급/지원질문](A01_INPUT_BLOCKERS.md),[최소증거](evidence/a01-2026-11-14-inputs/README.md).
+
+Windows/Temurin17.0.20/Gradle8.10.2/Node24.22.1. .\gradlew.bat --offline --rerun-tasks :app:testMockDebugUnitTest :app:testVehicleDebugUnitTest :app:assembleMockDebug :app:assembleVehicleDebug — BUILD SUCCESSFUL20초/86tasks실행,XML양178/178·오류실패0. node --test web/test/*.test.mjs —126/126·실패건너뜀0. RED13중6 assertion→GREEN13후 중단전true회귀1 RED→최종14모두PASS. 초기테스트fixture의JVM SystemClock예외는기존주입시계로분리해해결. A02/A03테스트도전체회귀에포함. git diff --check PASS;보호범위diff0.
+
+실환경: 코드50bddf1 opt-in APK를기존A01 AVD에install-r,새COLD PID31744. SDK BRAKEfalse/BELTfalse/TURNOFF와앱snapshot OKfalse/NONE,gearP/uxfalse/PBfalse→PARKING_BRAKE_OFF 잠금·시작비활성확인. 원본시각은epoch로그,Signal.receivedAtMs개별필드는trace미포함. exactcapabilityconfig는이번로그미포함,실제읽기권한granted및기존capabilitygating구독수신만확인. 버클/PBON입력없음은공식48카드/실제48카드/동일공식이미지metadata대조;경고등토글반복0. 세실완료조건은BLOCKED/NOT_VERIFIED. Mock JVM6미션성공은sourceMOCK,실기/실차와분리.
+
+Awake/DisplayON/resumed/정상화면확인;검은화면미재현·기존원인해결NOT_VERIFIED. A01앱/우리forward18088/우리AVD만정상종료,data/snapshot보존. C02/다른Worktree수정0. 기본debug·release/A02/A03플래그false확인. 안전S01~S12/G1~G5는전용문서표참조:실제미확인경로를PASS로승격하지않고기본차단유지. 최종PR HEAD/CI/dev병합·병합후CI는PR/Actions이력으로추적한다. main변경0.
