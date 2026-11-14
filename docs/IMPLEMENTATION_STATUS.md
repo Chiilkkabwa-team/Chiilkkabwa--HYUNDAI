@@ -84,7 +84,7 @@ Android 구현 정적 점검일: 2026-11-11 KST (당시 기준 main: de612636cc2
 
 ### B02 Android 코칭 판단 코어 (2026-11-14)
 
-- 기준 dev 최초1acc540, 통합 전77af260 반영. feature/b02-coaching-policy-core, 전용 Worktree. [계약·정책·검증·미확인](B02_COACHING_POLICY.md).
+- 기준 dev 최초1acc540, 통합 전b758c2b(B01/B04) 반영. feature/b02-coaching-policy-core, 전용 Worktree. [계약·정책·검증·미확인](B02_COACHING_POLICY.md).
 - 순수 Kotlin CoachingPolicy/CoachingCandidate·Record/CoachingDecisionEngine 신규. 목표 우선 필터,800ms 비교,45초/5회/동일2회,멘토 기본off,중복·신선도·단위·출처·세션·결과 관리. A02 원본ID·근거를 보존하며 속도 감소를 브레이크·위험으로 추론하지 않는다.
 - 기본 DISABLED. 명시적 정차 Mock 시험만 OFFERED 가능하며 EMULATOR/VEHICLE은 출처를 보존해 BLOCKED. 기존 미리듣기·차량 소스·UI·저장소·권한·Gradle·웹 무변경. 실제 주행 자동 음성 미연결.
-- JVM mock/vehicle 각각110/110(신규31),두 debug빌드,웹109/109 PASS. SPOKEN은 합성 정상 완료callback 시험 결과이며 실제 TTS 재생 증거가 아니다. 실음성 길이·포커스·Emulator·실차·주행 플랫폼정책은 NOT_VERIFIED(S05). PR/병합/CI는 해당 검증 로그·PR 이력 참조.
+- JVM mock/vehicle 각각110/110(신규31),두 debug빌드,웹110/110 PASS. SPOKEN은 합성 정상 완료callback 시험 결과이며 실제 TTS 재생 증거가 아니다. 실음성 길이·포커스·Emulator·실차·주행 플랫폼정책은 NOT_VERIFIED(S05). PR/병합/CI는 해당 검증 로그·PR 이력 참조.

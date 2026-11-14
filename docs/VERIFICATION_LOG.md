@@ -358,3 +358,11 @@ G1/G2 PASS(배정·범위·근거·계약),G3 PASS(기본차단·순수코어·�
 - 브랜치 `fix/b04-parked-learning` / 기준 `dev` `77af260`. 도움말과 노트는 열 때와 주차 상태를 다시 확인할 때 모두 주차 게이트를 적용한다. 콘솔의 주차 브레이크 미지원 옵션과 관계없이 학습 창에는 기어 P·주차 브레이크 ON·UX 제한 해제가 필요하다.
 - Windows / Node 24.18.1: `node --check web/app.js`, `node --test web/test/*.test.mjs` 110/110 PASS. 기어 D, 브레이크 해제/미지원, 제한 활성, 신호 끊김/불명과 벨트 미지원 안내를 검증했다. 브라우저의 로컬 시험 페이지 연결이 시간 초과되어 UI 실측은 NOT_VERIFIED.
 - S03 주차 조건 및 S08 벨트 안내는 웹 단위 범위 PASS, S04 UI 전환은 NOT_VERIFIED. S10 웹 Mock 범위. Android·권한·외부 자산 변경 없음(S01·S02·S11 해당 없음). S03·S04 근거는 [SAFETY_RULES.md](SAFETY_RULES.md)의 P01·P02 참조.
+
+### B02 최신 dev 반영 후 재검증
+
+- 기능 코드 커밋50a95d9898e8b013be508d652a28b2a57da07eed. dev b758c2b4ae7d9711608fb71fb7dfbd82f9ab9b5b(B01/B04)를 반영한 시험HEAD ff9e4d8ea5781d9c288dca88cefac18c0c0bd9fb.
+- 충돌은 VERIFICATION_LOG 말미의 append 충돌1개. B02 신규·기존B02/B03·B04 기록을 모두 보존했다. latest dev 대비 변경은 신규코어3/테스트1/문서3의7파일이며 보호파일·웹 diff0.
+- `.\gradlew.bat --offline --rerun-tasks :app:testMockDebugUnitTest :app:testVehicleDebugUnitTest :app:assembleMockDebug :app:assembleVehicleDebug` —86 tasks 실제 재실행, BUILD SUCCESSFUL(24초), 양JVM110/110·신규31/31·양debug PASS.
+- `node --test web/test/*.test.mjs` —B04 추가 시험 포함110/110 PASS. 이전109 결과를 최신110 결과로 갱신한다.
+- A03 문서 SHA256 14C861DF11C3823018429D5DA4E6E8062084DB2C76706155DA50897D21173FC0 보존. main 참조 이동·실차/실음성 활성화 없음.

@@ -3,7 +3,7 @@
 기준: 2026-11-14 KST / Codex 2
 작업: feature/b02-coaching-policy-core
 최초 기준 origin/dev: 1acc54036c5660ff05d572dd904d250762f0dad5
-통합 전 반영 dev: 77af260015981305e7b24891bd76afa29a8e961c
+통합 전 반영 dev: b758c2b4ae7d9711608fb71fb7dfbd82f9ab9b5b (B01/B04 포함)
 전용 Worktree: Chiilkkabwa-Codex2-B02-Coach
 **순수 Kotlin 판단·Mock 시험만 구현했다. Android 실제 주행 음성 자동 재생은 연결하지 않았다.**
 
@@ -186,7 +186,7 @@ Ruling: 별도 에이전트 사용 금지인 이 대화 조건에 따라 전체 
 | 기존 ParkedVoicePreview | 양 플레이버 전체 suite에 포함, 기존4개 PASS |
 | B02 신규 | 양 플레이버 CoachingDecisionEngineTest **31개 PASS** |
 | 양 debug 빌드 | :app:assembleMockDebug :app:assembleVehicleDebug — **BUILD SUCCESSFUL** |
-| Web 회귀/음성 | node --test web/test/*.test.mjs — **109/109 PASS** |
+| Web 회귀/음성 | node --test web/test/*.test.mjs — **110/110 PASS** |
 | 보호 파일 | 기준 dev 대비 차량·Signals·A02·저장소·UI·Manifest·Gradle·web diff0 |
 | Android/Pleos 실음성·Emulator·실차 | 미실행 **NOT_VERIFIED**. 합성callback은 실제 완료 증거가 아님 |
 
