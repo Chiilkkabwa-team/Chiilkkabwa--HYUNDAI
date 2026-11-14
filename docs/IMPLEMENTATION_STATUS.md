@@ -134,3 +134,12 @@ A03 Probe 최신 통합: A01 PR#30의dev91413da를c159d15에반영,대장append�
 A02 최신통합: A01 PR#30 dev91413da의14개테스트/기존기록을보존해양JVM194/194,양debug빌드,웹126/126 PASS. PR#31(base=dev)의최종HEAD/CI/병합결과참조. A02외제품코드는최신dev와동일하다.
 
 A03 Probe PR#32 최종동기화: dev8993d25(A02 PR#31)와공통기록전부보존. 양JVM206/206·양debug·시험APK·release제외·웹126/126 PASS. 실제장치NOT_VERIFIED유지. 최종PR/CI는#32이력참조.
+
+### A03 실제 SDK runtime 검증 (2026-11-15)
+
+기준 dev01eff12(PR29/32), test/a03-navihelper-runtime / 독립 Codex2-A03-Runtime. 제품코드 변경0.
+Pleos2.1.0/API34 emulator-5562·user10의 read-only 인스턴스에서 inspect/initialize/lifecycle 실행:
+SDK 객체생성/initialize/실제 CONNECTED_CALLBACK, listener 제거/release 반환, 새 Activity 자동초기화0 및 명시 재연결 PASS.
+기본OFF 실제 runner BLOCKED. 실PBfalse이므로 경로API 미실행(BLOCKED), 검색응답/기본내비 안내는 NOT_VERIFIED 유지.
+양JVM206/206·양debug·시험APK·release 제외·웹126/126 PASS. 기존 A01/A02/B/C 및 모든 Worktree/main 보존.
+실제 지연callback/실패/timeout/권한거부/주행전환 미유발은 NOT_VERIFIED. [결과·안전표·증거](A03_RUNTIME_RESULTS.md).
