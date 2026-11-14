@@ -322,3 +322,15 @@ PR #20 최초 CI에서 웹 및 Android 테스트/양debug빌드 SUCCESS를 확�
 - `web/app.js`의 가상 주행 원본 사건에 같은 ID를 붙여 평가·강습의 사건 목록과 속도 시간표가 완료한 발화만 찾아 표시한다. 멘토 모드의 기본 음성 끔 문구를 실제 설정과 맞췄다.
 - Windows / Node 24.18.1: `node --check web/app.js`, `node --test web/test/*.test.mjs` 109/109 PASS. 기존 E4~E6, 취소·시간 초과·늦은 콜백을 포함한다.
 - 브라우저 실행·실제 청취는 NOT_VERIFIED. S06은 웹 Mock 로직에서만 PASS, S07·S10은 가상 출처 유지. 차량 연동 및 주행 음성(S05)은 NOT_VERIFIED. Android·권한·외부 음원 변경 없음(S01·S02·S11 해당 없음). 공식 근거는 [SAFETY_RULES.md](SAFETY_RULES.md)의 P02·P09 참조.
+
+## 2026-11-14 B02·B03 — 기존 구현 재검증
+
+- B02(PR #12): Windows Android Studio Kotlin 컴파일러에서 `ParkedVoicePreviewTest` 4개를 JVM으로 실행했다(로컬 JUnit 호환 단언 사용). 주차 조건/포커스 거부, 포커스 상실/취소, 늦은 완료 콜백, 재생 시작 실패 테스트 PASS. `AndroidPreviewAudio.kt`와 컨트롤러는 설치된 Android API 37 스텁에 대해 컴파일했다. 전체 Gradle 단위 테스트와 두 debug 빌드는 PR #22의 Android CI에서 PASS. 이 PC에는 Pleos AVD가 없으며 Pleos SDK 실행·재생·포커스 상호작용은 NOT_VERIFIED(S02·S05·S06).
+- B03(PR #13): Node 24.18.1에서 로컬 한국어 음성 우선 선택/미지원 테스트 PASS. 회전 두 문구·칭찬의 추정 길이는 1.60~1.75초. 실제 재생 2.5초 실측과 청취 품질은 NOT_VERIFIED(S06). 외부 음원은 사용하지 않았다(S11 해당 없음).
+- 공식 근거: [주행 규제](https://document.pleos.ai/docs/pleos-only/vehicle-app-planning-guide/driving-restiction-policy), [오디오 포커스](https://document.pleos.ai/docs/pleos-only/vehicle-app-developer-guide/audio-focus-development-guide/audio-focus-development), [Pleos TTS SDK](https://document.pleos.ai/en/docs/pleos-only/connect-sdk-pleos/TextToSpeech/intro).
+
+## 2026-11-14 B04 — 웹 도움말·운전 노트의 주차 조건과 벨트 설명
+
+- 브랜치 `fix/b04-parked-learning` / 기준 `dev` `77af260`. 도움말과 노트는 열 때와 주차 상태를 다시 확인할 때 모두 주차 게이트를 적용한다. 콘솔의 주차 브레이크 미지원 옵션과 관계없이 학습 창에는 기어 P·주차 브레이크 ON·UX 제한 해제가 필요하다.
+- Windows / Node 24.18.1: `node --check web/app.js`, `node --test web/test/*.test.mjs` 110/110 PASS. 기어 D, 브레이크 해제/미지원, 제한 활성, 신호 끊김/불명과 벨트 미지원 안내를 검증했다. 브라우저의 로컬 시험 페이지 연결이 시간 초과되어 UI 실측은 NOT_VERIFIED.
+- S03 주차 조건 및 S08 벨트 안내는 웹 단위 범위 PASS, S04 UI 전환은 NOT_VERIFIED. S10 웹 Mock 범위. Android·권한·외부 자산 변경 없음(S01·S02·S11 해당 없음). S03·S04 근거는 [SAFETY_RULES.md](SAFETY_RULES.md)의 P01·P02 참조.
