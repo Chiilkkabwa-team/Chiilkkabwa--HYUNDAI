@@ -1,7 +1,8 @@
 # A03 Debug 시험 진입점과 Emulator 검증
 
 작업일: 2026-11-14~15 KST / A 파트 Codex2
-기준 dev: 2a70830a83b1f1ae2a1453cbf2131bb0b52e96b8
+최초 기준 dev: 2a70830a83b1f1ae2a1453cbf2131bb0b52e96b8
+통합 반영 dev: 91413da9e581c0fd4d18adc056221c63605079c7
 브랜치: feature/a03-debug-emulator-probe
 Worktree: Chiilkkabwa-Codex2-A03-Probe
 
@@ -124,7 +125,7 @@ Windows PowerShell / Temurin17.0.20 / Gradle8.10.2 / Android SDK35, Node24.18.1.
 
 | 검증 | 실제 결과 |
 |---|---|
-| 두 JVM | mock176/176, vehicle176/176, failures0/errors0. 기존164+A03 owner12 |
+| 두 JVM | 최초dev2a70830 양176/176; 최신dev91413da 양190/190, failures0/errors0. 기존178+A03 owner12 |
 | owner 회귀 | 10개 PASS→초기화중 gear DISCONNECTED 누락11중1 FAIL→차단 수정. 주행시 view닫기 계약 compile RED→구현 후12 PASS |
 | 두 debug | assembleMockDebug/assembleVehicleDebug PASS |
 | 자동화 APK | assembleVehicleDebugAndroidTest PASS. 생성된 manifest targetPackage=com.chiilkkabwa.app |

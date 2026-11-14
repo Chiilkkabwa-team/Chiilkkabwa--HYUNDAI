@@ -121,3 +121,5 @@ A05 A03 통합 재검증: dev9a72969를 dbce435에 반영. 공통문서2곳 충�
 ### A01 입력 제약 후속 (2026-11-14)
 
 최신dev2a70830 기반 fix/a01-emulator-input-blockers / 전용 A01-Inputs. 필수3미션의 과거/미래 벨트값·중단전관측과 브레이크/깜빡이 부분진행 재사용을 최소 차단. 코드8469119f48c5ed60db9b3d5eb6d721dacf536f80. 양JVM178/178(신규14),양debug빌드,웹126/126 PASS. 실제2.1.0/Service2.3.22/SDK2.3.2 초기false/OFF와 PBfalse 잠금 재확인. 벨트true·실PBON·전체Emulator워밍업은BLOCKED,Mock6미션완료와구분. [공식경로·증거·안전·외부조건](A01_INPUT_BLOCKERS.md). A02/A03/B·C/웹/Manifest/Gradle/SafetyGate변경0. Issue#16열림,main·기존Worktree보존.
+
+A03 Probe 최신 통합: A01 PR#30의dev91413da를c159d15에반영,대장append충돌양쪽보존. 양JVM190/190·양debug·시험APK·release제외·웹126/126 PASS. 실제장치단계NOT_VERIFIED유지. 최종PR/CI는이력참조.

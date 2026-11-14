@@ -486,3 +486,7 @@ Windows/Temurin17.0.20/Gradle8.10.2/Node24.22.1. .\gradlew.bat --offline --rerun
 실환경: 코드50bddf1 opt-in APK를기존A01 AVD에install-r,새COLD PID31744. SDK BRAKEfalse/BELTfalse/TURNOFF와앱snapshot OKfalse/NONE,gearP/uxfalse/PBfalse→PARKING_BRAKE_OFF 잠금·시작비활성확인. 원본시각은epoch로그,Signal.receivedAtMs개별필드는trace미포함. exactcapabilityconfig는이번로그미포함,실제읽기권한granted및기존capabilitygating구독수신만확인. 버클/PBON입력없음은공식48카드/실제48카드/동일공식이미지metadata대조;경고등토글반복0. 세실완료조건은BLOCKED/NOT_VERIFIED. Mock JVM6미션성공은sourceMOCK,실기/실차와분리.
 
 Awake/DisplayON/resumed/정상화면확인;검은화면미재현·기존원인해결NOT_VERIFIED. A01앱/우리forward18088/우리AVD만정상종료,data/snapshot보존. C02/다른Worktree수정0. 기본debug·release/A02/A03플래그false확인. 안전S01~S12/G1~G5는전용문서표참조:실제미확인경로를PASS로승격하지않고기본차단유지. 최종PR HEAD/CI/dev병합·병합후CI는PR/Actions이력으로추적한다. main변경0.
+
+### A03 Probe 최신 dev 통합 회귀 (2026-11-15)
+
+최초코드61ae3dab06a66ecd049e2d6284fdc7b58a59ca67, A01 PR#30의dev91413da9e581c0fd4d18adc056221c63605079c7를c159d15에반영. 충돌은공통대장append2곳이며A01/A03모두보존. 최신기준양JVM190/190(기존178+Probe12),양debug/시험APK/release manifest·Kotlincompile PASS(5초),웹126/126 PASS. git diff --check PASS. 기존core/차량/저장소/UI/mainManifest/Web의최신dev대비diff0. 실제AVD미사용·실초기화/요청/검색/안내NOT_VERIFIED유지. 최종PR/병합SHA/CI는해당PR이력으로추적.
