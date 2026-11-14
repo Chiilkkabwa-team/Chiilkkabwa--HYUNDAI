@@ -520,3 +520,16 @@ A02 최신dev 통합(2026-11-15): PR#31 생성 직전 dev가91413da9e581c0fd4d18
 ### A03 Probe PR #32 최종 동기화
 
 PR#32의원격CI진행중 A02 PR#31이dev8993d25c3b93a0d0b70c13f604b540196a42bbab에통합되어반영. 두공통대장각append2블록충돌을A01/A02/A03전부보존해해결했고새기능코드충돌0. 최종전체명령재실행 BUILD SUCCESSFUL(11초/129tasks),양JVM206/206(기존194+owner12),양debug·시험APK·release manifest/Kotlin PASS,웹126/126 PASS. git diff --check 및최신dev대비보호범위diff0. 실제장치시험NOT_VERIFIED유지. 최종head/병합SHA/dev CI는 https://github.com/Chiilkkabwa-team/Chiilkkabwa--HYUNDAI/pull/32 와연결Actions이력이정본이다.
+
+### A03 Pleos Emulator 실제 SDK runtime (2026-11-15 KST)
+
+실행코드/최신기준dev01eff12a2ecdbd4ae3e0fdb78f6031504aa13540, branch test/a03-navihelper-runtime.
+제품/SDK/권한/게이트 수정0. [결과 및 S01~S12/G1~G5](A03_RUNTIME_RESULTS.md), [원본 최소증거](evidence/a03-runtime-2026-11-15/README.md).
+시작 전 장비/프로세스0 확인 후 기존 A01 AVD를 -read-only/-port5562/-no-snapshot로 실행, serial5562/user10 직접확인.
+Pleos2.1.0/API34/NaviHelper3.0.5/Service3.0.4에서 기존 inspect→initialize→lifecycle runner 실제실행.
+총3회 객체생성→초기화→실제연결callback→listener제거→release반환. 첫Activity 종료/재진입 자동초기화0/명시재시작 PASS.
+실PBfalse·선택POI없음으로 mode=request/API호출0 BLOCKED, 검색/안내 NOT_VERIFIED. 지연callback/실제실패/timeout/권한거부/주행전환은 미유발 NOT_VERIFIED.
+opt-in 빌드19초/66tasks; defaultOFF --offline --rerun-tasks 전체Android BUILD SUCCESSFUL1분8초/129tasks,
+양JVM206/206 failures/errors/skipped0, 양debug/시험APK/release manifest·Kotlincompile PASS, release Probe제외.
+node --test web/test/*.test.mjs 126/126 PASS. defaultOFF APK재설치 후 실제runner BLOCKED, SDKtrace15→15.
+우리5562만정상종료, 별도5558/기존Worktree/AVD원본/main보존. G5 원격PR/병합SHA/CI는base=dev PR과연결Actions이력참조.
