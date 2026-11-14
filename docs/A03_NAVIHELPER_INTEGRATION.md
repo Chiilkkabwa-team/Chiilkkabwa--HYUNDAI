@@ -210,3 +210,7 @@ TDD: 타입 부재 compile FAIL→23개 PASS→signed-zero 회귀 포함26개 �
 A02 PR#27의dev02091872cf77650051318aa844517c0f3c033d19를 반영했다. Gradle충돌은두기능의플래그를모두보존했다. A03 debug필드는 Boolean.parseBoolean으로비상수화했고 실제소비자바이트코드의 getstatic을 ON→OFF 전환양쪽에서확인했다. 생성소스만바뀌고이전인라인소비자가남은초기검증실패도재컴파일후해소했다. release는opt-in에도false다. 최신기준양JVM164/164·양debug·Web110/110 PASS. A02·B/C 기능변경은없다. 기존조사사본의Markdown줄바꿈/EOF공백은원형보존하고새코드·통합문서의whitespace만검사했다.
 
 최종 출력 계약: NaviProgress에도 signalSource와 requestDataSource를 보존한다. 합성 코스가 실제 실차 요청으로 오인되지 않도록 출처 필드 부재 RED를 확인한 뒤 추가했으며, 최신 양JVM164/164·양debug PASS(5초).
+
+## A03 Debug Probe 후속 (2026-11-15)
+
+[Debug 시험 소유자·Activity·instrumentation·단계별 판정](A03_EMULATOR_VERIFICATION.md)을 추가했다. 기존의 진입점 보류는 vehicleDebug 비공개 Activity와 명시 runner로 보완했다. SDK/어댑터/strict 요청 게이트는 재작성하지 않았고 default OFF·실차/release 차단 유지. 실제 Pleos AVD는 다른 Codex가 사용 중이며 사용자가 실측 미검증 진행을 선택하여 설치/초기화/요청/검색/안내를 실행하지 않았다. 로컬 양JVM176/176(신규12),양debug·시험APK·release제외,웹126/126 PASS. 이 결과는 실제 onConnected/검색/안내 증거가 아니다.

@@ -20,7 +20,7 @@ import com.chiilkkabwa.app.core.navigation.*
 import com.chiilkkabwa.app.core.signal.SignalSource
 
 /** No cancelRoute, private API, reflection, location collection or foreground/navigation-start call. */
-internal class NaviHelperClient(context: Context) : NaviClient {
+internal class NaviHelperClient(context: Context, private val trace: (NaviClientTrace) -> Unit = {}) : NaviClient {
     private val context = context.applicationContext
     private val main = Handler(Looper.getMainLooper())
     private var epoch = 0L
@@ -37,6 +37,7 @@ internal class NaviHelperClient(context: Context) : NaviClient {
         }
         val sdk = NaviHelper(context)
         helper = sdk
+        trace(NaviClientTrace.SDK_OBJECT_CREATED)
         val events = object : NaviHelperEventListener {
             override fun onRouteStarted(routeStartInfo: RouteStartInfo) = deliver(NaviEvent.SearchStarted)
             override fun onRoutingCompleted() = deliver(NaviEvent.SearchCompleted)
@@ -45,9 +46,10 @@ internal class NaviHelperClient(context: Context) : NaviClient {
         }
         listener = events
         sdk.addListener(events)
+        trace(NaviClientTrace.INITIALIZE_CALLED)
         sdk.initialize(
-            onConnected = { deliver(NaviEvent.Connected) },
-            onFailed = { deliver(NaviEvent.InitializationFailed(classify(it))) },
+            onConnected = { main.post { if (epoch == current) trace(NaviClientTrace.CONNECTED_CALLBACK) }; deliver(NaviEvent.Connected) },
+            onFailed = { main.post { if (epoch == current) trace(NaviClientTrace.FAILED_CALLBACK) }; deliver(NaviEvent.InitializationFailed(classify(it))) },
         )
     }
 
@@ -71,8 +73,8 @@ internal class NaviHelperClient(context: Context) : NaviClient {
         val events = listener
         helper = null
         listener = null
-        try { if (sdk != null && events != null) sdk.removeListener(events) }
-        finally { sdk?.release() }
+        try { if (sdk != null && events != null) { sdk.removeListener(events); trace(NaviClientTrace.LISTENER_REMOVED) } }
+        finally { if (sdk != null) { sdk.release(); trace(NaviClientTrace.RELEASE_RETURNED) } }
     }
 
     companion object {
@@ -115,9 +117,9 @@ internal object NaviSdkMapper {
 
 /** Construction is inert: the A03 owner must explicitly start/updateSafety/request and poll tick.
  * Kept independent of B/C UI; no Activity or automatic route request is registered. */
-internal fun createDebugNaviAdapter(context: Context): PleosNaviAdapter = PleosNaviAdapter(
+internal fun createDebugNaviAdapter(context: Context, trace: (NaviClientTrace) -> Unit = {}): PleosNaviAdapter = PleosNaviAdapter(
     runtime = NaviHelperClient.actualRuntime(),
-    clientFactory = { NaviHelperClient(context) },
+    clientFactory = { NaviHelperClient(context, trace) },
     wallClockMs = { System.currentTimeMillis() },
     elapsedMs = { android.os.SystemClock.elapsedRealtime() },
 )

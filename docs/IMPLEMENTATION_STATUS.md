@@ -112,3 +112,9 @@ A02 통합 후 갱신: B01/B02/B04 dev44bfe68를 반영해 Android 양JVM **138/
 - 실제 앱 SDK초기화·경로호출·검색callback·기본내비안내는 모두 NOT_VERIFIED. 현재 타작업 일반Android 기기를 사용하지 않았고 Pleos의 실제 정차신호가 준비되지 않아 UI시험진입점·실제호출을 보류했다. 기본비활성 기반만 통합 대상.
 
 A05 A03 통합 재검증: dev9a72969를 dbce435에 반영. 공통문서2곳 충돌은 A02/A03/A05 전부 보존. 웹126/126,양JVM164/164,양debug빌드,390/1440 조작 PASS. A03·Android·Gradle 및 B/C보호diff0. 최종통합/CI는 PR#28 이력 참조.
+
+### A03 Debug 실행 진입점 (2026-11-15)
+
+- feature/a03-debug-emulator-probe, 기준dev2a70830. [전용 검증 문서](A03_EMULATOR_VERIFICATION.md). 기존 A03 어댑터를 사용하는 Debug-only owner,vehicleDebug 비공개 Activity,명시 Android instrumentation runner를 추가했다. 자동초기화/자동요청 없음,실차/release/default차단·strict 게이트 유지.
+- 양JVM176/176(신규owner12),두debug·시험APK·release manifest/클래스 제외,웹126/126 PASS. Main/B/C/A01/A02/Web 기능변경0. SDK hook은 고정단계만 관측.
+- 실제AVD는 타Codex 점유 및 사용자 요청으로 미사용. 실제 SDK초기화·요청·검색·안내는 모두NOT_VERIFIED. JVM의 브레이크false 차단을 실제 게이트 관측으로 표시하지 않는다. 제품 release 기능은 활성화하지 않았다.

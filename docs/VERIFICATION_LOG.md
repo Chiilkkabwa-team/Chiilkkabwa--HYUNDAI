@@ -465,3 +465,15 @@ NaviProgress.signalSource/requestDataSource 부재 compile RED→최소필드 �
 기준dev9a729698f87f93d78fb4a948f63db49ea8307277, 병합dbce4354d54093e519ea7d402712e2213d5e7e5c. 두 공통 문서 양쪽 기록 전부 보존, 제품코드 충돌0. [명령·환경·안전·검증 상세](A05_CONTROL_POLISH.md#최신-dev-a03-충돌-해결-재검증-2026-11-14). 웹126/126, 양JVM164/164,두debug빌드 PASS(offline rerun86tasks/26초). A05조작390/1440 PASS. A03/Android/Gradle/B·C보호diff0. 전체회귀/최종PR·CI는 아래 후속결과와 PR#28/Actions로 추적.
 
 최종 후속 결과: node web/test/junction.browser.cjs 전체 PASS(평가/강습 TURN_GOOD 기록 후 report, 연습 reviewsSaved 후 goal, 390/1440 조작). 브라우저 오류0/요청실패0. A04 26개를 포함한 웹126개 PASS. 원본 결과는 build/a05-junction-evidence/browser-results.json 및 추적 evidence/a05-2026-11-14/junction-results.json. 최종 코드 dbce435 기준이며 이후 커밋은 이 문서/증거만 변경한다. G4/G5 로컬 회귀·보호 범위 검사는 PASS; 원격CI·병합은 PR#28의 최종 HEAD와 Actions 결과로 확인한다.
+
+## 2026-11-15 A03 Debug Probe — 실행 진입점·합성 검증
+
+- 최초기준dev2a70830a83b1f1ae2a1453cbf2131bb0b52e96b8,feature/a03-debug-emulator-probe,전용Chiilkkabwa-Codex2-A03-Probe. 기존A03/B02/조사원본/main 보존. [구현·실행명령·규정](A03_EMULATOR_VERIFICATION.md).
+- 초기조회후A01점유가발견되어읽기전용실행계획을자동중단(우리AVD시작0). C02 port5560/A01 port5554는 타작업. 여유메모리3.76GB로추가4GBAVD미실행. 사용자답변 “아직 사용 중 — 실측은 미검증으로 진행” 이후장치설치/초기화/요청0.
+- 코드: src/debug owner,vehicleDebug exported=false Activity,androidTestVehicle stock Instrumentation. 기존 createDebugNaviAdapter/SDK3.0.5/strict Gate 재사용. SDK객체·initialize·callback·remove/release 고정 trace hook만 추가,기본no-op. vehicle testInstrumentationRunner 지정1곳,새의존성0.
+- TDD: owner부재 compileRED→10PASS→기어끊김누락11중1FAIL→차단보완,view닫기계약compileRED→12PASS. 자체리뷰이며실기수명/동료리뷰로표시하지않음.
+- 실행: .\gradlew.bat --offline :app:testMockDebugUnitTest :app:testVehicleDebugUnitTest :app:assembleMockDebug :app:assembleVehicleDebug :app:assembleVehicleDebugAndroidTest :app:processVehicleReleaseMainManifest :app:compileVehicleReleaseKotlin — BUILD SUCCESSFUL. XML mock176/vehicle176,failures0/errors0,owner각12.
+- node --test web/test/*.test.mjs —126/126 PASS. git diff --check PASS. 보호영역(Main/A01/A02/B/C/Web/main Manifest) diff0.
+- vehicleDebug merged manifest Activity exported=false,vehicleRelease manifest/컴파일class의NaviProbe미포함 확인. test APK targetPackage=com.chiilkkabwa.app. 이정적보호/컴파일은실제장치실행증거아님.
+- 실제SDK생성/initialize/onConnected/onFailed/timeout/remove/release,실제정차신호·권한·경로함수/검색callback/기본내비안내: 전부NOT_VERIFIED. 장비사유실제요청BLOCKED. 브레이크false/불명/STALE/권한거부/수명/순서·중복은합성JVM으로만PASS.
+- S01/S02(공개SDK·컴파일)/S03(JVM)/S04(정적·JVM)/S07/S09/S10 PASS 범위명시. S02실권한·승인/S04실기/S05 NOT_VERIFIED;S06/S08/S11 변경없음NOT_APPLICABLE;S12 main/기존작업보존·제출없음. G1~G3 PASS(배정·공식근거·Debug차단),G4로컬만PASS/실기NOT_VERIFIED,G5기본off Debug기반만통합. 공식근거·S01~S12상세는전용문서참조.

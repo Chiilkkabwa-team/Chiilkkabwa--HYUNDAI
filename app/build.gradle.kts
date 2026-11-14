@@ -24,7 +24,7 @@ android {
         // 모의 차량 + 디버그 패널: SDK·에뮬레이터 없이 전체 흐름 시연·테스트
         create("mock") { dimension = "signals"; buildConfigField("boolean", "USE_MOCK", "true"); applicationIdSuffix = ".mock" }
         // 실제 신호: AAOS Car API + Pleos Vehicle SDK (에뮬레이터·실차)
-        create("vehicle") { dimension = "signals"; buildConfigField("boolean", "USE_MOCK", "false") }
+        create("vehicle") { testInstrumentationRunner = "com.chiilkkabwa.app.data.navigation.NaviProbeInstrumentation"; dimension = "signals"; buildConfigField("boolean", "USE_MOCK", "false") }
     }
 
     // AAOS Car API(CarUxRestrictionsManager, CarPropertyManager)
