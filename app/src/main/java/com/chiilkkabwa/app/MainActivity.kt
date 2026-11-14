@@ -35,6 +35,7 @@ class MainActivity : ComponentActivity() {
     private var previewAudio: AndroidPreviewAudio? = null
     private var preview: ParkedVoicePreview? = null
     private val previewResult = mutableStateOf(PreviewResult.IDLE)
+    private val wikiForeground = mutableStateOf(false)
 
     private val pedalPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* 결과는 AaosVehicleSource가 재시작 시 확인 */ }
 
@@ -70,7 +71,7 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                 }
-                AppRoot(vm, ui, voicePreview, previewResult.value.message())
+                AppRoot(vm, ui, voicePreview, previewResult.value.message(), wikiForeground.value)
             }
         }
     }
@@ -88,9 +89,11 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         vm.startSignals()
+        wikiForeground.value = true
     }
 
     override fun onPause() {
+        wikiForeground.value = false
         preview?.cancel()
         vm.stopSignals()
         super.onPause()

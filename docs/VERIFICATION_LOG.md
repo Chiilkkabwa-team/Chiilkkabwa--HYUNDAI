@@ -577,3 +577,11 @@ A02 lifecycle 최신 통합·리뷰: 코드22fe372(실측된 A02 진단 마커�
 A02 생명주기 PR 정본: https://github.com/Chiilkkabwa-team/Chiilkkabwa--HYUNDAI/pull/35 (base=dev). 실측source22fe372, 최신dev2bea4d3303b241cd10f3b592ea7734980edfd8b3 통합f5e5b0c555c8b51d02ab29ea3cc80c74b5899dba. 최종range git diff origin/dev --check PASS. PR최종HEAD/원격CI/병합SHA/병합후dev CI는연결Actions와PR최종결과를정본으로추적한다. G5는원격성공확인후진행하며로컬210개결과를CI성공으로대체하지않음. main기준c4c15686a30e788143ccc88d8ebaa52500d3187b보존.
 
 A02 PR#35 최종 동기화: CI 대기 중 A01 PR#34 dev3c0c824ca35951891f72d9c8fb24d2c098b7694b를 반영했다. 제품코드 충돌0, 공통대장 A01/A02/A03 기록 모두 보존. 필수 전체회귀 재실행: 양JVM230/230(최신dev226+A02신규4)·양debug BUILD SUCCESSFUL(13초), 웹126/126, 최종diff check PASS. 실측source22fe372 기록은 그대로이며 최신A01 선택센서의 실수신을 새로 주장하지 않는다. 추가조사/실험 없이 새HEAD의 CI→dev자체병합→사후CI만 진행한다.
+
+## B04 — Android 운전 지식 위키
+
+- 기준 `dev` `3d9777a`. 연습 준비 화면의 ⓘ에서 주제·글 목록을 열고 시스템 뒤로 가기와 닫기 버튼으로 돌아간다. 기존 TTS 대본의 주제별 본문 15개를 앱 안에 둔다.
+- S03/S04: 기존 안전 게이트에 더해 기본 주차 정책으로 P·주차 브레이크 ON·UX 제한 해제를 재확인한다. 주차가 풀리거나 Activity가 pause되면 위키를 닫고 복귀 후 재개하지 않는다. JVM 테스트는 위키 진입 조건과 이전 Ready 판정이 남아 있을 때 실패 차단을 확인한다. 실제 Pleos 화면 전환은 NOT_VERIFIED.
+- S01/S02/S05/S06/S07/S08/S09/S11/S12: 읽기 도움말 범위로 차량 호출·권한·재생·기록·외부 자산·제출 경로 변경 없음. S10: 기존 Mock/Vehicle 실행 경로를 사용하고 실기 결과와 분리한다.
+- 근거: [Pleos 지역별 주행 규제](https://document.pleos.ai/docs/pleos-only/vehicle-app-planning-guide/driving-restiction-policy), [기존 검증 기준](SAFETY_RULES.md).
+- 실기 확인 순서: `mockDebug`에서 주차 신호를 확인하고 ⓘ → 주제 → 글 → 뒤로 확인. 위키가 열린 상태의 기어 D·주차 브레이크 해제·UX 제한 전환과 홈 화면 복귀에서 닫힘과 자동 재열기 방지를 확인한다. Vehicle/Pleos에서도 재확인한다.
