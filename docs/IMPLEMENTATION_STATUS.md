@@ -110,3 +110,5 @@ A02 통합 후 갱신: B01/B02/B04 dev44bfe68를 반영해 Android 양JVM **138/
 - 기본OFF,debug 명시opt-in+EMULATOR만 허용. 실제클라이언트가 빌드/기기 재확인,release는 항상false. NAVI_ROUTE_SEARCH만 추가. 기존B/C UI·음성·저장소·A02·웹 무변경. 자동요청/안내/취소/위치수집0.
 - SDK 실컴파일·양JVM164/164(신규A03 26),양debug빌드,웹110/110 PASS. ON→OFF 증분BuildConfig+getstatic 바이트코드 및 opt-in에도releasefalse 확인.
 - 실제 앱 SDK초기화·경로호출·검색callback·기본내비안내는 모두 NOT_VERIFIED. 현재 타작업 일반Android 기기를 사용하지 않았고 Pleos의 실제 정차신호가 준비되지 않아 UI시험진입점·실제호출을 보류했다. 기본비활성 기반만 통합 대상.
+
+A05 A03 통합 재검증: dev9a72969를 dbce435에 반영. 공통문서2곳 충돌은 A02/A03/A05 전부 보존. 웹126/126,양JVM164/164,양debug빌드,390/1440 조작 PASS. A03·Android·Gradle 및 B/C보호diff0. 최종통합/CI는 PR#28 이력 참조.

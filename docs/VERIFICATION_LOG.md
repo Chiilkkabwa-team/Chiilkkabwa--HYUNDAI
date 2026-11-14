@@ -459,3 +459,9 @@ G1/G2 PASS(배정·독립범위·공식근거/미확인),G3 PASS(기본off/실�
 ### A03 최종 출처 계약 회귀
 
 NaviProgress.signalSource/requestDataSource 부재 compile RED→최소필드 추가→양JVM164/164(신규26)·양debug BUILD SUCCESSFUL(5초). 기존 차량/코칭/프로필/웹 코드는 무변경. 출처·초기화/함수/검색/nav 단계 분리를 유지한다.
+
+## 2026-11-14 A05 — A03 병합 충돌 해결 재검증
+
+기준dev9a729698f87f93d78fb4a948f63db49ea8307277, 병합dbce4354d54093e519ea7d402712e2213d5e7e5c. 두 공통 문서 양쪽 기록 전부 보존, 제품코드 충돌0. [명령·환경·안전·검증 상세](A05_CONTROL_POLISH.md#최신-dev-a03-충돌-해결-재검증-2026-11-14). 웹126/126, 양JVM164/164,두debug빌드 PASS(offline rerun86tasks/26초). A05조작390/1440 PASS. A03/Android/Gradle/B·C보호diff0. 전체회귀/최종PR·CI는 아래 후속결과와 PR#28/Actions로 추적.
+
+최종 후속 결과: node web/test/junction.browser.cjs 전체 PASS(평가/강습 TURN_GOOD 기록 후 report, 연습 reviewsSaved 후 goal, 390/1440 조작). 브라우저 오류0/요청실패0. A04 26개를 포함한 웹126개 PASS. 원본 결과는 build/a05-junction-evidence/browser-results.json 및 추적 evidence/a05-2026-11-14/junction-results.json. 최종 코드 dbce435 기준이며 이후 커밋은 이 문서/증거만 변경한다. G4/G5 로컬 회귀·보호 범위 검사는 PASS; 원격CI·병합은 PR#28의 최종 HEAD와 Actions 결과로 확인한다.

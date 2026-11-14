@@ -64,3 +64,17 @@ Windows / Node24.22.1 / Chrome157.0.8103.51 / 기존 번들 Playwright. 외부 �
 ## 후속 후보
 
 실제 사용자별 키보드 감도 비교와 설정은 별도 범위로 검토한다. 가상 자동D 전환은 이번 기본 구현에서 제외했다. 도입하더라도 명시적인 웹 Mock 선택·사전 안내·P/주차 브레이크 게이트 회귀 검증을 별도 설계해야 하며 실제 차량에는 적용하지 않는다. 실제 운전 실력 평가·실제 차량 제어·3D는 이 작업의 결과가 아니다.
+
+## 최신 dev A03 충돌 해결 재검증 (2026-11-14)
+
+기준 dev9a729698f87f93d78fb4a948f63db49ea8307277(A03 PR#29), 병합커밋 dbce4354d54093e519ea7d402712e2213d5e7e5c. 기존 A05 브랜치/전용 Worktree에서 일반 merge. 충돌은 IMPLEMENTATION_STATUS/VERIFICATION_LOG의 끝부분 기록2곳이며 양쪽 내용을 함께 보존했다. 각 문서의 이전 HEAD와 origin/dev의 모든 비어 있지 않은 줄이 해결본에 남아 있음을 스크립트로 확인. A02/A03/A05 기록 삭제0.
+
+최신 dev 대비 app/ 전체·루트 Gradle·web/sim.js/core.js/voice.js/replay.js/learn.js/about.js/onboarding.js diff0. A03 NaviHelper 코드·권한·기본OFF/release차단 및 B/C 계약 보존. 다른 Worktree·C02·AVD 조회/조작0. main 보존.
+
+Windows/Temurin17.0.20/Node24.22.1/Chrome157.0.8103.51. 웹126/126 PASS. A05 브라우저1440×900/390×900 PASS,오류0. JAVA_HOME/ANDROID_HOME은 프로세스 지정만 사용. .\gradlew.bat --offline --rerun-tasks :app:testMockDebugUnitTest :app:testVehicleDebugUnitTest :app:assembleMockDebug :app:assembleVehicleDebug — BUILD SUCCESSFUL26초,86/86 tasks 실행, XML집계 Mock164/164·Vehicle164/164·실패/오류0,두debug빌드 PASS. 기존 deprecated/strip 경고 유지. A04/세 모드 최종 결과는 아래 후속 기록으로 구분.
+
+git diff --check 및 최신dev 대비 diff --check PASS. dev에서 들어온 역사적 A03_NAVIHELPER_FEASIBILITY 사본의 hard-break/EOF 공백 경고는 원본 보존; A05 변경 공백오류0.
+
+S01 PASS(웹Mock·실제제어/권한추가0),S03/S04 PASS(기존 게이트/잠금회귀),S07/S10 PASS(Mock·가상상태 출처). S02/S05/S06/S08/S09/S12 NOT_APPLICABLE(신규SDK/주행서비스/음성/미션/저장/제출변경0). S11 신규자산/의존성0·실장비 CPU/RAM NOT_VERIFIED. 기존 제품의 미검증 등급은 승격하지 않음. 공식근거/적용범위는 본문P04/P06 및 SAFETY_RULES/COMPLIANCE_REGISTER의 P01/P02/P07/P08/P10 참조. G1/G2/G3 PASS(배정·범위·근거·Mock전용/차량경로무변경),G4 실행한 단위/빌드/브라우저만 PASS·Pleos/실차 NOT_VERIFIED. G5 최종회귀/최신dev/HEAD CI/mergeable 확인 후 dev통합·병합후CI 추적. 강제푸시/브랜치삭제 없음.
+
+최종 후속 결과: node web/test/junction.browser.cjs 전체 PASS(평가/강습 TURN_GOOD 기록 후 report, 연습 reviewsSaved 후 goal, 390/1440 조작). 브라우저 오류0/요청실패0. A04 26개를 포함한 웹126개 PASS. 원본 결과는 build/a05-junction-evidence/browser-results.json 및 추적 evidence/a05-2026-11-14/junction-results.json. 최종 코드 dbce435 기준이며 이후 커밋은 이 문서/증거만 변경한다. G4/G5 로컬 회귀·보호 범위 검사는 PASS; 원격CI·병합은 PR#28의 최종 HEAD와 Actions 결과로 확인한다.
