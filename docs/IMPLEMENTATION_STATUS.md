@@ -138,3 +138,11 @@ A03 Probe PR#32 최종동기화: dev8993d25(A02 PR#31)와공통기록전부보�
 ### A01 선택 센서 공개 SDK 연결 (2026-11-15)
 
 기준dev01eff12 / feature/a01-optional-vehicle-signals / 전용 OptionalSignals. 코드19e4ec3e8e4cad17012984a10b7c2124dc6efb3a. Wiper실제상태·LowBeam실제상태·앞오른쪽착석·현재Trip거리(m→km)/시간(분→Long초)을 기존세션에연결. Steering은public전륜각≠기존핸들회전각,CarInfo는public치수없어미연결폴백유지. 차량미지원확정과구분. 선택Toggle/Center 중단·시각·출처회귀보완. 양JVM226/226(신규20),양Debug/opt-in컴파일·release차단·웹126/126 PASS. **AVD인계전 미접근,실수신·실미션 NOT_VERIFIED**. [정확한API/권한/단위/안전/한계](A01_OPTIONAL_SIGNALS.md). A02/A03/B·C/웹/게이트/Manifest/Gradle과기존Worktree/main보존.
+### A03 실제 SDK runtime 검증 (2026-11-15)
+
+기준 dev01eff12(PR29/32), test/a03-navihelper-runtime / 독립 Codex2-A03-Runtime. 제품코드 변경0.
+Pleos2.1.0/API34 emulator-5562·user10의 read-only 인스턴스에서 inspect/initialize/lifecycle 실행:
+SDK 객체생성/initialize/실제 CONNECTED_CALLBACK, listener 제거/release 반환, 새 Activity 자동초기화0 및 명시 재연결 PASS.
+기본OFF 실제 runner BLOCKED. 실PBfalse이므로 경로API 미실행(BLOCKED), 검색응답/기본내비 안내는 NOT_VERIFIED 유지.
+양JVM206/206·양debug·시험APK·release 제외·웹126/126 PASS. 기존 A01/A02/B/C 및 모든 Worktree/main 보존.
+실제 지연callback/실패/timeout/권한거부/주행전환 미유발은 NOT_VERIFIED. [결과·안전표·증거](A03_RUNTIME_RESULTS.md).

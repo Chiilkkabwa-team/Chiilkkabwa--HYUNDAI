@@ -113,3 +113,7 @@ G1 PASS(배정/전용 브랜치/범위),G2 PASS(실물/공식 근거·단위·�
 Codex1→Codex2→Codex3 순서의 명시 인계 후 전용 환경에서만 수행한다. public 콘솔 입력→SDK callback(원본)→VehicleSnapshot(변환값/status/source/receivedAtMs)→gate→선택 미션을 각각 기록하고 종료 시 초기 상태 복원·구독 정리를 확인한다. UI 조작만으로 앱 수신/완료 PASS를 선언하지 않는다. 버클/실제 PBON 입력이 없으면 전체 워밍업은 계속 BLOCKED다. 핸들 회전각 계약/치수 public API는 별도 공식 근거 없이는 추가하지 않는다.
 
 최종 default 복원: 86/86 tasks 실제 실행, BUILD SUCCESSFUL42초, 양JVM226/226·실패오류0, 양Debug PASS. default debug/release 모두 PLEOS_SIGNALS_ENABLED=false, A02/A03 flag도false. 최종 문서 커밋은 위 코드SHA를 변경하지 않으며 PR/CI가 통합 결과의 정본이다.
+
+## 최신 dev 동기화
+
+A03 runtime 문서 PR#33의 dev2bea4d3303b241cd10f3b592ea7734980edfd8b3를 반영했다. IMPLEMENTATION_STATUS/VERIFICATION_LOG의 끝부분 append 충돌만 발생했고 양쪽 모든 비어 있지 않은 줄을 보존했음을 스크립트로 확인했다. 제품코드 충돌/변경0, 시험 코드19e4ec3과 동일하다. 타 담당자의 A03 실환경 증거를 보존했지만 A01 OptionalSignals의 실수신 등급은 NOT_VERIFIED 그대로다. 이 동기화의 전체 증분검사와 최종 CI/병합은 PR 이력으로 추적한다.

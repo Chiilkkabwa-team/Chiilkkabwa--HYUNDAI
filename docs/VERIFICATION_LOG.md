@@ -529,3 +529,16 @@ PR#32의원격CI진행중 A02 PR#31이dev8993d25c3b93a0d0b70c13f604b540196a42bba
 .\gradlew.bat --offline --rerun-tasks :app:testMockDebugUnitTest :app:testVehicleDebugUnitTest :app:assembleMockDebug :app:assembleVehicleDebug —최종기본복원BUILD SUCCESSFUL42초/86tasks모두실행/양226/226·실패오류0/양DebugPASS. node --test web/test/*.test.mjs —126/126·실패건너뜀0. git diff --check PASS. -PenablePleosSignals=true assembleVehicleDebug+generateVehicleReleaseBuildConfig —6초PASS/debugtrue·releasefalse,이후기본false복원. 기존deprecated/strip경고는유지하며실패로숨기지않음.
 
 실환경: 사용자미인계지시로AVD조회/접근/설치/시작/종료0,새센서실수신·실선택미션전부NOT_VERIFIED. steeringDeg는전륜각/핸들각계약차이,carDimensions는publicAPI부재로BLOCKED;fallback은실제차량capabilityfalse의증거가아님. P/PB/UX게이트필드쓰기0·실차/release/default차단유지. 기존벨트true/실PBON/전체Emulator워밍업BLOCKED유지. main/기존A01/A05/C02/AVD데이터보존. 최신dev/충돌·최종HEAD CI후dev만통합하고최종PR·merge·사후CI는PR/Actions이력참조.
+
+### A03 Pleos Emulator 실제 SDK runtime (2026-11-15 KST)
+
+실행코드/최신기준dev01eff12a2ecdbd4ae3e0fdb78f6031504aa13540, branch test/a03-navihelper-runtime.
+제품/SDK/권한/게이트 수정0. [결과 및 S01~S12/G1~G5](A03_RUNTIME_RESULTS.md), [원본 최소증거](evidence/a03-runtime-2026-11-15/README.md).
+시작 전 장비/프로세스0 확인 후 기존 A01 AVD를 -read-only/-port5562/-no-snapshot로 실행, serial5562/user10 직접확인.
+Pleos2.1.0/API34/NaviHelper3.0.5/Service3.0.4에서 기존 inspect→initialize→lifecycle runner 실제실행.
+총3회 객체생성→초기화→실제연결callback→listener제거→release반환. 첫Activity 종료/재진입 자동초기화0/명시재시작 PASS.
+실PBfalse·선택POI없음으로 mode=request/API호출0 BLOCKED, 검색/안내 NOT_VERIFIED. 지연callback/실제실패/timeout/권한거부/주행전환은 미유발 NOT_VERIFIED.
+opt-in 빌드19초/66tasks; defaultOFF --offline --rerun-tasks 전체Android BUILD SUCCESSFUL1분8초/129tasks,
+양JVM206/206 failures/errors/skipped0, 양debug/시험APK/release manifest·Kotlincompile PASS, release Probe제외.
+node --test web/test/*.test.mjs 126/126 PASS. defaultOFF APK재설치 후 실제runner BLOCKED, SDKtrace15→15.
+우리5562만정상종료, 별도5558/기존Worktree/AVD원본/main보존. G5 원격PR/병합SHA/CI는base=dev PR과연결Actions이력참조.
