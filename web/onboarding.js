@@ -129,10 +129,14 @@ function art(key) {
  * 온보딩 전체 HTML. 모달 안에 넣는다.
  * @param {number} i 현재 단계
  */
-export function html(i = 0) {
+/**
+ * @param {number} i 현재 단계
+ * @param {'next'|'prev'|''} dir 어느 쪽에서 넘어왔는지(글이 그쪽에서 들어온다)
+ */
+export function html(i = 0, dir = '') {
   const s = STEPS[i];
   const last = i === STEPS.length - 1;
-  return `<div class="ob" data-step="${s.key}">
+  return `<div class="ob" data-step="${s.key}" data-dir="${dir}">
     <div class="ob-art">${art(s.key)}</div>
     <div class="ob-text">
       <span class="ob-tag">${s.tag}</span>
@@ -141,6 +145,7 @@ export function html(i = 0) {
       <p class="ob-note">${s.note}</p>
     </div>
     <div class="ob-foot">
+      <span class="ob-count" aria-hidden="true"><b>${i + 1}</b> / ${STEPS.length}</span>
       <ol class="ob-dots" aria-label="${STEPS.length}단계 중 ${i + 1}단계">
         ${STEPS.map((x, k) => `<li><button type="button" class="ob-dot${k === i ? ' on' : ''}" data-go="${k}" aria-label="${k + 1}. ${x.tag}"${k === i ? ' aria-current="step"' : ''}></button></li>`).join('')}
       </ol>
@@ -148,7 +153,7 @@ export function html(i = 0) {
         ${i > 0 ? '<button type="button" class="btn secondary" data-ob="prev">이전</button>' : '<button type="button" class="btn ghost-btn" data-ob="skip">건너뛰기</button>'}
         ${last
           ? '<button type="button" class="btn secondary" data-ob="demo">자동 시연 보기</button><button type="button" class="btn primary" data-ob="done">직접 해 보기</button>'
-          : '<button type="button" class="btn primary" data-ob="next">다음</button>'}
+          : `<button type="button" class="btn primary" data-ob="next">다음 <span class="ob-next-hint">${STEPS[i + 1].tag}</span></button>`}
       </div>
     </div>
   </div>`;

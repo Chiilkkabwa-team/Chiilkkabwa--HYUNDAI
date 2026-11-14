@@ -297,3 +297,21 @@ PR #20 최초 CI에서 웹 및 Android 테스트/양debug빌드 SUCCESS를 확�
 | Android / 에뮬레이터 | 해당 없음(웹 UI 변경) | NOT_APPLICABLE |
 
 규정: S03 PASS(조건 완화 없음, 웹), S04 PASS(웹: 앱 안 창은 주행 중 잠금 유지, 체험판 안내창은 차 화면 밖이며 '실제 차에서는 뜨지 않음' 명시), S10 PASS(데모 미지원을 명시), S01 NOT_APPLICABLE(차량 제어 없음)
+
+
+## 2026-11-14 C 파트 마무리 — 온보딩·코치 마크·내비식 주행 정보·내 기록
+
+- 담당 역할: C(복기·기록·UI) / 브랜치 `feature/c-ux-polish` ← `origin/dev` e5f4179
+- 환경: Linux 클라우드 컨테이너, Node 22, Playwright Chromium. Android 코드 변경 없음
+- 변경: 온보딩 단계 숫자·다음 장면 이름·넘김 방향 움직임·터치 좌우 넘기기 / 온보딩 끝 코치 마크 / 주행 정보 내비식 배치(DOM 순서 = 보이는 순서) / 내 기록 '다음 목표'·'최근 7일'
+- 게이트·주행 잠금 동작 변경: 없음
+
+| 시험 | 명령/증거 | 결과 |
+|---|---|---|
+| 웹 단위 | `node --test web/test/*.test.mjs` | PASS 109/109 |
+| 브라우저 | Playwright: 온보딩 1/5→5/5, '다음' 버튼 다음 장면 이름, 마지막 '직접 해 보기' → 코치 마크가 '연습 시작'을 짚음 → 클릭 시 사라짐 / 내 기록에 다음 목표·최근 7일(3일) / 평가 모드 주행 화면 캡처 | PASS, 콘솔 오류 0 |
+| 접근성 | axe-core WCAG 2 A/AA 라이트·다크 | PASS 위반 0 |
+| 드라이빙 뷰 겹침 | `web/test/overlap.check.js` 30조합(새 배치 포함) | PASS 0건 |
+| Android / 에뮬레이터 | 해당 없음(웹 UI) | NOT_APPLICABLE |
+
+규정: S03·S04 PASS(웹, 잠금 조건 변경 없음, 코치 마크는 정차 중 온보딩 직후에만), S09 PASS(기록은 브라우저 저장소만), S10 PASS(웹 체험판 주석 유지), S12 NOT_APPLICABLE

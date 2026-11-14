@@ -757,7 +757,7 @@ body:not([data-mode="practice"]) .dv-cluster {
 }
 .dv-caption { max-width: 28rem; }
 /* 설명(연습) 또는 HUD(평가·강습) 아래 남는 공간을 먹어 계기를 바닥으로 민다 */
-body[data-mode="practice"] .dv-caption { margin-bottom: auto; }
+body[data-mode="practice"] .dv-caption { margin-top: auto; }   /* 설명은 맨 아래로 */
 body:not([data-mode="practice"]) .sim-hud { margin-bottom: auto; }
 .hud-top { padding: 0; }
 .hud-stop,
@@ -1012,3 +1012,66 @@ body:not([data-mode="practice"]) .sim-canvas {
 /* 주행 중 열린 체험판 안내 창 맨 위 한 줄 */
 .site-note { margin: 0 48px 16px 0; padding: 10px 14px; border-radius: 12px; background: var(--warn); color: var(--warn-text); font-size: .95rem; line-height: 1.55; }
 @media (prefers-reduced-motion: reduce) { .gnb-tip { animation: none; } }
+
+
+/* ════════ C04 내비식 주행 정보 배치 (2026-11-14) ════════
+   실제 Pleos 주행 정보 화면: 큰 속도와 기어가 맨 위, 표시등이 그 아래, 차·도로가 가운데.
+   계기를 카드에서 '맨 위 띠'로 바꾸고 설명 글은 맨 아래로 작게 내린다.
+   1020px 이하 연습 모드는 계기가 한 줄 막대인 별도 레이아웃이라 건드리지 않는다. */
+@media (min-width: 1021px) {
+  body .driving-view > .dv-cluster {
+    margin: -10px -12px 0; padding: 14px 16px 12px;
+    border: 0; border-bottom: 1px solid var(--line); border-radius: 0;
+    background: var(--panel);
+    grid-template-columns: auto 1fr auto; align-items: center; column-gap: 12px;
+  }
+  body .driving-view > .dv-cluster .dv-speed b { font-size: 3rem; }
+  body .driving-view > .dv-cluster .dv-gear { order: 0; background: transparent; width: auto; height: auto; font-size: 2rem; color: var(--primary-text); justify-self: start; }
+  body .driving-view > .dv-cluster .dv-pb { grid-column: auto; justify-self: end; white-space: nowrap; font-size: .78rem; }
+  .dv-caption { font-size: .72rem; opacity: .9; }
+}
+
+/* ════════ C 파트 마무리 (2026-11-14): 온보딩·코치 마크·내 기록 ════════ */
+/* 온보딩 — 몇 번째인지 숫자로, 다음 버튼에 다음 장면 이름 */
+.ob-count { color: var(--muted); font-size: .9rem; font-variant-numeric: tabular-nums; margin-right: 4px; }
+.ob-count b { color: var(--text); font-weight: 600; }
+.ob-foot { justify-content: flex-start; }
+.ob-btns { margin-left: auto; }
+.ob-next-hint { font-size: .78rem; font-weight: 500; opacity: .85; margin-left: 6px; }
+@media (max-width: 560px) { .ob-next-hint { display: none; } }
+/* 넘긴 방향에서 글이 들어온다(그림은 자리를 지킨다) — 짧게, 몇 px만 */
+.ob[data-dir="next"] .ob-text { animation: obFromR .22s ease-out both; }
+.ob[data-dir="prev"] .ob-text { animation: obFromL .22s ease-out both; }
+@keyframes obFromR { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: none; } }
+@keyframes obFromL { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: none; } }
+.ob { touch-action: pan-y; }
+
+/* 코치 마크 — 온보딩을 마치면 첫 행동 하나를 짚는다. 화면을 막지 않는다 */
+.coach-mark { position: fixed; inset: 0; z-index: 60; pointer-events: none; }
+.cm-ring { position: fixed; border-radius: 16px; box-shadow: 0 0 0 3px var(--primary), 0 0 0 9999px color-mix(in srgb, var(--page) 55%, transparent);
+  animation: cmIn .2s ease-out both; }
+.cm-tip { position: fixed; max-width: 320px; margin: 0; padding: 12px 16px; border-radius: 12px; background: var(--text); color: var(--bg);
+  font-size: 1rem; line-height: 1.55; box-shadow: 0 8px 24px var(--shadow-2); animation: cmIn .2s .08s ease-out both; }
+.cm-tip.above { transform: translateY(-100%); }
+@keyframes cmIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* 내 기록 — 다음 목표, 최근 7일 */
+.hist-next { display: flex; gap: 12px; align-items: center; margin-top: 16px; padding: 14px 16px; border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--primary) 10%, var(--surface)); }
+.hist-next svg { color: var(--primary-text); flex: none; }
+.hist-next small { display: block; color: var(--muted); font-size: .85rem; }
+.hist-next b { font-size: 1.1rem; font-weight: 600; }
+.week { margin-top: 16px; padding: 14px 16px; border-radius: var(--r-md); background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
+.week-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.week-head b { font-weight: 600; }
+.week-head small { color: var(--muted); }
+.week-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; list-style: none; margin: 12px 0 0; padding: 0; }
+.week-days li { display: grid; justify-items: center; gap: 6px; color: var(--muted); font-size: .8rem; }
+.week-days i { width: 28px; height: 28px; border-radius: 50%; box-shadow: inset 0 0 0 2px var(--line-2); }
+.week-days li.on i { background: var(--success); box-shadow: none; }
+.week-days li.on i::after { content: ''; display: block; width: 12px; height: 7px; margin: 9px auto 0; border-left: 2px solid var(--on-success); border-bottom: 2px solid var(--on-success); transform: rotate(-45deg); }
+.week-days li.today span:first-of-type { color: var(--text); font-weight: 600; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ob[data-dir] .ob-text, .cm-ring, .cm-tip { animation: none; }
+}

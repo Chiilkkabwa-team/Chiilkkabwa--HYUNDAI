@@ -895,6 +895,26 @@ function renderOverlay() {
   $$('[data-page]', root).forEach((b) => (b.onclick = () => { wikiPage = +b.dataset.page; renderOverlay(); }));
   setTimeout(() => $('.modal', root)?.focus?.(), 0);
 }
+// ── C05 (2026-11-14): 내 기록 — '이어 간다'는 느낌을 주는 두 조각 ──
+// 점수·연속 기록(스트릭)은 쓰지 않는다. 끊기면 압박이 되고, 실력 평가처럼 읽히기 때문이다.
+/** 다음 목표: 지난 복기에서 고른 목표를 맨 위에 다시 보여 준다 */
+function historyNextHtml() {
+  if (!H.lastNextGoal) return '';
+  return `<div class="hist-next">${icon('flag', 22)}<div><small>다음 연습에서 이어서 해 볼 것</small><b>${esc(H.lastNextGoal)}</b></div></div>`;
+}
+/** 최근 7일 중 연습한 날. 오늘이 맨 오른쪽 */
+function weekStripHtml() {
+  const day = (t) => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
+  const done = new Set((H.reviews || []).map((r) => day(r.at)));
+  const today = day(Date.now());
+  const names = ['일', '월', '화', '수', '목', '금', '토'];
+  const days = Array.from({ length: 7 }, (_, k) => today - (6 - k) * 86400000);
+  const n = days.filter((d) => done.has(d)).length;
+  return `<div class="week" role="group" aria-label="최근 7일 중 ${n}일 연습">
+    <div class="week-head"><b>최근 7일</b><small>${n ? `${n}일 연습했어요` : '아직 연습한 날이 없어요. 주차된 차에서 5분이면 돼요'}</small></div>
+    <ol class="week-days">${days.map((d) => `<li class="${done.has(d) ? 'on' : ''}${d === today ? ' today' : ''}"><i aria-hidden="true"></i><span>${d === today ? '오늘' : names[new Date(d).getDay()]}</span><span class="sr-only">${done.has(d) ? '연습함' : '연습 안 함'}</span></li>`).join('')}</ol>
+  </div>`;
+}
 function historyHtml() {
   const lv = C.level(H); const steps = C.LEVEL_STEPS;
   const nextAt = steps[lv] ?? null; const prevAt = steps[lv - 1];
@@ -909,6 +929,8 @@ function historyHtml() {
         <div class="holdbar"><i style="width:${pct}%"></i></div>
         <small class="muted">레벨은 이어 간 연습 횟수예요. 실력 점수가 아니에요.</small></div>
     </div>
+    ${historyNextHtml()}
+    ${weekStripHtml()}
     <h3>배지 <small>${H.badges.length}/9</small></h3>
     <div class="badge-grid">${Object.entries(C.Badges).map(([k, b]) => {
       const e = have.get(k);
@@ -951,7 +973,8 @@ function certHtml() {
     <p class="cert-note">운전 실력 인증이 아니라, 이어 온 연습의 기록이에요.<br>도로에서는 언제나 천천히, 안전하게.</p>
   </div>`;
 }
-function introHtml() { return OB.html(obStep); }
+let obDir = '';
+function introHtml() { return OB.html(obStep, obDir); }
 function bindOverlay(root) {
   if (overlay === 'profile') {
     const aliases = ['나', '연습생', '새내기 운전자', '주말 드라이버'];
@@ -987,7 +1010,10 @@ function bindOverlay(root) {
   if (overlay === 'intro') {
     const finish = (then) => { H.introSeen = true; H.introV = INTRO_V; saveHistory(); closeOverlay(); then?.(); };
     const go = (k) => {
-      obStep = Math.max(0, Math.min(OB.STEPS.length - 1, k));
+      const to = Math.max(0, Math.min(OB.STEPS.length - 1, k));
+      if (to === obStep) return;
+      obDir = to > obStep ? 'next' : 'prev';
+      obStep = to;
       renderOverlay();
       // 단계를 바꿔도 읽는 자리를 잃지 않게 제목으로 포커스를 옮긴다
       setTimeout(() => $('.ob-title', $('#modalRoot'))?.focus?.(), 0);
@@ -996,7 +1022,8 @@ function bindOverlay(root) {
       prev: () => go(obStep - 1),
       next: () => go(obStep + 1),
       skip: () => finish(),
-      done: () => finish(),
+      // 끝내면 '어디부터 하면 되는지'를 화면에서 짚어 준다(설명만 읽고 닫으면 다시 막막하다)
+      done: () => finish(coachMark),
       demo: () => finish(startDemo),
     }[b.dataset.ob]())));
     $$('[data-go]', root).forEach((b) => (b.onclick = () => go(+b.dataset.go)));
@@ -1005,7 +1032,42 @@ function bindOverlay(root) {
       if (e.key === 'ArrowRight') { e.preventDefault(); go(obStep + 1); }
       if (e.key === 'ArrowLeft') { e.preventDefault(); go(obStep - 1); }
     });
+    // 터치: 좌우로 밀어서 넘긴다(휴대폰·차량 터치 화면). 세로 스크롤과 헷갈리지 않게 가로 이동이 더 클 때만
+    const ob = $('.ob', root); let sx = null, sy = 0;
+    ob?.addEventListener('pointerdown', (e) => { if (e.pointerType !== 'mouse') { sx = e.clientX; sy = e.clientY; } });
+    ob?.addEventListener('pointerup', (e) => {
+      if (sx == null) return; const dx = e.clientX - sx, dy = e.clientY - sy; sx = null;
+      if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.5) go(obStep + (dx < 0 ? 1 : -1));
+    });
   }
+}
+
+/**
+ * 온보딩을 끝낸 직후 '첫 행동'을 짚어 주는 안내(코치 마크).
+ * 지금 화면에서 가장 먼저 눌러야 할 곳 하나에 테두리를 두르고 한 줄로 말해 준다.
+ * 아무 곳이나 누르거나 7초가 지나면 사라진다. 화면을 막지 않는다(뒤를 바로 누를 수 있다).
+ */
+function coachMark() {
+  $('#coachMark')?.remove();
+  const visible = (el) => el && el.offsetParent !== null && el.getBoundingClientRect().width > 0;
+  const guideCard = $('#guide'), fab = $('#consoleFab'), start = $('#startBtn');
+  // 우선순위: 차 화면의 '연습 시작'(이미 열려 있으면) → 조작판의 '다음 조작' → (휴대폰) 조작판 버튼
+  const pick = visible(start) && !start.disabled ? [start, '여기를 누르면 연습이 시작돼요']
+    : visible(guideCard) ? [guideCard, '여기 적힌 대로 하나씩 해 보세요. 할 일이 바뀌면 이 글도 바뀌어요']
+    : visible(fab) ? [fab, '여기를 누르면 가상 조작판이 열려요'] : null;
+  if (!pick) return;
+  const [el, text] = pick;
+  el.scrollIntoView({ block: 'nearest', behavior: reduceMotion ? 'auto' : 'smooth' });
+  const r = el.getBoundingClientRect();
+  const m = document.createElement('div');
+  m.id = 'coachMark'; m.className = 'coach-mark'; m.setAttribute('role', 'status');
+  const below = r.bottom + 96 < innerHeight;
+  m.innerHTML = `<span class="cm-ring" style="left:${r.left - 6}px;top:${r.top - 6}px;width:${r.width + 12}px;height:${r.height + 12}px"></span>
+    <p class="cm-tip ${below ? 'below' : 'above'}" style="left:${Math.min(Math.max(16, r.left), innerWidth - 336)}px;${below ? `top:${r.bottom + 14}px` : `top:${r.top - 14}px`}">${text}</p>`;
+  document.body.appendChild(m);
+  const off = () => { m.remove(); removeEventListener('pointerdown', off, true); removeEventListener('keydown', off, true); };
+  setTimeout(() => { addEventListener('pointerdown', off, true); addEventListener('keydown', off, true); }, 50);
+  setTimeout(off, 7000);
 }
 function applyPrefs() { document.documentElement.classList.toggle('large', !!H.largeText); }
 
