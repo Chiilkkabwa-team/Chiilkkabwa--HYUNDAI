@@ -149,11 +149,33 @@ class ToggleJudge(
     private val praise: String,
 ) : MissionJudge {
     private val edge = EdgeTracker<Boolean>()
-    override fun start(s: VehicleSnapshot, nowMs: Long) = edge.reset(pick(s), nowMs)
+    private var minimumObservedAt = Long.MAX_VALUE
+    private var needsBaseline = true
+    private var baselineSource: SignalSource? = null
+    override fun start(s: VehicleSnapshot, nowMs: Long) {
+        val sig = pick(s)
+        edge.reset(sig, nowMs)
+        minimumObservedAt = nowMs
+        needsBaseline = !sig.isUsable || sig.receivedAtMs > nowMs
+        baselineSource = sig.source.takeUnless { needsBaseline }
+    }
     override fun update(s: VehicleSnapshot, nowMs: Long): Progress {
         val sig = pick(s)
+        if (!sig.isUsable) {
+            needsBaseline = true
+            baselineSource = null
+            minimumObservedAt = maxOf(minimumObservedAt, nowMs)
+        }
         sig.blockingStatus()?.let { return Progress.Unavailable(it) }
-        return if (edge.newValue(sig) != null) Progress.Done(sig.source, praise) else Progress.InProgress(1, 1, hint)
+        if (sig.isUsable && sig.receivedAtMs in minimumObservedAt..nowMs) {
+            // First recovered observation is a baseline, not proof of a new operation.
+            if (needsBaseline || baselineSource != sig.source) {
+                edge.reset(sig, nowMs)
+                needsBaseline = false
+                baselineSource = sig.source
+            } else if (edge.newValue(sig) != null) return Progress.Done(sig.source, praise)
+        }
+        return Progress.InProgress(1, 1, hint)
     }
 }
 
@@ -163,14 +185,23 @@ class SteeringCenterJudge(private val toleranceDeg: Float = 5f, private val hold
     override val title = "핸들 똑바로 맞추기"
     private var startedAt = 0L
     private var inRangeSince: Long? = null
-    override fun start(s: VehicleSnapshot, nowMs: Long) { startedAt = nowMs; inRangeSince = null }
+    private var rangeSource: SignalSource? = null
+    override fun start(s: VehicleSnapshot, nowMs: Long) { startedAt = nowMs; inRangeSince = null; rangeSource = null }
     override fun update(s: VehicleSnapshot, nowMs: Long): Progress {
         val sig = s.steeringDeg
+        val valid = sig.isUsable && sig.receivedAtMs in startedAt..nowMs &&
+            sig.value!!.isFinite() && abs(sig.value) <= toleranceDeg
+        if (!valid || (rangeSource != null && rangeSource != sig.source)) {
+            inRangeSince = null
+            rangeSource = null
+            startedAt = maxOf(startedAt, nowMs)
+        }
         sig.blockingStatus()?.let { return Progress.Unavailable(it) }
-        if (sig.isUsable && sig.receivedAtMs >= startedAt && abs(sig.value!!) <= toleranceDeg) {
+        if (valid) {
+            rangeSource = sig.source
             val since = inRangeSince ?: nowMs.also { inRangeSince = it }
             if (nowMs - since >= holdMs) return Progress.Done(sig.source, "바퀴가 똑바로! 출발 전에 늘 확인해요")
-        } else if (sig.isUsable && abs(sig.value!!) > toleranceDeg) inRangeSince = null
+        }
         return Progress.InProgress(1, 1, "핸들을 가운데로 맞추고 2초 기다려요")
     }
 }

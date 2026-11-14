@@ -2,12 +2,21 @@ package com.chiilkkabwa.app.data.vehicle
 
 import ai.pleos.playground.vehicle.Vehicle
 import ai.pleos.playground.vehicle.api.model.area.SeatArea
+import ai.pleos.playground.vehicle.api.model.area.WindowArea
 import ai.pleos.playground.vehicle.api.model.capability.AccessType
 import ai.pleos.playground.vehicle.api.model.capability.CapabilityConfig
 import ai.pleos.playground.vehicle.constant.PleosPermission
 import ai.pleos.playground.vehicle.constant.area.SeatValue
+import ai.pleos.playground.vehicle.constant.area.WindowValue
+import ai.pleos.playground.vehicle.constant.control.WiperState
+import ai.pleos.playground.vehicle.constant.control.LightState
 import ai.pleos.playground.vehicle.constant.area.TurnSignalValue
 import ai.pleos.playground.vehicle.listener.BrakePedalStatusListener
+import ai.pleos.playground.vehicle.listener.WiperStateListener
+import ai.pleos.playground.vehicle.listener.LightStateListener
+import ai.pleos.playground.vehicle.listener.SeatOccupancyListener
+import ai.pleos.playground.vehicle.listener.DistanceDrivenListener
+import ai.pleos.playground.vehicle.listener.DrivingTimeListener
 import ai.pleos.playground.vehicle.listener.SeatBeltBuckledStateListener
 import ai.pleos.playground.vehicle.listener.TurnSignalStateListener
 import android.content.Context
@@ -28,14 +37,21 @@ internal class PleosSdkReadClient(private val context: Context) : PleosReadClien
     private val seat = vehicle.getSeat()
     private val brake = vehicle.getBrake()
     private val turn = vehicle.getTurnSignal()
+    private val passenger = SeatArea(SeatValue.ROW_1_RIGHT)
+    private val front = WindowArea(WindowValue.FRONT_WINDSHIELD)
+    // Optional domain acquisition failures stay within the channel's check request.
+    private val wiper by lazy { vehicle.getWiper() }
+    private val light by lazy { vehicle.getLight() }
+    private val odometer by lazy { vehicle.getOdometer() }
 
     override fun initialize() = vehicle.initialize()
 
     private fun requireReadPermission(sensor: PleosSensor) {
         val permission = when (sensor) {
-            PleosSensor.BELT -> PleosPermission.CAR_SEATS
-            PleosSensor.BRAKE -> PleosPermission.CAR_DRIVE
-            PleosSensor.TURN -> PleosPermission.CAR_LIGHTS
+            PleosSensor.BELT, PleosSensor.PASSENGER -> PleosPermission.CAR_SEATS
+            PleosSensor.BRAKE, PleosSensor.TRIP_DISTANCE, PleosSensor.TRIP_TIME -> PleosPermission.CAR_DRIVE
+            PleosSensor.TURN, PleosSensor.LOW_BEAM -> PleosPermission.CAR_LIGHTS
+            PleosSensor.WIPER -> PleosPermission.CAR_WINDOWS
         }
         if (context.checkSelfPermission(permission) != PackageManager.PERMISSION_GRANTED) throw SecurityException()
     }
@@ -52,6 +68,14 @@ internal class PleosSdkReadClient(private val context: Context) : PleosReadClien
             )
             PleosSensor.BRAKE -> brake.checkBrakePedalStatusCapabilities({ complete(readable(it)) }, reportFailure)
             PleosSensor.TURN -> turn.checkTurnSignalStateCapabilities({ complete(readable(it)) }, reportFailure)
+            PleosSensor.WIPER -> wiper.checkWiperStateCapabilities(
+                { config, areas -> complete(supportsFrontWiper(config, areas)) }, reportFailure)
+            PleosSensor.LOW_BEAM -> light.checkLowBeamLightStateCapabilities(
+                { config, states -> complete(supportsLowBeam(config, states)) }, reportFailure)
+            PleosSensor.PASSENGER -> seat.checkSeatOccupancyCapabilities(
+                { config, areas -> complete(supportsFrontPassenger(config, areas)) }, reportFailure)
+            PleosSensor.TRIP_DISTANCE -> odometer.checkTripCurrentDrivingDistanceCapabilities({ complete(readable(it)) }, reportFailure)
+            PleosSensor.TRIP_TIME -> odometer.checkTripCurrentDrivingTimeCapabilities({ complete(readable(it)) }, reportFailure)
         }
     }
 
@@ -61,6 +85,11 @@ internal class PleosSdkReadClient(private val context: Context) : PleosReadClien
             PleosSensor.BELT -> seat.getCurrentSeatBeltBuckledState(driver, complete, failed)
             PleosSensor.BRAKE -> brake.getCurrentBrakePedalStatus(complete, failed)
             PleosSensor.TURN -> turn.getCurrentTurnSignalState(complete, failed)
+            PleosSensor.WIPER -> wiper.getCurrentWiperState(front, complete, failed)
+            PleosSensor.LOW_BEAM -> light.getCurrentLowBeamLightState(complete, failed)
+            PleosSensor.PASSENGER -> seat.getCurrentSeatOccupancy(passenger, complete, failed)
+            PleosSensor.TRIP_DISTANCE -> odometer.getTripCurrentDrivingDistance(complete, failed)
+            PleosSensor.TRIP_TIME -> odometer.getTripCurrentDrivingTime(complete, failed)
         }
     }
 
@@ -88,6 +117,51 @@ internal class PleosSdkReadClient(private val context: Context) : PleosReadClien
                 }
                 brake.registerBrakePedalStatus(listener)
                 val remove: () -> Unit = { brake.unregisterBrakePedalStatus(listener) }
+                remove
+            }
+            PleosSensor.WIPER -> {
+                val listener = object : WiperStateListener {
+                    override fun onWiperStateUpdated(state: WiperState?) = event(state)
+                    override fun onFailed(e: Exception) = failed(e)
+                }
+                wiper.registerWiperState(front, listener)
+                val remove: () -> Unit = { wiper.unregisterWiperState(front, listener) }
+                remove
+            }
+            PleosSensor.LOW_BEAM -> {
+                val listener = object : LightStateListener {
+                    override fun onLightStateUpdated(state: LightState?) = event(state)
+                    override fun onFailed(e: Exception) = failed(e)
+                }
+                light.registerLowBeamLightState(listener)
+                val remove: () -> Unit = { light.unregisterLowBeamLightState(listener) }
+                remove
+            }
+            PleosSensor.PASSENGER -> {
+                val listener = object : SeatOccupancyListener {
+                    override fun onSeatOccupancyUpdated(occupancy: Boolean?) = event(occupancy)
+                    override fun onFailed(e: Exception) = failed(e)
+                }
+                seat.registerSeatOccupancy(passenger, listener)
+                val remove: () -> Unit = { seat.unregisterSeatOccupancy(passenger, listener) }
+                remove
+            }
+            PleosSensor.TRIP_DISTANCE -> {
+                val listener = object : DistanceDrivenListener {
+                    override fun onDistanceDrivenUpdated(value: Float?) = event(value)
+                    override fun onFailed(e: Exception) = failed(e)
+                }
+                odometer.registerTripCurrentDrivingDistance(listener)
+                val remove: () -> Unit = { odometer.unregisterTripCurrentDrivingDistance(listener) }
+                remove
+            }
+            PleosSensor.TRIP_TIME -> {
+                val listener = object : DrivingTimeListener {
+                    override fun onDrivingTimeUpdated(value: Int?) = event(value)
+                    override fun onFailed(e: Exception) = failed(e)
+                }
+                odometer.registerTripCurrentDrivingTime(listener)
+                val remove: () -> Unit = { odometer.unregisterTripCurrentDrivingTime(listener) }
                 remove
             }
             PleosSensor.TURN -> {

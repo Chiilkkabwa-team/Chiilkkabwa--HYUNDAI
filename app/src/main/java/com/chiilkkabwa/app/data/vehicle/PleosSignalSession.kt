@@ -3,7 +3,7 @@ package com.chiilkkabwa.app.data.vehicle
 import ai.pleos.playground.vehicle.constant.area.TurnSignalValue
 import com.chiilkkabwa.app.core.signal.*
 
-internal enum class PleosSensor { BELT, BRAKE, TURN }
+internal enum class PleosSensor { BELT, BRAKE, TURN, WIPER, LOW_BEAM, PASSENGER, TRIP_DISTANCE, TRIP_TIME }
 
 internal fun allowPleosSignals(debug: Boolean, optIn: Boolean, source: SignalSource): Boolean =
     debug && optIn && source == SignalSource.EMULATOR
@@ -181,6 +181,11 @@ internal class PleosSignalSession(
         session.sink?.update { snapshot -> when (sensor) {
             PleosSensor.BELT -> snapshot.copy(driverBeltBuckled = signal(value as? Boolean))
             PleosSensor.BRAKE -> snapshot.copy(brakePressed = signal(value as? Boolean))
+            PleosSensor.WIPER -> snapshot.copy(wiperOn = signal(pleosWiperOn(value)))
+            PleosSensor.LOW_BEAM -> snapshot.copy(lowBeamOn = signal(pleosLowBeamOn(value)))
+            PleosSensor.PASSENGER -> snapshot.copy(passengerSeated = signal(value as? Boolean))
+            PleosSensor.TRIP_DISTANCE -> snapshot.copy(tripDistanceKm = signal(pleosTripKm(value)))
+            PleosSensor.TRIP_TIME -> snapshot.copy(tripTimeSec = signal(pleosTripSeconds(value)))
             PleosSensor.TURN -> snapshot.copy(turnSignal = signal(when (value as? TurnSignalValue) {
                 TurnSignalValue.OFF -> TurnSignalState.NONE
                 TurnSignalValue.LEFT -> TurnSignalState.LEFT
@@ -196,6 +201,11 @@ internal class PleosSignalSession(
             PleosSensor.BELT -> snapshot.copy(driverBeltBuckled = Signal.failed(status, source, at))
             PleosSensor.BRAKE -> snapshot.copy(brakePressed = Signal.failed(status, source, at))
             PleosSensor.TURN -> snapshot.copy(turnSignal = Signal.failed(status, source, at))
+            PleosSensor.WIPER -> snapshot.copy(wiperOn = Signal.failed(status, source, at))
+            PleosSensor.LOW_BEAM -> snapshot.copy(lowBeamOn = Signal.failed(status, source, at))
+            PleosSensor.PASSENGER -> snapshot.copy(passengerSeated = Signal.failed(status, source, at))
+            PleosSensor.TRIP_DISTANCE -> snapshot.copy(tripDistanceKm = Signal.failed(status, source, at))
+            PleosSensor.TRIP_TIME -> snapshot.copy(tripTimeSec = Signal.failed(status, source, at))
         } }
     }
 
@@ -232,13 +242,15 @@ internal class PleosSignalSession(
             driverBeltBuckled = Signal.failed(status, source, at),
             brakePressed = Signal.failed(status, source, at),
             turnSignal = Signal.failed(status, source, at),
-            // 이번 A01 범위 밖: 이전 의사코드 폴백 유지. 주차 게이트 필드는 건드리지 않는다.
-            passengerSeated = Signal.failed(SignalStatus.UNSUPPORTED, source, at),
-            wiperOn = Signal.failed(SignalStatus.UNSUPPORTED, source, at),
-            lowBeamOn = Signal.failed(SignalStatus.UNSUPPORTED, source, at),
+            // 주차 게이트는 AAOS 소유. 연결한 채널은 초기/중단 상태를 동일하게 폐기한다.
+            passengerSeated = Signal.failed(status, source, at),
+            wiperOn = Signal.failed(status, source, at),
+            lowBeamOn = Signal.failed(status, source, at),
+            // SDK 전륜각은 핸들 회전각 계약과 다름. CarInfo 치수 public API도 없음.
+            // 이 두 UNSUPPORTED는 현재 어댑터 매핑 불가이며 차량 capability 판정이 아니다.
             steeringDeg = Signal.failed(SignalStatus.UNSUPPORTED, source, at),
-            tripDistanceKm = Signal.failed(SignalStatus.UNSUPPORTED, source, at),
-            tripTimeSec = Signal.failed(SignalStatus.UNSUPPORTED, source, at),
+            tripDistanceKm = Signal.failed(status, source, at),
+            tripTimeSec = Signal.failed(status, source, at),
             carDimensions = Signal.failed(SignalStatus.UNSUPPORTED, source, at),
         ) }
     }
