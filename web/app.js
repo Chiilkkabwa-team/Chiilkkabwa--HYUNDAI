@@ -79,7 +79,8 @@ function startVoiceDrive(mode) {
   // 연습 모드에서는 정차 중에 프레임 루프를 멈춰 두므로(성능) 주행에 들어갈 때 다시 켠다
   startSimLoop();
   voice = new VOICE.VoiceGuide({
-    goal: prep?.goal || null,
+    // 평가·강습은 목표 선택 화면을 건너뛰고 가상 종합 연습을 한다.
+    goal: appMode === 'practice' ? prep?.goal || null : '그냥 몸풀기',
     mode,
     enabled: voicePrefOn(mode),
     speedLimitOn: !!H.speedLimitVoice,
