@@ -80,3 +80,11 @@ Android 구현 정적 점검일: 2026-11-11 KST (당시 기준 main: de612636cc2
 ### A01 신뢰성 후속 재검증 (2026-11-13 KST23시 / dev1140c74)
 
 [상세 보고서](A01_RELIABILITY_FOLLOWUP.md). 앱 코드 변경 없음. 공식 콘솔48개 카드·경고등 비교에서 벨트true 및 실제 주차브레이크ON 입력 경로가 없어 전체 워밍업은 계속 BLOCKED/NOT_VERIFIED다. 안전 조건을 완화하지 않았다. Settings에서325.96초 중단 후 같은 PID로 화면·새 신호 복귀는 PASS. Sleep/Display OFF에서 전체 검은 캡처 및 Wake 복구를 관측했지만 기존 장시간 검은 화면 사건의 원인/해결 완료는 NOT_VERIFIED다. 두 JVM 각각78/78, 양debug빌드, 웹79/79 PASS. 기본off·debug EMULATOR opt-in·실차/release 차단 유지. 증거는 `docs/evidence/a01-2026-11-13-reliability/`.
+
+
+### B02 Android 코칭 판단 코어 (2026-11-14)
+
+- 기준 dev 최초1acc540, 통합 전77af260 반영. feature/b02-coaching-policy-core, 전용 Worktree. [계약·정책·검증·미확인](B02_COACHING_POLICY.md).
+- 순수 Kotlin CoachingPolicy/CoachingCandidate·Record/CoachingDecisionEngine 신규. 목표 우선 필터,800ms 비교,45초/5회/동일2회,멘토 기본off,중복·신선도·단위·출처·세션·결과 관리. A02 원본ID·근거를 보존하며 속도 감소를 브레이크·위험으로 추론하지 않는다.
+- 기본 DISABLED. 명시적 정차 Mock 시험만 OFFERED 가능하며 EMULATOR/VEHICLE은 출처를 보존해 BLOCKED. 기존 미리듣기·차량 소스·UI·저장소·권한·Gradle·웹 무변경. 실제 주행 자동 음성 미연결.
+- JVM mock/vehicle 각각110/110(신규31),두 debug빌드,웹109/109 PASS. SPOKEN은 합성 정상 완료callback 시험 결과이며 실제 TTS 재생 증거가 아니다. 실음성 길이·포커스·Emulator·실차·주행 플랫폼정책은 NOT_VERIFIED(S05). PR/병합/CI는 해당 검증 로그·PR 이력 참조.

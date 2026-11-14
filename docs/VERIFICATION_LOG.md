@@ -322,3 +322,28 @@ PR #20 최초 CI에서 웹 및 Android 테스트/양debug빌드 SUCCESS를 확�
 - `web/app.js`의 가상 주행 원본 사건에 같은 ID를 붙여 평가·강습의 사건 목록과 속도 시간표가 완료한 발화만 찾아 표시한다. 멘토 모드의 기본 음성 끔 문구를 실제 설정과 맞췄다.
 - Windows / Node 24.18.1: `node --check web/app.js`, `node --test web/test/*.test.mjs` 109/109 PASS. 기존 E4~E6, 취소·시간 초과·늦은 콜백을 포함한다.
 - 브라우저 실행·실제 청취는 NOT_VERIFIED. S06은 웹 Mock 로직에서만 PASS, S07·S10은 가상 출처 유지. 차량 연동 및 주행 음성(S05)은 NOT_VERIFIED. Android·권한·외부 음원 변경 없음(S01·S02·S11 해당 없음). 공식 근거는 [SAFETY_RULES.md](SAFETY_RULES.md)의 P02·P09 참조.
+
+
+## 2026-11-14 B02 — Android 코칭 판단·발화 결과 코어
+
+- 담당 Codex2 / feature/b02-coaching-policy-core / Chiilkkabwa-Codex2-B02-Coach.
+- 최초 origin/dev 1acc54036c5660ff05d572dd904d250762f0dad5. 통합 준비 중 B01 PR#22의77af260015981305e7b24891bd76afa29a8e961c를 fast-forward로 반영. 다른 팀원 Worktree/미커밋 A03 조사 문서는 보존.
+- 환경: Windows PowerShell, Temurin17.0.20,Gradle8.10.2,Android SDK35,Node24.18.1. 공식 SDK/의존성/권한 추가 없음. 기존캐시 --offline.
+- 변경: 독립 Kotlin3파일+JVM 테스트1파일, B02 계약 문서. 기존 차량/A02/웹/미리듣기/저장소/UI/Manifest/Gradle 변경0. [상세 설계·계약](B02_COACHING_POLICY.md).
+- TDD: 변경전 Mock79 PASS → 신규 타입 부재로 테스트 컴파일 실패 → 구현 후27개 신규 PASS. 자체 리뷰 회귀 추가 후31개 중1개 FAIL(극단적인 유한 가속도 통과) → finite뿐 아니라 개발 범위 검사 추가 →31/31 PASS. 독립 동료/에이전트 리뷰를 수행한 것으로 주장하지 않음.
+
+| 검증 | 실제 명령/결과 |
+|---|---|
+| 두 JVM | .\gradlew.bat --offline :app:testMockDebugUnitTest :app:testVehicleDebugUnitTest — mock110/110,vehicle110/110 PASS,실패/오류0 |
+| 두 debug빌드 | 같은 실행의 :app:assembleMockDebug :app:assembleVehicleDebug — BUILD SUCCESSFUL |
+| 기존 미리듣기 | 양 JVM ParkedVoicePreviewTest 기존4개 PASS,음성 구현 무변경 |
+| B02 | CoachingDecisionEngineTest 양 플레이버31/31. 목표·적격성 우선/우선순위/800ms/45초/5회/동일2회/멘토/중복/세션·시간·신선도·상태·단위·이상치/실패·늦은완료/출처차단/A02변환/칭찬/메모리 경계 포함 |
+| 웹 음성 포함 회귀 | node --test web/test/*.test.mjs —109/109 PASS |
+| 정적 범위 | git diff --check 및 통합기준 dev 대비 보호파일 diff0. 차량제어·TTS실행·네트워크·새저장 경로 추가0 |
+| 실제 Android/Pleos/실차 음성 | 미실행 NOT_VERIFIED. 합성 COMPLETED는 기기 utterance 완료가 아님 |
+
+남은 검증: 실제2.5초/오디오 포커스·내비양보/DO·주행 수명/정차 게이트 전달/프로세스 재생성·동일주행 횟수보존/C01저장·프로필 정책. 기존 AAOS deprecated 경고는 기준과 동일하며 보호파일을 수정하지 않았다.
+
+규정: S01/S02 PASS(변경 정적:제어API·새SDK·권한·외부STT0), S03 PASS(JVM:defaultoff/정차Mock허용·실시간허용상실시stop계약), S04 PASS(정적:UI무변경)·실환경NOT_VERIFIED, **S05 NOT_VERIFIED·실제주행음성미연결/live출처BLOCKED**, S06 PASS(JVM:빈도/양보실패폐기/길이추정)·실포커스/실측NOT_VERIFIED, S07 PASS(원본근거/단위/상태·출처보존·추론금지), S09 PASS(정적:새저장/위치/서버0·메모리상한), S10 PASS(합성/빌드/실음성분리). S08/S11/S12 NOT_APPLICABLE(미션·외부자산·제출없음/main보존). 공식근거는 SAFETY_RULES/COMPLIANCE_REGISTER O03,P02,P03,P06,P07,P09 및 B02문서 링크; 새로운 플랫폼허가/공식승인 주장 없음.
+
+G1/G2 PASS(배정·범위·근거·계약),G3 PASS(기본차단·순수코어·오류폐기),G4 위표범위만PASS/실환경NOT_VERIFIED,G5 차단된 독립 코어만 통합. 병합 전 최신dev 반영/관련검증 재실행과 원격CI 확인을 수행하며 최종 PR·병합SHA·CI는 후속 기록 또는 PR이력으로 추적.
