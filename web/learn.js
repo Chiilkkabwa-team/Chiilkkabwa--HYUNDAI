@@ -7,6 +7,11 @@
 //   - 이미 맨 벨트를 풀라고 하지 않는다. S08
 //   - 그림은 기본 도형 SVG(외부 이미지·영상 없음). S11
 
+import { evaluateGate } from './core.js';
+
+// 학습 오버레이에는 콘솔의 주차 브레이크 미지원 우회 옵션을 적용하지 않는다.
+export const learningAvailable = (snapshot) => evaluateGate(snapshot).ready;
+
 /** O/X 그림 — 맞는 예/아닌 예를 한 줄씩. 그림은 글자를 읽지 않아도 구분되게 기호와 색 둘 다 쓴다 */
 const ox = (ok) => `<svg class="ox ${ok ? 'o' : 'x'}" viewBox="0 0 24 24" aria-hidden="true">${ok
   ? '<circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2.6"/>'
@@ -17,7 +22,7 @@ export const HELP = {
   SEAT_BELT: {
     steps: ['어깨띠가 목이 아니라 쇄골 가운데를 지나게 당겨요.', '허리띠는 배가 아니라 골반 뼈 위로.', '‘철컥’ 소리가 나면 한 번 당겨서 잠겼는지 확인해요.'],
     o: '어깨띠가 쇄골 가운데, 허리띠가 골반 위', x: '어깨띠를 겨드랑이 밑으로 빼서 매기',
-    note: '이미 매고 있다면 그대로 두세요. 풀었다 다시 맬 필요는 없어요.', wiki: 'before',
+    note: '이미 맸다면 그대로 유지해 주세요. 체결 신호를 읽을 수 없는 차에서는 벨트를 확인한 뒤 미션을 건너뛸 수 있어요.', wiki: 'before',
   },
   BRAKE_PRESS_RELEASE: {
     steps: ['오른발 뒤꿈치를 브레이크 앞 바닥에 붙여요.', '발끝으로 끝까지 꾹 — 페달이 더 안 들어갈 때까지.', '뗄 땐 2~3초에 걸쳐 천천히.'],

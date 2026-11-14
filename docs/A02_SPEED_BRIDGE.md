@@ -78,3 +78,7 @@ SpeedEventBridge 반환 Baseline/Rejected/Evaluated를 그대로 구분한다. �
 공식 근거의 적용 범위는 SAFETY_RULES/COMPLIANCE_REGISTER의 O03/P02/P03/P04/P06/P07/P08와 위 Android 원문을 따른다. 문서 열람이나 개발자 자체 검토를 플랫폼 승인으로 바꾸지 않는다.
 
 G1 PASS: 배정된 A02·전용 브랜치/worktree·범위 명시. G2 PASS(공개API/해당실측)/주행정책 NOT_VERIFIED. G3 PASS: default OFF·최소읽기권한·fail-closed·실차/release 차단. G4 아래 실행 등급별 증거만 PASS. G5: 최신 dev 충돌·전체회귀·CI 확인 후 개발 통합만 허용; B/C 실사용·실차·주행 정책 활성화는 하지 않는다.
+
+### 최신 dev 통합 검증
+
+B01/B02/B04의 dev `44bfe68` 반영 후 전체를 재실행했다. Android mock/vehicle **각138/138**, 양debug빌드, 웹 **110/110 PASS**. 기존107개 결과는 A02 실측 코드 시점이며, 통합138개에는 B02 신규31개가 포함된다. 두 상태·검증 대장의 append 충돌은 양쪽 기록을 모두 보존했다. A02의 공개 계약·활성화 차단·실측 한계는 동일하고, 최신 dev 대비 B02/Web diff0이다.

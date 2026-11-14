@@ -26,17 +26,18 @@ Android 구현 정적 점검일: 2026-11-11 KST (당시 기준 main: de612636cc2
 
 | 배정안 ID | 기능 | 웹 모의 | Android | 에뮬레이터/실차 |
 |---|---|---|---|---|
-| B01 | 겹친 상황 우선순위·칭찬·회전 주의 대사 | 구현 + 단위 테스트 | 미구현 | 미검증(S05) |
+| B01 | 겹친 상황 우선순위·칭찬·회전 주의 대사, 평가·강습 리포트 완료 발화의 사건 ID 연결 | 구현 + 단위 테스트 | 이벤트 음성 미구현 | 미검증(S05) |
 | A04 | 가상 교차로 좌·우회전(판정: 깜빡이·차로·속도) | 구현 + 단위 테스트 | 해당 없음 | 해당 없음 |
 | C01 | 주차 후 속도 시간표(사건 점·브레이크 띠·말한 표시). **E3 수정(11/13): 복기 중 주차 확인이 깨지면 복기·장면 재현 즉시 잠금, 재주차 시 이어서** | 구현 + 단위 테스트 | 게이트 잠금만 수정+단위 테스트, 시계열 미구현 | 미검증 |
 | C03 | 장면 재현 작은 창(시뮬레이션 재현 표기) | 구현 + 단위 테스트 | 미구현 | 미검증 |
 | A05 | 콘솔 핸들 그림·누른 만큼 깊어지는 페달·WASD·벨트 표시 | 구현(브라우저 조작 확인) | 해당 없음(웹 콘솔 전용) | 해당 없음 |
-| B04 | 미션 도움말(O/X)·운전 노트 | 구현 + 단위 테스트 | 미구현 | 해당 없음 |
+| B04 | 미션 도움말(O/X)·운전 노트, 주차 확인 해제 시 닫기, 벨트 신호 미지원 안내 | 구현 + 단위 테스트 | 미구현 | 해당 없음 |
 | C04 | 알림 남은 시간 테두리·온보딩 버전. **11/14: 온보딩 문구 개편, 소개·사용법 주행 중 열림(가상 주행 정지), 앱 안 창 주행 잠금 이유, 하단 바 데모 미지원 안내.** 내비식 정보 배치 11/14 처리, 온보딩 코치 마크 추가 | 구현 | 미구현 | 해당 없음 |
 | C05 | 서비스 소개(About Us)·구현 상태 표. **11/14: 내 기록에 다음 목표·최근 7일 연습한 날(연속 기록 없음)** | 구현 + 단위 테스트 | 미구현 | 해당 없음 |
-| B03 | Typecast·ElevenLabs 음성 | **안 함** — API 키·사용/배포 권리 확인 필요(S11) | — | — |
+| B03 | 한국어 음성 선택·짧은 안내 문구 | 로컬 한국어 음성 우선, 회전·칭찬 문구 조정. 실제 2.5초 실측은 미검증 | — | — |
 | A06 | 3D 차량 | **안 함** — 자산 라이선스·성능 측정 먼저(S11) | — | — |
-| A01·A02·A03·B02 | Pleos 신호·속도 이벤트·NaviHelper·Android TTS | **안 함** — Android/에뮬레이터 작업 | — | — |
+| B02 | Android 정차 음성 미리듣기 | 해당 없음 | `mockDebug` 주차 준비 화면의 오프라인 한국어 TTS·오디오 포커스 | Pleos TTS·차량 포커스·주행 재생 미검증(S05) |
+| A01·A02·A03 | Pleos 신호·속도 이벤트·NaviHelper | 위 기능별 항목 참고 | 위 기능별 항목 참고 | 위 기능별 항목 참고 |
 
 주요 코드 근거:
 - app/src/main/java/com/chiilkkabwa/app/core/{signal,safety,mission,session}/
@@ -87,3 +88,11 @@ Android 구현 정적 점검일: 2026-11-11 KST (당시 기준 main: de612636cc2
 최신 dev1acc540 기반 Codex1 전용 worktree의 feature/a02-aaos-speed-bridge. 공개 PERF_VEHICLE_SPEED/CAR_SPEED의 signed Float m/s와 elapsed ns를 보존하는 독립 소스를 기존 SpeedEventEngine에 연결했다. Signal 벽시계 계약·엔진 정책·안전 게이트·UI/음성/저장소/Web은 유지했다. 기본OFF, debug의 명시적 opt-in+확인된 emulator hardware만 가능하며 실차/release는 차단한다.
 
 최종 JVM mock/vehicle 각107/107, 두debug빌드, 웹109/109 PASS. Pleos2.1.0에서 실제 속도 증가·감소/원본 callback 관측·엔진 소비와 두 이벤트 발행, R 카메라 pause의 폐기/새 세션 복귀, 권한 철회의 PERMISSION_DENIED를 확인했다. 기본OFF 재설치의 trace0건도 확인했다. 후진 음수 실제 수신, 권한창 전체 조작·재부여 복구, 실제 급가감속 판정/노이즈·양자화 보정 및 주행 수집 정책·실차는 NOT_VERIFIED다. B/C 실사용 연결은 하지 않았다. [계약·등급·실측](A02_SPEED_BRIDGE.md).
+### B02 Android 코칭 판단 코어 (2026-11-14)
+
+- 기준 dev 최초1acc540, 통합 전b758c2b(B01/B04) 반영. feature/b02-coaching-policy-core, 전용 Worktree. [계약·정책·검증·미확인](B02_COACHING_POLICY.md).
+- 순수 Kotlin CoachingPolicy/CoachingCandidate·Record/CoachingDecisionEngine 신규. 목표 우선 필터,800ms 비교,45초/5회/동일2회,멘토 기본off,중복·신선도·단위·출처·세션·결과 관리. A02 원본ID·근거를 보존하며 속도 감소를 브레이크·위험으로 추론하지 않는다.
+- 기본 DISABLED. 명시적 정차 Mock 시험만 OFFERED 가능하며 EMULATOR/VEHICLE은 출처를 보존해 BLOCKED. 기존 미리듣기·차량 소스·UI·저장소·권한·Gradle·웹 무변경. 실제 주행 자동 음성 미연결.
+- JVM mock/vehicle 각각110/110(신규31),두 debug빌드,웹110/110 PASS. SPOKEN은 합성 정상 완료callback 시험 결과이며 실제 TTS 재생 증거가 아니다. 실음성 길이·포커스·Emulator·실차·주행 플랫폼정책은 NOT_VERIFIED(S05). PR/병합/CI는 해당 검증 로그·PR 이력 참조.
+
+A02 통합 후 갱신: B01/B02/B04 dev44bfe68를 반영해 Android 양JVM **138/138**, 양debug빌드, 웹 **110/110 PASS**. A02 외 코드 변경은 최신dev에서 가져온 것이며 A02 PR의 B02·Web diff0이다. 실기/실차 등급과 차단 조건은 A02 전용 문서 그대로 유지한다.
