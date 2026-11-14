@@ -2,7 +2,7 @@
 
 작업일: 2026-11-14~15 KST / A 파트 Codex2
 최초 기준 dev: 2a70830a83b1f1ae2a1453cbf2131bb0b52e96b8
-통합 반영 dev: 91413da9e581c0fd4d18adc056221c63605079c7
+통합 반영 dev: 8993d25c3b93a0d0b70c13f604b540196a42bbab
 브랜치: feature/a03-debug-emulator-probe
 Worktree: Chiilkkabwa-Codex2-A03-Probe
 
@@ -125,7 +125,7 @@ Windows PowerShell / Temurin17.0.20 / Gradle8.10.2 / Android SDK35, Node24.18.1.
 
 | 검증 | 실제 결과 |
 |---|---|
-| 두 JVM | 최초dev2a70830 양176/176; 최신dev91413da 양190/190, failures0/errors0. 기존178+A03 owner12 |
+| 두 JVM | 최초dev2a70830 양176/176,중간dev91413da 양190/190; 최종dev8993d25 양206/206, failures0/errors0. 기존194+A03 owner12 |
 | owner 회귀 | 10개 PASS→초기화중 gear DISCONNECTED 누락11중1 FAIL→차단 수정. 주행시 view닫기 계약 compile RED→구현 후12 PASS |
 | 두 debug | assembleMockDebug/assembleVehicleDebug PASS |
 | 자동화 APK | assembleVehicleDebugAndroidTest PASS. 생성된 manifest targetPackage=com.chiilkkabwa.app |
@@ -177,3 +177,5 @@ SAFETY_RULES/COMPLIANCE_REGISTER의 O03,P02/P03/P06/P07/P08.
 실제 브레이크ON+신선한 strict 신호·유효 POI를 확보한 뒤 request→callback→기본내비 화면 대조.
 외부 장비 제약은 코드 완성/테스트를 중단시키지 않으며 실제 검색·안내 완료로 둔갑시키지 않는다.
 최종 PR/병합 SHA/CI는 PR 이력과 공통 검증 로그로 추적한다.
+
+PR #32 검증 중 A02 PR#31이dev8993d25에통합되어추가반영했다. 공통대장의append충돌은A01/A02/A03전부보존했고코드충돌0. 양JVM206/206·양debug·시험APK·release제외 PASS(11초),웹126/126 PASS. 실제AVD미실행결정과NOT_VERIFIED상태는그대로다.

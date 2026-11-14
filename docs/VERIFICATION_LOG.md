@@ -477,6 +477,31 @@ NaviProgress.signalSource/requestDataSource 부재 compile RED→최소필드 �
 - vehicleDebug merged manifest Activity exported=false,vehicleRelease manifest/컴파일class의NaviProbe미포함 확인. test APK targetPackage=com.chiilkkabwa.app. 이정적보호/컴파일은실제장치실행증거아님.
 - 실제SDK생성/initialize/onConnected/onFailed/timeout/remove/release,실제정차신호·권한·경로함수/검색callback/기본내비안내: 전부NOT_VERIFIED. 장비사유실제요청BLOCKED. 브레이크false/불명/STALE/권한거부/수명/순서·중복은합성JVM으로만PASS.
 - S01/S02(공개SDK·컴파일)/S03(JVM)/S04(정적·JVM)/S07/S09/S10 PASS 범위명시. S02실권한·승인/S04실기/S05 NOT_VERIFIED;S06/S08/S11 변경없음NOT_APPLICABLE;S12 main/기존작업보존·제출없음. G1~G3 PASS(배정·공식근거·Debug차단),G4로컬만PASS/실기NOT_VERIFIED,G5기본off Debug기반만통합. 공식근거·S01~S12상세는전용문서참조.
+## 2026-11-14 A02 — 속도 표본 품질 Shadow 및 오프라인 재현
+
+- 배정A/Codex1, `fix/a02-speed-sample-quality`, 전용worktree chiilkkabwa-codex1-a02-quality/a01-pleos, 기준dev2a70830a83b1f1ae2a1453cbf2131bb0b52e96b8. 최종코드/PR/병합SHA는 이 항목의 후속 및 PR이력으로 추적한다. main 기준c4c15686a30e788143ccc88d8ebaa52500d3187b.
+- Windows PowerShell/Temurin17.0.20.101/Gradle8.10.2/AndroidSDK35/Node24.18.1. 기존 캐시 사용 `--offline`. 새 SDK/대형의존성/제어/권한/앱 연결0. [전체방법·비교·S/G등급](A02_SAMPLE_QUALITY.md), [재현자료](evidence/a02-quality-2026-11-14/README.md).
+
+| 실제 실행 | 결과 |
+|---|---|
+| 변경 전 양JVM/양debug | 각164/164 PASS, BUILD SUCCESSFUL(13초) |
+| 변경 전 web | node --test web/test/*.test.mjs —126/126 PASS |
+| TDD 신규타입/파서 | compile RED(Unresolved reference)→구현 후15/15 GREEN. 초기 gentle-decrease 기대오류 수정: 1km/h/100ms는 감소threshold미만. 임계값 변경0 |
+| 변경 후 .\gradlew.bat --offline :app:testMockDebugUnitTest :app:testVehicleDebugUnitTest :app:assembleMockDebug :app:assembleVehicleDebug | 양JVM179/179,실패/오류0,두debug BUILD SUCCESSFUL(9초,86tasks) |
+| 변경 후 node --test web/test/*.test.mjs | 126/126 PASS |
+| 리플레이 filtered JUnit | 원본29관측/29consumed 분리, 원본로그변경0, cold 재현/CSV/합성10시나리오 PASS |
+| 신규 Emulator/실차/정답 정확도 | NOT_VERIFIED. 이번 실행은 오프라인 증거 재사용이며 실제 오탐률 인증 아님 |
+
+기존 증가1@699902ms는101ms/2.750275m/s²로 재현되며 창평균/지속성Shadow는0. 실측 감소는기존799168ms→창799404455800ns→지속성799779340800ns(약611ms지연). 감소발췌의기록된증가시각798801ms와cold재현798204ms는미기록이전cooldown/episode가없어동일시각보장불가. 로그에없는처리시각은receiptNs를분석now로쓴다고명시. 소비결과로과거상태추측안함.
+
+합성의일정참값+계단노이즈/1kmh양자화/불균일100–200ms/완만±1/강한±5/단발스파이크/정속/누락콜백/동일·역전시각/invalid상태·권한거부/음수/세션·출처·종료후지연을검증. +3m/s²는Shadow누락이므로EXPERIMENTAL독립후보만유지. 원본근거·시계·legacy동일성·메모리32상한·cooldown우회차단도PASS. 기존엔진/bridge/활성화gate·A02_SPEED_EVENTS·A01/A03/B/C/Web/MainActivity/Manifest/Gradle변경0.
+
+S01/S02/S07/S09/S10/S12 변경범위PASS; S03/S04/S06/S08/S11 오프라인범위NOT_APPLICABLE(실환경성능NOT_VERIFIED); S05주행수집/서비스정책NOT_VERIFIED로기존차단유지. 출처·공모전/플랫폼/팀적용범위·제한은전용문서표참조. G1/G2/G3 PASS, G4단위/빌드/웹/오프라인만PASS·새실환경NOT_VERIFIED. G5리뷰/원격CI/통합은후속기록. 빌드성공을실신호/실차PASS로전환하지않음.
+
+작업중환경차단: 기본sandbox는기존Gradle캐시lock쓰기불가. 승인된캐시접근으로RED진행후자동승인검토서비스가크레딧부족으로한차례실행거절. 사용자재개후같은테스트를정상실행했고상기결과확인. 이거절은기능FAIL이나안전거절이아님. 로컬로그는.gitignore의.gradle/a02-quality/에보존하며캐시/산출물은커밋하지않음.
+
+A02 Shadow 리뷰 후속(2026-11-15 KST): 독립 read-only 리뷰 Critical/Important0. 리뷰에서 지적된 정규200ms의 최소5표본 미충족을 추가테스트1 FAIL로 재현한 뒤 창 축소 시5개를 보존하도록 수정. 200ms +5m/s²는800ms에후보1개로GREEN. 기존실측비교동일. 최종재실행은양JVM180/180(신규16),양debug빌드 BUILD SUCCESSFUL(5초,86tasks),실패/오류0. 생성합성비교11개. 정상입력메모리상한검증을32개절단분기실행증거로과장하지않도록설명보완. 최종실행로그.gradle/a02-quality/review-final-android.log. 원격통합은다음후속기록.
+
 ## 2026-11-14 A01 — 입력 제약 재조사·워밍업 관측 회귀
 
 기준dev2a70830a83b1f1ae2a1453cbf2131bb0b52e96b8,전용fix/a01-emulator-input-blockers,최종코드8469119f48c5ed60db9b3d5eb6d721dacf536f80. [공식근거/재현/등급/지원질문](A01_INPUT_BLOCKERS.md),[최소증거](evidence/a01-2026-11-14-inputs/README.md).
@@ -490,3 +515,8 @@ Awake/DisplayON/resumed/정상화면확인;검은화면미재현·기존원인�
 ### A03 Probe 최신 dev 통합 회귀 (2026-11-15)
 
 최초코드61ae3dab06a66ecd049e2d6284fdc7b58a59ca67, A01 PR#30의dev91413da9e581c0fd4d18adc056221c63605079c7를c159d15에반영. 충돌은공통대장append2곳이며A01/A03모두보존. 최신기준양JVM190/190(기존178+Probe12),양debug/시험APK/release manifest·Kotlincompile PASS(5초),웹126/126 PASS. git diff --check PASS. 기존core/차량/저장소/UI/mainManifest/Web의최신dev대비diff0. 실제AVD미사용·실초기화/요청/검색/안내NOT_VERIFIED유지. 최종PR/병합SHA/CI는해당PR이력으로추적.
+A02 최신dev 통합(2026-11-15): PR#31 생성 직전 dev가91413da9e581c0fd4d18adc056221c63605079c7(A01 PR#30)로진행하여기능브랜치에반영. 공통문서2곳만충돌했고A01/A02기록모두보존,제품코드충돌0. 위전체Android명령재실행양JVM194/194(최신dev178+A02신규16),양debug BUILD SUCCESSFUL(5초),웹126/126 PASS,git diff --check PASS. 코드기준4ca8d6310dce860050810475a0c02332855aebb8+dev91413da. 최신dev대비A01/A03/B·C/Web/활성화gate/기존엔진diff0. G5 로컬통합·안전검증PASS; 원격PR CI통과후자체병합하며병합SHA·최종HEAD·dev push CI는 https://github.com/Chiilkkabwa-team/Chiilkkabwa--HYUNDAI/pull/31 및 연결Actions가정본이다. 원격CI를로컬PASS로대체하지않는다.
+
+### A03 Probe PR #32 최종 동기화
+
+PR#32의원격CI진행중 A02 PR#31이dev8993d25c3b93a0d0b70c13f604b540196a42bbab에통합되어반영. 두공통대장각append2블록충돌을A01/A02/A03전부보존해해결했고새기능코드충돌0. 최종전체명령재실행 BUILD SUCCESSFUL(11초/129tasks),양JVM206/206(기존194+owner12),양debug·시험APK·release manifest/Kotlin PASS,웹126/126 PASS. git diff --check 및최신dev대비보호범위diff0. 실제장치시험NOT_VERIFIED유지. 최종head/병합SHA/dev CI는 https://github.com/Chiilkkabwa-team/Chiilkkabwa--HYUNDAI/pull/32 와연결Actions이력이정본이다.
