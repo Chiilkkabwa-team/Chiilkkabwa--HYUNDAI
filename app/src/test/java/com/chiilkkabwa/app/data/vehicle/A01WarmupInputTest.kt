@@ -37,6 +37,14 @@ class A01WarmupInputTest {
         assertTrue(judge.update(belt(true, 104), 104) is Progress.Done)
     }
 
+    @Test fun belt_recovery_rejects_a_true_observed_before_the_interruption() {
+        val judge = SeatBeltJudge()
+        judge.start(belt(false, 90), 100)
+        judge.update(VehicleSnapshot(driverBeltBuckled = Signal.failed(SignalStatus.DISCONNECTED, source, 110)), 110)
+        assertTrue(judge.update(belt(true, 105), 111) is Progress.InProgress)
+        assertTrue(judge.update(belt(true, 112), 112) is Progress.Done)
+    }
+
     @Test fun invalid_belt_states_never_succeed_even_with_true_payload() {
         for (status in SignalStatus.entries.filter { it != SignalStatus.OK }) {
             val judge = SeatBeltJudge()

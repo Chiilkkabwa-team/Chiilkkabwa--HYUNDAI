@@ -64,10 +64,10 @@ class EdgeTracker<T> {
 class SeatBeltJudge : MissionJudge {
     override val id = MissionId.SEAT_BELT
     override val title = "안전벨트 매기"
-    private var startedAt = Long.MAX_VALUE
+    private var minimumObservedAt = Long.MAX_VALUE
     private var initialBuckled: Signal<Boolean>? = null
     override fun start(s: VehicleSnapshot, nowMs: Long) {
-        startedAt = nowMs
+        minimumObservedAt = nowMs
         // 이미 체결된 유효 초기 상태만 예외. 미체결/불명 시작은 새 관측이 필요하다.
         initialBuckled = s.driverBeltBuckled.takeIf {
             it.isUsable && it.value == true && it.receivedAtMs <= nowMs
@@ -75,14 +75,17 @@ class SeatBeltJudge : MissionJudge {
     }
     override fun update(s: VehicleSnapshot, nowMs: Long): Progress {
         val belt = s.driverBeltBuckled
-        if (!belt.isUsable || belt.value != true) initialBuckled = null
+        if (!belt.isUsable || belt.value != true) {
+            initialBuckled = null
+            minimumObservedAt = maxOf(minimumObservedAt, nowMs)
+        }
         belt.blockingStatus()?.let { return Progress.Unavailable(it) }
         if (!belt.isUsable) {
             return Progress.InProgress(1, 1, "안전벨트 상태를 확인 중이에요. 이미 맸다면 그대로 유지해 주세요.")
         }
-        val observedSinceStart = belt.receivedAtMs in startedAt..nowMs
+        val newObservation = belt.receivedAtMs in minimumObservedAt..nowMs
         val retainedInitial = belt == initialBuckled && belt.receivedAtMs <= nowMs
-        return if (belt.value == true && (observedSinceStart || retainedInitial)) {
+        return if (belt.value == true && (newObservation || retainedInitial)) {
             Progress.Done(belt.source, "안전벨트가 체결되어 있어요. 그대로 유지해 주세요.")
         } else {
             Progress.InProgress(1, 1, "안전벨트를 매 주세요. 이미 맸다면 풀지 말고 그대로 두세요.")
