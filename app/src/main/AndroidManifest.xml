@@ -6,6 +6,8 @@
 
     <!-- AAOS 표준 속성(읽기): 기어·주차 브레이크 -->
     <uses-permission android:name="android.car.permission.CAR_POWERTRAIN" />
+    <!-- A02 public signed speed read; runtime grant requested only in opt-in debug emulator. -->
+    <uses-permission android:name="android.car.permission.CAR_SPEED" />
     <!-- AAOS 페달 압력(위험 권한, 런타임 요청) — 페달 감각 미션(조건부). Pleos 심사 승인 범위 확인 필요 -->
     <uses-permission android:name="android.car.permission.READ_CAR_PEDALS" />
 
