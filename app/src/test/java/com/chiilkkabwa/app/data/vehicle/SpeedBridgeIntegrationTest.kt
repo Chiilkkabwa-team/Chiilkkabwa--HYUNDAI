@@ -54,4 +54,13 @@ class SpeedBridgeIntegrationTest {
         val size=results.size; mock.setSpeedMps(20f); assertEquals(size,results.size)
         repo.start(); now+=1_000_000_000; mock.setSpeedMps(15f); assertTrue(results.last() is SpeedDetectionResult.Baseline)
     }
-}
+    @Test fun reversed_now_inside_same_millisecond_cannot_emit_an_event() {
+        val b=SpeedEventBridge(); b.start("s")
+        val first=reading(10f,1_001).copy(receivedAtNanos=2_000_900_000L)
+        assertTrue(b.accept(first,2_000_900_000L) is SpeedDetectionResult.Baseline)
+        val second=reading(13f,2_000).copy(timestampNanos=2_000_800_000L,receivedAtNanos=2_000_800_000L)
+        val reversed=b.accept(second,2_000_800_000L)
+        assertTrue(reversed is SpeedDetectionResult.Rejected)
+        assertEquals(SpeedRejection.INVALID_TIMESTAMP,(reversed as SpeedDetectionResult.Rejected).reason)
+        assertTrue(b.accept(reading(13f,2_001),2_001_000_000L) is SpeedDetectionResult.Baseline)
+    }}

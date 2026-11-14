@@ -62,7 +62,7 @@ internal class SpeedSignalSession(
             if (!checkAccess(c)) return
             var subscribed = false
             var registering = false
-            var pending: Triple<Any?, SignalStatus, Long>? = null
+            var pending: VehicleSpeedObservation? = null
             c.connect(ready = {
                 synchronized(this) {
                     if (active(token) && !subscribed && !registering) {
@@ -74,8 +74,9 @@ internal class SpeedSignalSession(
                                     val accepted = c.subscribe(value = { raw, status, timestamp ->
                                         synchronized(this) {
                                             if (active(token)) {
-                                                if (registering) pending = Triple(raw, status, timestamp)
-                                                else if (subscribed) receive(raw, status, timestamp)
+                                                val incoming = decodeSpeed(raw, status, timestamp, nowNanos(), source, observation.sessionId, started)
+                                                if (registering) pending = incoming
+                                                else if (subscribed) emit(incoming)
                                             }
                                         }
                                     }, error = { status -> synchronized(this) { if (active(token)) fail(status) } })
@@ -84,7 +85,7 @@ internal class SpeedSignalSession(
                                         if (!accepted) fail(SignalStatus.UNKNOWN)
                                         else {
                                             subscribed = true
-                                            pending?.let { receive(it.first, it.second, it.third) }
+                                            pending?.let { emit(it) }
                                             pending = null
                                         }
                                     }
@@ -124,13 +125,17 @@ internal class SpeedSignalSession(
         SpeedReadAccess.DENIED -> { fail(SignalStatus.PERMISSION_DENIED); false }
         SpeedReadAccess.MISSING_PERMISSION -> { fail(SignalStatus.UNSUPPORTED); false }
     }
-    private fun receive(raw: Any?, status: SignalStatus, timestamp: Long) {
-        emit(decodeSpeed(raw, status, timestamp, nowNanos(), source, observation.sessionId, started))
-    }
     private fun emit(value: VehicleSpeedObservation) {
-        observation = value
-        publisher?.invoke(value)
-        bridge.accept(value, nowNanos())?.let(onResult)
+        val processedNow = nowNanos()
+        val current = when {
+            value.status != SignalStatus.OK -> value
+            processedNow < value.receivedAtNanos -> value.copy(status = SignalStatus.UNKNOWN)
+            value.timestampNanos != null && processedNow - value.timestampNanos > SPEED_MAX_AGE_NANOS -> value.copy(status = SignalStatus.STALE)
+            else -> value
+        }
+        observation = current
+        publisher?.invoke(current)
+        bridge.accept(current, processedNow)?.let(onResult)
     }
     private fun fail(status: SignalStatus) {
         generation++; terminal = true
@@ -144,4 +149,3 @@ internal class SpeedSignalSession(
     private fun exceptionStatus(e: Exception) =
         if (e is SecurityException) SignalStatus.PERMISSION_DENIED else SignalStatus.DISCONNECTED
 }
-

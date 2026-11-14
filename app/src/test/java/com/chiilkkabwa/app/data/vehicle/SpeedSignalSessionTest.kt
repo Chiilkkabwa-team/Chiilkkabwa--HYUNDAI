@@ -14,6 +14,8 @@ class SpeedSignalSessionTest {
         var configError: Exception? = null
         var inlineValue: Float? = null
         var closes = 0
+        var afterInline: () -> Unit = {}
+        var inlineTimestamp = 1_000_000_000L
         lateinit var ready: () -> Unit
         lateinit var disconnected: (SignalStatus) -> Unit
         lateinit var value: (Any?, SignalStatus, Long) -> Unit
@@ -24,7 +26,7 @@ class SpeedSignalSessionTest {
         }
         override fun isSupported(): Boolean { configError?.let { throw it }; return supported }
         override fun subscribe(value: (Any?, SignalStatus, Long) -> Unit, error: (SignalStatus) -> Unit): Boolean {
-            this.value=value; this.error=error; inlineValue?.let { value(it, SignalStatus.OK, 1_000_000_000L) }; return accepted
+            this.value=value; this.error=error; inlineValue?.let { value(it, SignalStatus.OK, inlineTimestamp) }; afterInline(); return accepted
         }
         override fun close() { closes++ }
     }
@@ -148,5 +150,18 @@ class SpeedSignalSessionTest {
         assertEquals(SignalStatus.STALE,f.readings.last().status)
         f.emit(c,10f); f.now-=1; f.session.tick(); assertEquals(SignalStatus.UNKNOWN,f.readings.last().status)
         f.emit(c,13f); assertTrue(f.results.last() is SpeedDetectionResult.Baseline)
+    }    @Test fun inline_receipt_is_captured_before_registration_returns() {
+        val f=Fixture(); val c=f.start(); c.inlineValue=10f; c.afterInline={ f.now+=1_000_000 }; c.ready()
+        assertEquals(1_000_000_000L,f.readings.last().receivedAtNanos)
+    }
+    @Test fun future_inline_timestamp_does_not_become_valid_while_registration_returns() {
+        val f=Fixture(); val c=f.start(); c.inlineValue=10f; c.inlineTimestamp=f.now+1
+        c.afterInline={ f.now+=1_000_000 }; c.ready()
+        assertEquals(SignalStatus.UNKNOWN,f.readings.last().status)
+        assertTrue(f.results.last() is SpeedDetectionResult.Rejected)
+    }
+    @Test fun inline_sample_that_ages_during_registration_is_stale_when_published() {
+        val f=Fixture(); val c=f.start(); c.inlineValue=10f; c.afterInline={ f.now+=1_000_000_001 }; c.ready()
+        assertEquals(1_000_000_000L,f.readings.last().receivedAtNanos)
+        assertEquals(SignalStatus.STALE,f.readings.last().status)
     }}
-
