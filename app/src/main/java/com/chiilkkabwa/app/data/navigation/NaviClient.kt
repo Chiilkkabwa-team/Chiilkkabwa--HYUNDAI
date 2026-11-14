@@ -18,3 +18,6 @@ sealed interface NaviEvent {
     data class Error(val code: String) : NaviEvent
 }
 class NaviClientException(val problem: RouteProblem) : RuntimeException(problem.name)
+
+/** Local tracing hooks, not new SDK APIs. No payload or PII. */
+internal enum class NaviClientTrace { SDK_OBJECT_CREATED, INITIALIZE_CALLED, CONNECTED_CALLBACK, FAILED_CALLBACK, LISTENER_REMOVED, RELEASE_RETURNED }

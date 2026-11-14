@@ -113,6 +113,11 @@ A02 통합 후 갱신: B01/B02/B04 dev44bfe68를 반영해 Android 양JVM **138/
 
 A05 A03 통합 재검증: dev9a72969를 dbce435에 반영. 공통문서2곳 충돌은 A02/A03/A05 전부 보존. 웹126/126,양JVM164/164,양debug빌드,390/1440 조작 PASS. A03·Android·Gradle 및 B/C보호diff0. 최종통합/CI는 PR#28 이력 참조.
 
+### A03 Debug 실행 진입점 (2026-11-15)
+
+- feature/a03-debug-emulator-probe, 기준dev2a70830. [전용 검증 문서](A03_EMULATOR_VERIFICATION.md). 기존 A03 어댑터를 사용하는 Debug-only owner,vehicleDebug 비공개 Activity,명시 Android instrumentation runner를 추가했다. 자동초기화/자동요청 없음,실차/release/default차단·strict 게이트 유지.
+- 양JVM176/176(신규owner12),두debug·시험APK·release manifest/클래스 제외,웹126/126 PASS. Main/B/C/A01/A02/Web 기능변경0. SDK hook은 고정단계만 관측.
+- 실제AVD는 타Codex 점유 및 사용자 요청으로 미사용. 실제 SDK초기화·요청·검색·안내는 모두NOT_VERIFIED. JVM의 브레이크false 차단을 실제 게이트 관측으로 표시하지 않는다. 제품 release 기능은 활성화하지 않았다.
 ### A02 표본 품질 후속 — 독립 EXPERIMENTAL Shadow (2026-11-14)
 
 - `fix/a02-speed-sample-quality`, 기준dev2a70830. PR#27 수신·기존 엔진/bridge는 그대로 유지하고, bounded600ms창·지속성·1km/h 양자화 민감도 비교를 독립 구현했다. runtime/B·C/UI/권한/Gradle/Web 연결·변경0. [방법·가정·비교·규정](A02_SAMPLE_QUALITY.md), [오프라인 증거](evidence/a02-quality-2026-11-14/README.md).
@@ -125,4 +130,7 @@ A02 Shadow 최종리뷰보완: 정규200ms에서최소5표본(800ms)을보존하
 
 최신dev2a70830 기반 fix/a01-emulator-input-blockers / 전용 A01-Inputs. 필수3미션의 과거/미래 벨트값·중단전관측과 브레이크/깜빡이 부분진행 재사용을 최소 차단. 코드8469119f48c5ed60db9b3d5eb6d721dacf536f80. 양JVM178/178(신규14),양debug빌드,웹126/126 PASS. 실제2.1.0/Service2.3.22/SDK2.3.2 초기false/OFF와 PBfalse 잠금 재확인. 벨트true·실PBON·전체Emulator워밍업은BLOCKED,Mock6미션완료와구분. [공식경로·증거·안전·외부조건](A01_INPUT_BLOCKERS.md). A02/A03/B·C/웹/Manifest/Gradle/SafetyGate변경0. Issue#16열림,main·기존Worktree보존.
 
+A03 Probe 최신 통합: A01 PR#30의dev91413da를c159d15에반영,대장append충돌양쪽보존. 양JVM190/190·양debug·시험APK·release제외·웹126/126 PASS. 실제장치단계NOT_VERIFIED유지. 최종PR/CI는이력참조.
 A02 최신통합: A01 PR#30 dev91413da의14개테스트/기존기록을보존해양JVM194/194,양debug빌드,웹126/126 PASS. PR#31(base=dev)의최종HEAD/CI/병합결과참조. A02외제품코드는최신dev와동일하다.
+
+A03 Probe PR#32 최종동기화: dev8993d25(A02 PR#31)와공통기록전부보존. 양JVM206/206·양debug·시험APK·release제외·웹126/126 PASS. 실제장치NOT_VERIFIED유지. 최종PR/CI는#32이력참조.

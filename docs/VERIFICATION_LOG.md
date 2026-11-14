@@ -466,6 +466,17 @@ NaviProgress.signalSource/requestDataSource 부재 compile RED→최소필드 �
 
 최종 후속 결과: node web/test/junction.browser.cjs 전체 PASS(평가/강습 TURN_GOOD 기록 후 report, 연습 reviewsSaved 후 goal, 390/1440 조작). 브라우저 오류0/요청실패0. A04 26개를 포함한 웹126개 PASS. 원본 결과는 build/a05-junction-evidence/browser-results.json 및 추적 evidence/a05-2026-11-14/junction-results.json. 최종 코드 dbce435 기준이며 이후 커밋은 이 문서/증거만 변경한다. G4/G5 로컬 회귀·보호 범위 검사는 PASS; 원격CI·병합은 PR#28의 최종 HEAD와 Actions 결과로 확인한다.
 
+## 2026-11-15 A03 Debug Probe — 실행 진입점·합성 검증
+
+- 최초기준dev2a70830a83b1f1ae2a1453cbf2131bb0b52e96b8,feature/a03-debug-emulator-probe,전용Chiilkkabwa-Codex2-A03-Probe. 기존A03/B02/조사원본/main 보존. [구현·실행명령·규정](A03_EMULATOR_VERIFICATION.md).
+- 초기조회후A01점유가발견되어읽기전용실행계획을자동중단(우리AVD시작0). C02 port5560/A01 port5554는 타작업. 여유메모리3.76GB로추가4GBAVD미실행. 사용자답변 “아직 사용 중 — 실측은 미검증으로 진행” 이후장치설치/초기화/요청0.
+- 코드: src/debug owner,vehicleDebug exported=false Activity,androidTestVehicle stock Instrumentation. 기존 createDebugNaviAdapter/SDK3.0.5/strict Gate 재사용. SDK객체·initialize·callback·remove/release 고정 trace hook만 추가,기본no-op. vehicle testInstrumentationRunner 지정1곳,새의존성0.
+- TDD: owner부재 compileRED→10PASS→기어끊김누락11중1FAIL→차단보완,view닫기계약compileRED→12PASS. 자체리뷰이며실기수명/동료리뷰로표시하지않음.
+- 실행: .\gradlew.bat --offline :app:testMockDebugUnitTest :app:testVehicleDebugUnitTest :app:assembleMockDebug :app:assembleVehicleDebug :app:assembleVehicleDebugAndroidTest :app:processVehicleReleaseMainManifest :app:compileVehicleReleaseKotlin — BUILD SUCCESSFUL. XML mock176/vehicle176,failures0/errors0,owner각12.
+- node --test web/test/*.test.mjs —126/126 PASS. git diff --check PASS. 보호영역(Main/A01/A02/B/C/Web/main Manifest) diff0.
+- vehicleDebug merged manifest Activity exported=false,vehicleRelease manifest/컴파일class의NaviProbe미포함 확인. test APK targetPackage=com.chiilkkabwa.app. 이정적보호/컴파일은실제장치실행증거아님.
+- 실제SDK생성/initialize/onConnected/onFailed/timeout/remove/release,실제정차신호·권한·경로함수/검색callback/기본내비안내: 전부NOT_VERIFIED. 장비사유실제요청BLOCKED. 브레이크false/불명/STALE/권한거부/수명/순서·중복은합성JVM으로만PASS.
+- S01/S02(공개SDK·컴파일)/S03(JVM)/S04(정적·JVM)/S07/S09/S10 PASS 범위명시. S02실권한·승인/S04실기/S05 NOT_VERIFIED;S06/S08/S11 변경없음NOT_APPLICABLE;S12 main/기존작업보존·제출없음. G1~G3 PASS(배정·공식근거·Debug차단),G4로컬만PASS/실기NOT_VERIFIED,G5기본off Debug기반만통합. 공식근거·S01~S12상세는전용문서참조.
 ## 2026-11-14 A02 — 속도 표본 품질 Shadow 및 오프라인 재현
 
 - 배정A/Codex1, `fix/a02-speed-sample-quality`, 전용worktree chiilkkabwa-codex1-a02-quality/a01-pleos, 기준dev2a70830a83b1f1ae2a1453cbf2131bb0b52e96b8. 최종코드/PR/병합SHA는 이 항목의 후속 및 PR이력으로 추적한다. main 기준c4c15686a30e788143ccc88d8ebaa52500d3187b.
@@ -501,4 +512,11 @@ Windows/Temurin17.0.20/Gradle8.10.2/Node24.22.1. .\gradlew.bat --offline --rerun
 
 Awake/DisplayON/resumed/정상화면확인;검은화면미재현·기존원인해결NOT_VERIFIED. A01앱/우리forward18088/우리AVD만정상종료,data/snapshot보존. C02/다른Worktree수정0. 기본debug·release/A02/A03플래그false확인. 안전S01~S12/G1~G5는전용문서표참조:실제미확인경로를PASS로승격하지않고기본차단유지. 최종PR HEAD/CI/dev병합·병합후CI는PR/Actions이력으로추적한다. main변경0.
 
+### A03 Probe 최신 dev 통합 회귀 (2026-11-15)
+
+최초코드61ae3dab06a66ecd049e2d6284fdc7b58a59ca67, A01 PR#30의dev91413da9e581c0fd4d18adc056221c63605079c7를c159d15에반영. 충돌은공통대장append2곳이며A01/A03모두보존. 최신기준양JVM190/190(기존178+Probe12),양debug/시험APK/release manifest·Kotlincompile PASS(5초),웹126/126 PASS. git diff --check PASS. 기존core/차량/저장소/UI/mainManifest/Web의최신dev대비diff0. 실제AVD미사용·실초기화/요청/검색/안내NOT_VERIFIED유지. 최종PR/병합SHA/CI는해당PR이력으로추적.
 A02 최신dev 통합(2026-11-15): PR#31 생성 직전 dev가91413da9e581c0fd4d18adc056221c63605079c7(A01 PR#30)로진행하여기능브랜치에반영. 공통문서2곳만충돌했고A01/A02기록모두보존,제품코드충돌0. 위전체Android명령재실행양JVM194/194(최신dev178+A02신규16),양debug BUILD SUCCESSFUL(5초),웹126/126 PASS,git diff --check PASS. 코드기준4ca8d6310dce860050810475a0c02332855aebb8+dev91413da. 최신dev대비A01/A03/B·C/Web/활성화gate/기존엔진diff0. G5 로컬통합·안전검증PASS; 원격PR CI통과후자체병합하며병합SHA·최종HEAD·dev push CI는 https://github.com/Chiilkkabwa-team/Chiilkkabwa--HYUNDAI/pull/31 및 연결Actions가정본이다. 원격CI를로컬PASS로대체하지않는다.
+
+### A03 Probe PR #32 최종 동기화
+
+PR#32의원격CI진행중 A02 PR#31이dev8993d25c3b93a0d0b70c13f604b540196a42bbab에통합되어반영. 두공통대장각append2블록충돌을A01/A02/A03전부보존해해결했고새기능코드충돌0. 최종전체명령재실행 BUILD SUCCESSFUL(11초/129tasks),양JVM206/206(기존194+owner12),양debug·시험APK·release manifest/Kotlin PASS,웹126/126 PASS. git diff --check 및최신dev대비보호범위diff0. 실제장치시험NOT_VERIFIED유지. 최종head/병합SHA/dev CI는 https://github.com/Chiilkkabwa-team/Chiilkkabwa--HYUNDAI/pull/32 와연결Actions이력이정본이다.
