@@ -56,10 +56,12 @@ android {
 
     buildTypes {
         debug {
+            buildConfigField("boolean", "PLEOS_NAVI_ENABLED", (providers.gradleProperty("enablePleosNavi").orNull == "true").toString())
             // A01 실수신 검증 전 기본 차단. opt-in도 에뮬레이터에서만 사용한다.
             buildConfigField("boolean", "PLEOS_SIGNALS_ENABLED", (providers.gradleProperty("enablePleosSignals").orNull == "true").toString())
         }
         release {
+            buildConfigField("boolean", "PLEOS_NAVI_ENABLED", "false")
             buildConfigField("boolean", "PLEOS_SIGNALS_ENABLED", "false")
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
@@ -74,6 +76,7 @@ android {
 dependencies {
     // ── Pleos Connect SDK (버전은 문서 기준. Sync 실패 시 docs/03의 저장소·버전 재확인)
     implementation("ai.pleos.playground:Vehicle:2.3.2")
+    implementation("ai.pleos.playground:NaviHelper:3.0.5")
     // 아래는 My Project에서 '사용 가능' 확인 후 주석 해제
     // implementation("ai.pleos.playground:TextToSpeech:3.3.1")
 
