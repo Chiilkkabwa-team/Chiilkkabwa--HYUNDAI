@@ -334,3 +334,9 @@ PR #20 최초 CI에서 웹 및 Android 테스트/양debug빌드 SUCCESS를 확�
 - 브랜치 `fix/b04-parked-learning` / 기준 `dev` `77af260`. 도움말과 노트는 열 때와 주차 상태를 다시 확인할 때 모두 주차 게이트를 적용한다. 콘솔의 주차 브레이크 미지원 옵션과 관계없이 학습 창에는 기어 P·주차 브레이크 ON·UX 제한 해제가 필요하다.
 - Windows / Node 24.18.1: `node --check web/app.js`, `node --test web/test/*.test.mjs` 110/110 PASS. 기어 D, 브레이크 해제/미지원, 제한 활성, 신호 끊김/불명과 벨트 미지원 안내를 검증했다. 브라우저의 로컬 시험 페이지 연결이 시간 초과되어 UI 실측은 NOT_VERIFIED.
 - S03 주차 조건 및 S08 벨트 안내는 웹 단위 범위 PASS, S04 UI 전환은 NOT_VERIFIED. S10 웹 Mock 범위. Android·권한·외부 자산 변경 없음(S01·S02·S11 해당 없음). S03·S04 근거는 [SAFETY_RULES.md](SAFETY_RULES.md)의 P01·P02 참조.
+
+## 2026-11-14 B01 — 평가·강습의 가상 종합 연습 음성
+
+- 평가·강습에는 목표 선택 화면이 없으므로 웹 가상 주행의 음성 규칙에 기존 '그냥 몸풀기' 목표를 공급한다. 연습 모드의 사용자 선택 목표와 음성 반복 제한은 유지된다.
+- Windows / Node 24.18.1: 웹 단위 110/110 PASS. Node VM에서 실제 앱 초기화·시뮬레이터·리포트 연결을 실행해, 같은 유형과 시각으로 기록한 두 교차로 중 재생이 완료된 사건만 시간표에 표시됨을 확인했다. B04 학습 창은 미지원 신호에서 닫히고 복구 시 자동으로 열리지 않는 것도 확인했다. 브라우저 음성·Pleos는 미시험.
+- S06 웹 Mock 범위 PASS, S07·S10 가상 출처 범위 PASS. S05 차량 주행 재생 NOT_VERIFIED. 공식 근거는 [SAFETY_RULES.md](SAFETY_RULES.md)의 P02·P09 참조.
