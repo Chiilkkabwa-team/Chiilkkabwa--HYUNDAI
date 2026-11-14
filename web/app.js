@@ -2009,7 +2009,8 @@ async function startSimDemo() {
   const steerTo = async (lane, sig) => {
     if (sig) setV('turnSignal', sig); syncConsole();
     const target = lane * SIM.LANE_W;
-    await waitFor(() => { const dx = target - sim.ego.x; setSteer(clamp(dx * 140, -220, 220)); return Math.abs(dx) < 0.12; }, 9000);
+    // 차로 이동 속도는 차 속도에 비례한다(sim.js vy). A05 이후 시연 속 차가 느려져(약 24km/h) 9초로는 모자라 시연이 멈췄다 → 기본 30초
+    await waitFor(() => { const dx = target - sim.ego.x; setSteer(clamp(dx * 140, -220, 220)); return Math.abs(dx) < 0.12; });
     setSteer(0); setV('turnSignal', 'NONE'); syncConsole();
   };
   const coach = appMode === 'coach';
