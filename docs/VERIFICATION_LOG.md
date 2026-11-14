@@ -490,3 +490,15 @@ S01/S02/S07/S09/S10/S12 변경범위PASS; S03/S04/S06/S08/S11 오프라인범위
 작업중환경차단: 기본sandbox는기존Gradle캐시lock쓰기불가. 승인된캐시접근으로RED진행후자동승인검토서비스가크레딧부족으로한차례실행거절. 사용자재개후같은테스트를정상실행했고상기결과확인. 이거절은기능FAIL이나안전거절이아님. 로컬로그는.gitignore의.gradle/a02-quality/에보존하며캐시/산출물은커밋하지않음.
 
 A02 Shadow 리뷰 후속(2026-11-15 KST): 독립 read-only 리뷰 Critical/Important0. 리뷰에서 지적된 정규200ms의 최소5표본 미충족을 추가테스트1 FAIL로 재현한 뒤 창 축소 시5개를 보존하도록 수정. 200ms +5m/s²는800ms에후보1개로GREEN. 기존실측비교동일. 최종재실행은양JVM180/180(신규16),양debug빌드 BUILD SUCCESSFUL(5초,86tasks),실패/오류0. 생성합성비교11개. 정상입력메모리상한검증을32개절단분기실행증거로과장하지않도록설명보완. 최종실행로그.gradle/a02-quality/review-final-android.log. 원격통합은다음후속기록.
+
+## 2026-11-14 A01 — 입력 제약 재조사·워밍업 관측 회귀
+
+기준dev2a70830a83b1f1ae2a1453cbf2131bb0b52e96b8,전용fix/a01-emulator-input-blockers,최종코드8469119f48c5ed60db9b3d5eb6d721dacf536f80. [공식근거/재현/등급/지원질문](A01_INPUT_BLOCKERS.md),[최소증거](evidence/a01-2026-11-14-inputs/README.md).
+
+Windows/Temurin17.0.20/Gradle8.10.2/Node24.22.1. .\gradlew.bat --offline --rerun-tasks :app:testMockDebugUnitTest :app:testVehicleDebugUnitTest :app:assembleMockDebug :app:assembleVehicleDebug — BUILD SUCCESSFUL20초/86tasks실행,XML양178/178·오류실패0. node --test web/test/*.test.mjs —126/126·실패건너뜀0. RED13중6 assertion→GREEN13후 중단전true회귀1 RED→최종14모두PASS. 초기테스트fixture의JVM SystemClock예외는기존주입시계로분리해해결. A02/A03테스트도전체회귀에포함. git diff --check PASS;보호범위diff0.
+
+실환경: 코드50bddf1 opt-in APK를기존A01 AVD에install-r,새COLD PID31744. SDK BRAKEfalse/BELTfalse/TURNOFF와앱snapshot OKfalse/NONE,gearP/uxfalse/PBfalse→PARKING_BRAKE_OFF 잠금·시작비활성확인. 원본시각은epoch로그,Signal.receivedAtMs개별필드는trace미포함. exactcapabilityconfig는이번로그미포함,실제읽기권한granted및기존capabilitygating구독수신만확인. 버클/PBON입력없음은공식48카드/실제48카드/동일공식이미지metadata대조;경고등토글반복0. 세실완료조건은BLOCKED/NOT_VERIFIED. Mock JVM6미션성공은sourceMOCK,실기/실차와분리.
+
+Awake/DisplayON/resumed/정상화면확인;검은화면미재현·기존원인해결NOT_VERIFIED. A01앱/우리forward18088/우리AVD만정상종료,data/snapshot보존. C02/다른Worktree수정0. 기본debug·release/A02/A03플래그false확인. 안전S01~S12/G1~G5는전용문서표참조:실제미확인경로를PASS로승격하지않고기본차단유지. 최종PR HEAD/CI/dev병합·병합후CI는PR/Actions이력으로추적한다. main변경0.
+
+A02 최신dev 통합(2026-11-15): PR#31 생성 직전 dev가91413da9e581c0fd4d18adc056221c63605079c7(A01 PR#30)로진행하여기능브랜치에반영. 공통문서2곳만충돌했고A01/A02기록모두보존,제품코드충돌0. 위전체Android명령재실행양JVM194/194(최신dev178+A02신규16),양debug BUILD SUCCESSFUL(5초),웹126/126 PASS,git diff --check PASS. 코드기준4ca8d6310dce860050810475a0c02332855aebb8+dev91413da. 최신dev대비A01/A03/B·C/Web/활성화gate/기존엔진diff0. G5 로컬통합·안전검증PASS; 원격PR CI통과후자체병합하며병합SHA·최종HEAD·dev push CI는 https://github.com/Chiilkkabwa-team/Chiilkkabwa--HYUNDAI/pull/31 및 연결Actions가정본이다. 원격CI를로컬PASS로대체하지않는다.

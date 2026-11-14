@@ -25,22 +25,24 @@
 
 Files: core/event/SpeedQualityShadow.kt and matching unit tests.
 Interface: start(sessionId), stop(), accept(VehicleSpeedObservation, nowNanos): SpeedQualityResult?; independent candidate type, untouched legacy result and retained raw observations.
-- [ ] Write failing tests for quantized steps, irregular intervals, gentle/strong changes, spike, constant, missing callbacks, reversed/duplicate time, invalid statuses, signed negatives, source/session changes and legacy equality.
-- [ ] Run filtered tests and retain RED evidence.
-- [ ] Implement bounded 600–1000ms window, minimum 5 samples, max gap 300ms, endpoint-only vs sustained/assumed quantum modes. Independent episode/cooldown; no live hookup.
-- [ ] Run filtered tests GREEN.
+- [x] Write failing tests for quantized steps, irregular intervals, gentle/strong changes, spike, constant, missing callbacks, reversed/duplicate time, invalid statuses, signed negatives, source/session changes and legacy equality.
+- [x] Run filtered tests and retain RED evidence.
+- [x] Implement bounded 600–1000ms window, minimum 5 samples, max gap 300ms, endpoint-only vs sustained/assumed quantum modes. Independent episode/cooldown; no live hookup.
+- [x] Run filtered tests GREEN.
 
 ### Task 2: Offline replay and comparison
 
 Files: core/event/SpeedLogReplay.kt and SpeedLogReplayTest.kt under test sources; docs/evidence/a02-quality-2026-11-14 outputs.
 Interface: strict parser of original observation fields and separate consumed lines, replay with receipt as explicit analysis clock; CSV and Markdown output via A02_REPLAY_REPORT_DIR environment variable.
-- [ ] Write parser/replay tests including missing fields, Float preservation and cold-excerpt prehistory limitations.
-- [ ] Verify RED then implement parser and reports without changing fixtures.
-- [ ] Run fixture replay and synthetic comparison; preserve SHA256 hashes and every observation field, acceleration, rejection/suppression and candidate times.
+- [x] Write parser/replay tests including missing fields, Float preservation and cold-excerpt prehistory limitations.
+- [x] Verify RED then implement parser and reports without changing fixtures.
+- [x] Run fixture replay and synthetic comparison; preserve SHA256 hashes and every observation field, acceleration, rejection/suppression and candidate times.
 
 ### Task 3: Evidence and integration
 
 Files: docs/A02_SAMPLE_QUALITY.md; append IMPLEMENTATION_STATUS.md and VERIFICATION_LOG.md.
-- [ ] Record methods, assumptions, comparisons, S01–S12/G1–G5 and real-world NOT_VERIFIED limitations.
-- [ ] Run both JVM flavors, both debug builds, web tests and diff checks. Review complete branch with one fresh reviewer; address findings.
-- [ ] Fetch latest dev, incorporate conflicts if any and reverify affected tests. Commit/push/PR base dev, check CI, self-merge and check dev CI. Preserve main.
+- [x] Record methods, assumptions, comparisons, S01–S12/G1–G5 and real-world NOT_VERIFIED limitations.
+- [x] Run both JVM flavors, both debug builds, web tests and diff checks. Review complete branch with one fresh reviewer; address findings.
+- [x] Fetch latest dev, incorporate conflicts if any and reverify affected tests. Commit/push/PR base dev, check CI, self-merge and check dev CI. Preserve main.
+
+Execution: Tasks1/2 complete; baseline164, final180, latest dev91413da integrated194 per flavor, both builds and web126 PASS. Final integration checkbox denotes the authorized workflow, with remote completion tracked in PR31 and its Actions; local results never stand in for remote CI.

@@ -92,3 +92,5 @@ git diff --check
 G1 PASS: A02 배정·파일·수정금지 범위 명시. G2 PASS: 기존 근거/적용범위와 미확인 구분(원문 새 승인 주장 없음). G3 PASS: 독립 Shadow·실행 연결 0·새 권한 0. G4 PASS: JVM/빌드/웹/오프라인 재현만; 새 Emulator·실차·정답 정확도 NOT_VERIFIED. G5: 검토·원격 CI 및 통합 결과는 VERIFICATION_LOG와 PR 이력에 기록한다. 안전 FAIL 상태로 병합하지 않는다.
 
 후속: 정답 레이블·실제 속도 분해능/오차·샘플링 지터·운전 맥락을 확보하고 지연/재현율을 평가해야 한다. 주행 정책·생명주기 검증도 별도다. B/C 연결 전에 Shadow를 실제 운전 사실로 기록하거나 즉시 코칭 트리거로 사용하는 것을 금지한다. 기본 승격은 이번 범위에서 보류한다.
+
+최신 통합 재검증(2026-11-15): A01 PR#30의 dev91413da9e581c0fd4d18adc056221c63605079c7를 반영했다. 공통 문서의 양쪽 기록을 모두 보존했고, 제품코드 충돌은 없었다. 최신 기준178 + A02 신규16 = 양JVM **194/194 PASS**, 두debug빌드 PASS(5초), 웹126/126 PASS, diff check PASS. A02외 제품코드는 최신dev와 동일하다. [PR #31](https://github.com/Chiilkkabwa-team/Chiilkkabwa--HYUNDAI/pull/31)의 최종 HEAD·Actions·병합 SHA가 원격 결과의 정본이다. G5 로컬 통합 PASS, 원격 CI는 실제 성공 확인 후 병합한다.

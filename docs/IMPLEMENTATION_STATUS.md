@@ -120,3 +120,9 @@ A05 A03 통합 재검증: dev9a72969를 dbce435에 반영. 공통문서2곳 충�
 - 기준각164→신규15 포함 양JVM179/179,두debug빌드,웹126/126 PASS. 원본 signed Float/ns/source/session·상태와 recorded consumed/cold replay 구별. 기존 기본OFF/debugEMULATORopt-in/실차·release차단 유지. main/기존Worktree·브랜치·A01/A03/A05 기록 보존. 원격통합/CI는 VERIFICATION_LOG 및 PR이력 참조.
 
 A02 Shadow 최종리뷰보완: 정규200ms에서최소5표본(800ms)을보존하도록RED→GREEN수정. 양JVM180/180(신규16),양debug빌드PASS. 기본경로승격없이기존비교결과/차단그대로. 상세는A02_SAMPLE_QUALITY.md와검증로그참조.
+
+### A01 입력 제약 후속 (2026-11-14)
+
+최신dev2a70830 기반 fix/a01-emulator-input-blockers / 전용 A01-Inputs. 필수3미션의 과거/미래 벨트값·중단전관측과 브레이크/깜빡이 부분진행 재사용을 최소 차단. 코드8469119f48c5ed60db9b3d5eb6d721dacf536f80. 양JVM178/178(신규14),양debug빌드,웹126/126 PASS. 실제2.1.0/Service2.3.22/SDK2.3.2 초기false/OFF와 PBfalse 잠금 재확인. 벨트true·실PBON·전체Emulator워밍업은BLOCKED,Mock6미션완료와구분. [공식경로·증거·안전·외부조건](A01_INPUT_BLOCKERS.md). A02/A03/B·C/웹/Manifest/Gradle/SafetyGate변경0. Issue#16열림,main·기존Worktree보존.
+
+A02 최신통합: A01 PR#30 dev91413da의14개테스트/기존기록을보존해양JVM194/194,양debug빌드,웹126/126 PASS. PR#31(base=dev)의최종HEAD/CI/병합결과참조. A02외제품코드는최신dev와동일하다.
