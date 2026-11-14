@@ -3,7 +3,7 @@
 기준: 2026-11-14 KST / Codex 2
 작업: feature/b02-coaching-policy-core
 최초 기준 origin/dev: 1acc54036c5660ff05d572dd904d250762f0dad5
-통합 전 반영 dev: b758c2b4ae7d9711608fb71fb7dfbd82f9ab9b5b (B01/B04 포함)
+통합 전 반영 dev: 0b35baab8328d83e92ff12761d5f10ace655c475 (B01/B04 포함)
 전용 Worktree: Chiilkkabwa-Codex2-B02-Coach
 **순수 Kotlin 판단·Mock 시험만 구현했다. Android 실제 주행 음성 자동 재생은 연결하지 않았다.**
 

@@ -366,3 +366,13 @@ G1/G2 PASS(배정·범위·근거·계약),G3 PASS(기본차단·순수코어·�
 - `.\gradlew.bat --offline --rerun-tasks :app:testMockDebugUnitTest :app:testVehicleDebugUnitTest :app:assembleMockDebug :app:assembleVehicleDebug` —86 tasks 실제 재실행, BUILD SUCCESSFUL(24초), 양JVM110/110·신규31/31·양debug PASS.
 - `node --test web/test/*.test.mjs` —B04 추가 시험 포함110/110 PASS. 이전109 결과를 최신110 결과로 갱신한다.
 - A03 문서 SHA256 14C861DF11C3823018429D5DA4E6E8062084DB2C76706155DA50897D21173FC0 보존. main 참조 이동·실차/실음성 활성화 없음.
+## 2026-11-14 B01 — 평가·강습의 가상 종합 연습 음성
+
+- 평가·강습에는 목표 선택 화면이 없으므로 웹 가상 주행의 음성 규칙에 기존 '그냥 몸풀기' 목표를 공급한다. 연습 모드의 사용자 선택 목표와 음성 반복 제한은 유지된다.
+- Windows / Node 24.18.1: 웹 단위 110/110 PASS. Node VM에서 실제 앱 초기화·시뮬레이터·리포트 연결을 실행해, 같은 유형과 시각으로 기록한 두 교차로 중 재생이 완료된 사건만 시간표에 표시됨을 확인했다. B04 학습 창은 미지원 신호에서 닫히고 복구 시 자동으로 열리지 않는 것도 확인했다. 브라우저 음성·Pleos는 미시험.
+- S06 웹 Mock 범위 PASS, S07·S10 가상 출처 범위 PASS. S05 차량 주행 재생 NOT_VERIFIED. 공식 근거는 [SAFETY_RULES.md](SAFETY_RULES.md)의 P02·P09 참조.
+
+### B02 PR #25 최종 dev 동기화
+
+- PR: https://github.com/Chiilkkabwa-team/Chiilkkabwa--HYUNDAI/pull/25 (base=dev). PR 생성 중 dev에 B01 목표 연결 #24가 추가되어0b35baab8328d83e92ff12761d5f10ace655c475까지 반영했다. 변경은 웹/문서이며 B02 코드는50a95d9와 동일하다. 로그 append 충돌 양쪽 보존.
+- 최종 후보에서 두 JVM/두 debug를 --offline --rerun-tasks로86작업 실제 실행, BUILD SUCCESSFUL(15초). 양JVM110/110 및 신규31/31,웹110/110 PASS. 보호파일은 최신dev대비diff0. 이후 원격CI/병합 결과는 PR #25 이력으로 추적한다.
