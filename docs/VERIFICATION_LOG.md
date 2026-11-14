@@ -547,3 +547,19 @@ P복귀는pause가없어동일세션이었으며새Baseline을거짓주장하지
 규정: S01/S07/S09/S10 변경범위PASS; S02공개API실행/빌드PASS·공식주행수집승인NOT_VERIFIED; S03기존gate회귀PASS/실제PBON NOT_VERIFIED; S04실제플랫폼차단화면PASS/전체UI인증NOT_VERIFIED; S05수집허용·양산수명NOT_VERIFIED; S06/S08 NOT_APPLICABLE; S11CPU관측만PASS/장시간·성능NOT_VERIFIED; S12main/기존자료보존PASS·제출NOT_APPLICABLE. 공식URL/플랫폼·공모전·팀적용범위는전용문서참조. G1/G2/G3 PASS,G4등급별증거만PASS,G5비활성진단·검증자료통합만허용.
 
 실측중기본OFF복원명령은자동승인검토서비스크레딧부족으로실행전1회거절,사용자재개후동일복원을실제완료했다. 안전위반판정이아니며우회하지않음. rawlog/AVD/빌드cache는ignored.gradle/a02-lifecycle보존. 최초am start -W timeout뒤실제RESUMED·수신으로실행을확인한경계도기록했다.
+
+
+### A03 Pleos Emulator 실제 SDK runtime (2026-11-15 KST)
+
+실행코드/최신기준dev01eff12a2ecdbd4ae3e0fdb78f6031504aa13540, branch test/a03-navihelper-runtime.
+제품/SDK/권한/게이트 수정0. [결과 및 S01~S12/G1~G5](A03_RUNTIME_RESULTS.md), [원본 최소증거](evidence/a03-runtime-2026-11-15/README.md).
+시작 전 장비/프로세스0 확인 후 기존 A01 AVD를 -read-only/-port5562/-no-snapshot로 실행, serial5562/user10 직접확인.
+Pleos2.1.0/API34/NaviHelper3.0.5/Service3.0.4에서 기존 inspect→initialize→lifecycle runner 실제실행.
+총3회 객체생성→초기화→실제연결callback→listener제거→release반환. 첫Activity 종료/재진입 자동초기화0/명시재시작 PASS.
+실PBfalse·선택POI없음으로 mode=request/API호출0 BLOCKED, 검색/안내 NOT_VERIFIED. 지연callback/실제실패/timeout/권한거부/주행전환은 미유발 NOT_VERIFIED.
+opt-in 빌드19초/66tasks; defaultOFF --offline --rerun-tasks 전체Android BUILD SUCCESSFUL1분8초/129tasks,
+양JVM206/206 failures/errors/skipped0, 양debug/시험APK/release manifest·Kotlincompile PASS, release Probe제외.
+node --test web/test/*.test.mjs 126/126 PASS. defaultOFF APK재설치 후 실제runner BLOCKED, SDKtrace15→15.
+우리5562만정상종료, 별도5558/기존Worktree/AVD원본/main보존. G5 원격PR/병합SHA/CI는base=dev PR과연결Actions이력참조.
+
+A02 lifecycle 최신 통합·리뷰: 코드22fe372(실측된 A02 진단 마커와 동일 source),최신dev2bea4d3(PR#33 A03 runtime 문서)를반영했다. 제품코드충돌0,공통대장append2곳충돌은A02/A03기록모두보존. 독립read-only리뷰결함0,원본실측3416/최대0.8333334/급변0/명시pause관측0·양JVM210실패0을별도재집계확인. 새evidence최초stage검사에서state덤프13개의EOF빈줄이검출되어끝빈줄만정리했고원본EOF사본도ignoredraw-state-snapshots에보존. 값·시각·PNG변경0. 최신변경은문서뿐이므로전체Android명령재실행은86tasks UP-TO-DATE/BUILD SUCCESSFUL(1초),XML210/210유지,웹126/126새실행PASS. 전체최종diff검사및PR/CI/병합은후속정본참조. 초기diffcheck는미추적증거를검사하지못했으므로최초stage EOF경고를누락해통과라고판정하지않는다.

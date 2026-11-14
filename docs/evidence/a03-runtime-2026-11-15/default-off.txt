@@ -1,0 +1,2 @@
+INSTRUMENTATION_RESULT: result=BLOCKED: debug EMULATOR opt-in required; no Activity or SDK created
+INSTRUMENTATION_CODE: 0

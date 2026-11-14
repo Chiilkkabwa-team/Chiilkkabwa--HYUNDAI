@@ -94,4 +94,3 @@ Driving state change log:
 11-14 07:45:35 CarDrivingStateService: changed from 1 to 0
 Current Driving State: 0
 Supported gears: 4 1 2 8 16 32 64 128 256
-

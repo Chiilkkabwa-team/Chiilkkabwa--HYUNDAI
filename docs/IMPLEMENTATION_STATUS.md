@@ -141,3 +141,12 @@ A03 Probe PR#32 최종동기화: dev8993d25(A02 PR#31)와공통기록전부보�
 - D/0 및moving에서 실제UX=true/80과 플랫폼사용불가화면을관측했으나 MainActivity는RESUMED·동일세션수신을유지했다. 자동pause를가정할수없고, 기술수신을정책허용으로바꾸지않는다. 실제급변후보는이번0건으로새발행NOT_VERIFIED.
 - P복귀만으로세션변경없음. P에서시스템설정화면으로전환시실제pause/stop→약21.993초A02관측/계산0→재진입새session/Baseline PASS. HOME는pause미발생으로별도기록. 권한철회시denied/null·재부여+coldrestart복구관측. 실제지연Binder경합은합성회귀와구분.
 - 기능보정없이 A02 opt-in 진단마커만추가,신규JVM4·양210/210/두debug/웹126 PASS. 기본OFF복원·테스트CAR_SPEED철회·새PID진단0·우리AVD/forward/로그만종료,데이터보존. DO/서비스/제어/VHAL/Shadow승격/B·C연결0. 제품주행활성화는공식허용·수명/품질근거부족으로BLOCKED,실차NOT_VERIFIED. main/기존worktree·타인AVD보존.
+
+### A03 실제 SDK runtime 검증 (2026-11-15)
+
+기준 dev01eff12(PR29/32), test/a03-navihelper-runtime / 독립 Codex2-A03-Runtime. 제품코드 변경0.
+Pleos2.1.0/API34 emulator-5562·user10의 read-only 인스턴스에서 inspect/initialize/lifecycle 실행:
+SDK 객체생성/initialize/실제 CONNECTED_CALLBACK, listener 제거/release 반환, 새 Activity 자동초기화0 및 명시 재연결 PASS.
+기본OFF 실제 runner BLOCKED. 실PBfalse이므로 경로API 미실행(BLOCKED), 검색응답/기본내비 안내는 NOT_VERIFIED 유지.
+양JVM206/206·양debug·시험APK·release 제외·웹126/126 PASS. 기존 A01/A02/B/C 및 모든 Worktree/main 보존.
+실제 지연callback/실패/timeout/권한거부/주행전환 미유발은 NOT_VERIFIED. [결과·안전표·증거](A03_RUNTIME_RESULTS.md).
