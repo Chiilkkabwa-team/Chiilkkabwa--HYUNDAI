@@ -520,3 +520,30 @@ A02 최신dev 통합(2026-11-15): PR#31 생성 직전 dev가91413da9e581c0fd4d18
 ### A03 Probe PR #32 최종 동기화
 
 PR#32의원격CI진행중 A02 PR#31이dev8993d25c3b93a0d0b70c13f604b540196a42bbab에통합되어반영. 두공통대장각append2블록충돌을A01/A02/A03전부보존해해결했고새기능코드충돌0. 최종전체명령재실행 BUILD SUCCESSFUL(11초/129tasks),양JVM206/206(기존194+owner12),양debug·시험APK·release manifest/Kotlin PASS,웹126/126 PASS. git diff --check 및최신dev대비보호범위diff0. 실제장치시험NOT_VERIFIED유지. 최종head/병합SHA/dev CI는 https://github.com/Chiilkkabwa-team/Chiilkkabwa--HYUNDAI/pull/32 와연결Actions이력이정본이다.
+## 2026-11-15 A02 — Pleos 주행 생명주기·실행 가능성 검증
+
+배정A02/Codex1, `test/a02-driving-lifecycle`, 기준dev01eff12a2ecdbd4ae3e0fdb78f6031504aa13540. 전용worktree chiilkkabwa-codex1-a02-lifecycle/a01-pleos. [감사·공식근거·실측·계약·S/G전표](A02_DRIVING_LIFECYCLE.md), [증거색인/JSON](evidence/a02-lifecycle-2026-11-15/README.md). 최종HEAD/최신dev통합/PR·병합·CI는후속및연결PR기록참조.
+
+공식P02/P03을2026-11-15재열람. DO미선언Drive사용불가와실제백그라운드수집예외승인부재를구별. 실제화면차단시Activity가pause된다고원문으로추정하지않음. S05수집허용/양산수명NOT_VERIFIED,주행제품활성화BLOCKED유지. 제어/비공개API/VHAL/DO/FGS/자동수집우회/B·C연결/Shadow승격없음.
+
+| 실제 실행/환경 | 결과 |
+|---|---|
+| Windows/Temurin17.0.20.101/Gradle8.10.2/SDK35/Node24.18.1 | 기존cache사용offline |
+| 기준선 양JVM206/두debug | BUILD SUCCESSFUL(30초) |
+| 신규 합성 repo/session lifecycle 회귀4 | PASS(중복start/ready,close중재진입·stop뒤callback,새세션/Baseline/근거,권한오류terminal·재시작) |
+| .\gradlew.bat --offline :app:testMockDebugUnitTest :app:testVehicleDebugUnitTest :app:assembleMockDebug :app:assembleVehicleDebug | 양JVM210/210·실패오류0,양debug BUILD SUCCESSFUL(14초) |
+| node --test web/test/*.test.mjs | 126/126 PASS |
+| -PenableAaosSpeed=true :app:generateVehicleReleaseBuildConfig | AAOS_SPEED_ENABLED=false、A01/A03false |
+| 실제 dedicated Pleos2.1.0/API34/hardware ranchu,AVD5558/user10 | 새공식AVD.우리시작후다른5562가나타났으나설치/설정/종료명령0 |
+| 시험opt-inAPK | SHA2566FD8228174FC8583B8353CD5B475EBC7B6B3E0E375D7ECCE33A40B36A6830FE6,A02만true |
+| D→moving→P | UXfalse0→true80→false0/DrivingState0→1→2→1→0. 차단화면확인·MainActivity는RESUMED유지,3416OK표본·최대0.8333334m/s·이번RAPID후보0 |
+| 실제pause/stop | HOME미작동은PASS아님. P에서시스템설정열기시pause/stop. logepoch1794671236.158~1794671258.151의A02관측/계산0,복귀새UUID·Baseline |
+| CPU sample | uptime521.07→535.20,utime1146→1160/stime1712→1732,CLK_TCK100.0.34CPU초/14.13초약2.4%단일코어. 전체프로세스가0이아니며A02성능인증아님 |
+| 권한 | 표준debug grant→revoke/PID17603denied·null·권한창→test regrant/명시coldrestart/PID18172새baseline. 사용자Allow/Deny자동화미수행 |
+| 최종복원 | 기본OFFAPK재설치·CAR_SPEED철회·새PID15536의5초A02trace0.우리5558/28088/logPID14092만종료·데이터보존 |
+
+P복귀는pause가없어동일세션이었으며새Baseline을거짓주장하지않았다. 실제Binder지연콜백고의주입NOT_VERIFIED,합성차단PASS와분리. unregister/close함수반환은서비스자원회수ACK가아니다. 주행중실제새급변후보발행·정답정확도·연속여행수명·실차NOT_VERIFIED. 기존ViewModel의200msdelay등은남으므로A02중단을프로세스CPU0으로표현하지않음.
+
+규정: S01/S07/S09/S10 변경범위PASS; S02공개API실행/빌드PASS·공식주행수집승인NOT_VERIFIED; S03기존gate회귀PASS/실제PBON NOT_VERIFIED; S04실제플랫폼차단화면PASS/전체UI인증NOT_VERIFIED; S05수집허용·양산수명NOT_VERIFIED; S06/S08 NOT_APPLICABLE; S11CPU관측만PASS/장시간·성능NOT_VERIFIED; S12main/기존자료보존PASS·제출NOT_APPLICABLE. 공식URL/플랫폼·공모전·팀적용범위는전용문서참조. G1/G2/G3 PASS,G4등급별증거만PASS,G5비활성진단·검증자료통합만허용.
+
+실측중기본OFF복원명령은자동승인검토서비스크레딧부족으로실행전1회거절,사용자재개후동일복원을실제완료했다. 안전위반판정이아니며우회하지않음. rawlog/AVD/빌드cache는ignored.gradle/a02-lifecycle보존. 최초am start -W timeout뒤실제RESUMED·수신으로실행을확인한경계도기록했다.

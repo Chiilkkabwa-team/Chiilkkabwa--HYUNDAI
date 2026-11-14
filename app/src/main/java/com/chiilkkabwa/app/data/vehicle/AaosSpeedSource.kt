@@ -34,13 +34,18 @@ class AaosSpeedSource(context: Context, onResult: (SpeedDetectionResult) -> Unit
     }
     override fun start(sink: SnapshotSink) {
         stop()
+        if (enabled) Log.d(TAG, "lifecycle source_start elapsedNs=${SystemClock.elapsedRealtimeNanos()}")
         session.start { reading ->
             sink.update { it.copy(speed = reading) }
             if (enabled) Log.d(TAG, "observation source=${reading.source} status=${reading.status} rawMps=${reading.rawMps} propertyNs=${reading.timestampNanos} receiptNs=${reading.receivedAtNanos} session=${reading.sessionId}")
         }
         if (session.needsTick) handler.postDelayed(heartbeat, 200)
     }
-    override fun stop() { handler.removeCallbacks(heartbeat); session.stop() }
+    override fun stop() {
+        handler.removeCallbacks(heartbeat)
+        session.stop()
+        if (enabled) Log.d(TAG, "lifecycle source_stop_returned elapsedNs=${SystemClock.elapsedRealtimeNanos()}")
+    }
     companion object {
         private const val TAG = "A02SpeedTrace"
         fun isTestEnabled(): Boolean = allowAaosSpeed(BuildConfig.DEBUG, BuildConfig.AAOS_SPEED_ENABLED,

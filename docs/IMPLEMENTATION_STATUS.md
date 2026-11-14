@@ -134,3 +134,10 @@ A03 Probe 최신 통합: A01 PR#30의dev91413da를c159d15에반영,대장append�
 A02 최신통합: A01 PR#30 dev91413da의14개테스트/기존기록을보존해양JVM194/194,양debug빌드,웹126/126 PASS. PR#31(base=dev)의최종HEAD/CI/병합결과참조. A02외제품코드는최신dev와동일하다.
 
 A03 Probe PR#32 최종동기화: dev8993d25(A02 PR#31)와공통기록전부보존. 양JVM206/206·양debug·시험APK·release제외·웹126/126 PASS. 실제장치NOT_VERIFIED유지. 최종PR/CI는#32이력참조.
+
+### A02 주행 생명주기 실측 (2026-11-15)
+
+- `test/a02-driving-lifecycle`, 기준dev01eff12, 전용 A02-Lifecycle worktree/새Pleos AVD5558·사용자10. [실제 결과·정책·계약·규정](A02_DRIVING_LIFECYCLE.md), [원본 증거](evidence/a02-lifecycle-2026-11-15/README.md).
+- D/0 및moving에서 실제UX=true/80과 플랫폼사용불가화면을관측했으나 MainActivity는RESUMED·동일세션수신을유지했다. 자동pause를가정할수없고, 기술수신을정책허용으로바꾸지않는다. 실제급변후보는이번0건으로새발행NOT_VERIFIED.
+- P복귀만으로세션변경없음. P에서시스템설정화면으로전환시실제pause/stop→약21.993초A02관측/계산0→재진입새session/Baseline PASS. HOME는pause미발생으로별도기록. 권한철회시denied/null·재부여+coldrestart복구관측. 실제지연Binder경합은합성회귀와구분.
+- 기능보정없이 A02 opt-in 진단마커만추가,신규JVM4·양210/210/두debug/웹126 PASS. 기본OFF복원·테스트CAR_SPEED철회·새PID진단0·우리AVD/forward/로그만종료,데이터보존. DO/서비스/제어/VHAL/Shadow승격/B·C연결0. 제품주행활성화는공식허용·수명/품질근거부족으로BLOCKED,실차NOT_VERIFIED. main/기존worktree·타인AVD보존.
