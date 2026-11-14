@@ -881,8 +881,10 @@ function closeOverlay() { overlay = null; renderOverlay(); }
 // '내 기록'·'나'·도움말 같은 앱 안의 창은 주행 중에는 열지 않는다(S04).
 const SITE_OVERLAYS = ['intro', 'about'];
 const siteOverlayOpen = () => !!overlay && SITE_OVERLAYS.includes(overlay);
+const learningOverlayLocked = () => (overlay === 'help' || overlay === 'wiki') && !LEARN.learningAvailable(snapshot());
 function renderOverlay() {
   const root = $('#modalRoot');
+  if (learningOverlayLocked()) overlay = null;
   const blocked = session.phase === C.Phase.DRIVING_LOCK && !siteOverlayOpen();
   if (!overlay || blocked) { root.innerHTML = ''; root.classList.remove('open'); return; }
   root.classList.add('open');
@@ -1127,6 +1129,7 @@ function render() {
     else body.classList.remove('enter');
   }
   mounted.screen.update?.();
+  if (learningOverlayLocked()) closeOverlay();
   renderChrome();
 }
 

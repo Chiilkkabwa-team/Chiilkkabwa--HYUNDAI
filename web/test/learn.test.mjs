@@ -1,7 +1,7 @@
 // node --test web/test — B04 정차 중 도움말·운전 노트, C05 소개(11/12 회의)
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { HELP, WIKI, helpHtml, wikiHtml, wikiIndex } from '../learn.js';
+import { HELP, WIKI, helpHtml, wikiHtml, wikiIndex, learningAvailable } from '../learn.js';
 import { aboutHtml, STATUS } from '../about.js';
 import * as C from '../core.js';
 
@@ -13,8 +13,23 @@ test('help_covers_every_warmup_mission', () => {
 test('belt_help_never_asks_to_unbuckle', () => {
   // S08: 이미 맨 벨트를 풀었다 다시 매라고 하지 않는다
   const t = helpHtml('SEAT_BELT', '안전벨트 매기');
-  assert.ok(/그대로 두세요/.test(t));
+  assert.match(t, /그대로 유지해 주세요/);
+  assert.match(t, /체결 신호를 읽을 수 없는 차에서는 벨트를 확인한 뒤 미션을 건너뛸 수 있어요/);
   assert.ok(!/풀었다 다시 매세요|풀고 다시/.test(t));
+});
+
+test('learning_requires_confirmed_park_brake_gear_and_ux', () => {
+  const ok = value => ({ value, status: C.Status.OK });
+  const parked = { gear: ok('P'), parkingBrakeOn: ok(true), uxRestricted: ok(false), speedKmh: ok(0) };
+  assert.ok(learningAvailable(parked));
+  for (const update of [
+    { gear: ok('D') },
+    { parkingBrakeOn: ok(false) },
+    { uxRestricted: ok(true) },
+    { parkingBrakeOn: { status: C.Status.UNSUPPORTED } },
+    { gear: { status: C.Status.DISCONNECTED } },
+    { uxRestricted: { status: C.Status.UNKNOWN } },
+  ]) assert.equal(learningAvailable({ ...parked, ...update }), false);
 });
 
 test('wiki_pages_render_and_link_both_ways', () => {
