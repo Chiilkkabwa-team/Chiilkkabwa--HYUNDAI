@@ -53,6 +53,7 @@ data class UiState(
     val summary: PracticeSummary? = null,
     val profile: Profile = Profile("default", "나"),
     val profiles: List<Profile> = emptyList(),
+    val timeline: com.chiilkkabwa.app.core.review.DriveTimeline = com.chiilkkabwa.app.core.review.DriveTimeline(),
     val newBadges: List<EarnedBadge> = emptyList(),
     val mockMode: Boolean = BuildConfig.USE_MOCK,
 )
@@ -77,6 +78,7 @@ class ChiilViewModel(app: Application) : AndroidViewModel(app) {
     private var runner: MissionRunner? = null
     private var pedalJudge: MissionJudge? = null
     private var lastSignalTrace: String? = null
+    private val timelineRecorder = com.chiilkkabwa.app.core.review.DriveTimelineRecorder()
 
     init {
         viewModelScope.launch { repo.snapshot.collect { onSnapshot(it) } }
@@ -111,7 +113,14 @@ class ChiilViewModel(app: Application) : AndroidViewModel(app) {
         }
         val summary = if (session.phase == Phase.REVIEW) summarize(session.tripStart, session.tripEnd) else prev.summary
 
-        _ui.value = prev.copy(session = session, gate = gate, snapshot = s, runner = runnerState, pedal = pedal, summary = summary)
+        // C01: 주행 잠금 동안 들어온 속도 관측만 시간표에 모은다. 새 주행마다 비우고, 다시 주차하면 복기에 넘긴다
+        if (session.phase == Phase.DRIVING_LOCK) {
+            if (prev.session.phase != Phase.DRIVING_LOCK) timelineRecorder.start()
+            timelineRecorder.accept(s.speed, android.os.SystemClock.elapsedRealtimeNanos())
+        }
+        val timeline = if (session.phase == Phase.REVIEW && prev.session.phase == Phase.DRIVING_LOCK) timelineRecorder.snapshot() else prev.timeline
+
+        _ui.value = prev.copy(session = session, gate = gate, snapshot = s, runner = runnerState, pedal = pedal, summary = summary, timeline = timeline)
         // A01 진단: 명시적 opt-in debug 에뮬레이터에서 앱이 소비한 값/상태만 기록한다.
         if (BuildConfig.DEBUG && BuildConfig.PLEOS_SIGNALS_ENABLED && !BuildConfig.USE_MOCK &&
             s.driverBeltBuckled.source == com.chiilkkabwa.app.core.signal.SignalSource.EMULATOR) {
