@@ -315,3 +315,10 @@ PR #20 최초 CI에서 웹 및 Android 테스트/양debug빌드 SUCCESS를 확�
 | Android / 에뮬레이터 | 해당 없음(웹 UI) | NOT_APPLICABLE |
 
 규정: S03·S04 PASS(웹, 잠금 조건 변경 없음, 코치 마크는 정차 중 온보딩 직후에만), S09 PASS(기록은 브라우저 저장소만), S10 PASS(웹 체험판 주석 유지), S12 NOT_APPLICABLE
+
+## 2026-11-14 B01 — 평가·강습 리포트의 발화 표시
+
+- 브랜치 `fix/b01-report-voice-events` / 기준 `dev` `1acc540`. B01의 우선순위·비상등·발화 완료 필터는 PR #11에서 반영됨.
+- `web/app.js`의 가상 주행 원본 사건에 같은 ID를 붙여 평가·강습의 사건 목록과 속도 시간표가 완료한 발화만 찾아 표시한다. 멘토 모드의 기본 음성 끔 문구를 실제 설정과 맞췄다.
+- Windows / Node 24.18.1: `node --check web/app.js`, `node --test web/test/*.test.mjs` 109/109 PASS. 기존 E4~E6, 취소·시간 초과·늦은 콜백을 포함한다.
+- 브라우저 실행·실제 청취는 NOT_VERIFIED. S06은 웹 Mock 로직에서만 PASS, S07·S10은 가상 출처 유지. 차량 연동 및 주행 음성(S05)은 NOT_VERIFIED. Android·권한·외부 음원 변경 없음(S01·S02·S11 해당 없음). 공식 근거는 [SAFETY_RULES.md](SAFETY_RULES.md)의 P02·P09 참조.
