@@ -1,0 +1,59 @@
+{
+  "codeCommit": "8469119f48c5ed60db9b3d5eb6d721dacf536f80",
+  "emulatorCodeCommit": "50bddf178594785b51817d98216267b0a8f451ed",
+  "baseline": "2a70830a83b1f1ae2a1453cbf2131bb0b52e96b8",
+  "environment": {
+    "os": "Windows",
+    "jdk": "17.0.20",
+    "node": "24.22.1",
+    "gradle": "8.10.2"
+  },
+  "red": {
+    "initialAssertionFailures": 6,
+    "initialCases": 13,
+    "additionalInterruptionBoundary": {
+      "tests": 1,
+      "failures": 1
+    },
+    "fixtureIssue": "Mock JVM SystemClock exception corrected through existing injected speed clock; no A02 production edits"
+  },
+  "green": {
+    "a01Cases": [
+      "indicator_interruption_discards_partial_sequence_for_every_invalid_state",
+      "gate_loss_pauses_and_requires_new_brake_cycle_after_reparking",
+      "invalid_belt_states_never_succeed_even_with_true_payload",
+      "belt_recovery_rejects_a_true_observed_before_the_interruption",
+      "brake_pressed_before_mission_requires_a_new_press_release",
+      "signal_loss_is_unavailable_and_never_a_success_or_silent_skip",
+      "future_belt_timestamp_cannot_confirm_current_buckle",
+      "full_mock_warmup_including_optional_missions_keeps_mock_source",
+      "already_buckled_start_needs_no_unbuckling_but_lost_state_cannot_reuse_initial_true",
+      "brake_interruption_discards_partial_press_for_every_invalid_state",
+      "unbuckled_start_rejects_a_true_observed_before_mission_start",
+      "parking_brake_table_requires_actual_usable_true_even_with_park_and_zero_speed",
+      "repository_stop_restart_discards_values_and_restarts_incomplete_mission",
+      "unknown_start_rejects_old_true_and_future_dated_true"
+    ],
+    "Mock": {
+      "tests": 178,
+      "failures": 0,
+      "errors": 0
+    },
+    "Vehicle": {
+      "tests": 178,
+      "failures": 0,
+      "errors": 0
+    },
+    "web": {
+      "tests": 126,
+      "failures": 0,
+      "skipped": 0
+    },
+    "builds": {
+      "mockDebug": "PASS",
+      "vehicleDebug": "PASS",
+      "rerunTasks": 86,
+      "seconds": 20
+    }
+  }
+}
