@@ -112,11 +112,12 @@
 
     <fieldset class="c-group">
       <legend>주행</legend>
-      <div class="c-row" id="r-gear"><span class="c-lab">기어</span>
+      <div class="c-row" id="r-gear"><span class="c-lab">가상 기어</span>
         <div class="seg" id="c-gear" role="radiogroup" aria-label="기어">
           <button type="button" role="radio" data-v="P">P</button><button type="button" role="radio" data-v="R">R</button><button type="button" role="radio" data-v="N">N</button><button type="button" role="radio" data-v="D">D</button>
         </div>
       </div>
+      <output id="c-gearState" class="gear-state" aria-live="polite">가상 기어 · 신호 확인 중</output>
       <div class="c-row" id="r-pb"><span class="c-lab">주차 브레이크</span>
         <button type="button" class="switch" id="c-pb" role="switch" aria-label="주차 브레이크" aria-checked="true"><span></span></button>
       </div>
@@ -144,8 +145,11 @@
             <svg viewBox="0 0 40 52" aria-hidden="true"><rect class="pd-base" x="4" y="44" width="32" height="6" rx="2"/><g class="pd-plate"><rect x="6" y="4" width="28" height="38" rx="6"/><path d="M12 14h16M12 22h16M12 30h16" /></g></svg>
             <span class="pd-lab">꾹</span></button></div>
       </div>
-      <p class="c-note">키보드: W/↑ 가속 · S/↓ 브레이크 · A D/← → 핸들 · 스페이스 = 강습자 정지(강습 모드). 웹 체험판에만 있는 조작이에요 — 실제 차에는 없어요.</p>
-      <p class="c-hint" id="wasdHint" hidden><span>마우스로 핸들 돌리기가 불편하면 키보드 <b>W A S D</b>로도 달릴 수 있어요.</span><button type="button" class="mini" id="wasdHintX">알겠어요</button></p>
+      <button type="button" class="mini control-help" id="controlHelp" aria-expanded="false" aria-controls="wasdHint">ⓘ 운전 조작 안내</button>
+      <div class="c-hint" id="wasdHint" hidden>
+        <p>W/↑ 가속 · S/↓ 브레이크 · A/← 왼쪽 · D/→ 오른쪽. 키를 놓으면 입력이 풀려요. 스페이스는 강습 모드의 가상 정지 요청이에요. 모바일에서는 핸들·페달 그림이나 슬라이더를 터치해요. 웹 2D Mock 전용이며 실제 차량을 제어하지 않아요.</p>
+        <button type="button" class="mini" id="wasdHintX">닫기</button>
+      </div>
     </fieldset>
     <fieldset class="c-group">
       <legend>운전석</legend>
