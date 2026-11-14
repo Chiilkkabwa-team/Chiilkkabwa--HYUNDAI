@@ -610,3 +610,19 @@ A02 PR#35 최종 동기화: CI 대기 중 A01 PR#34 dev3c0c824ca35951891f72d9c8f
 | 화면 렌더 / 에뮬레이터 | 미실행 | NOT_VERIFIED |
 
 규정: S03·S04 PASS(시간표는 REVIEW에서만, 주차 확인이 깨지면 E3 잠금으로 함께 닫힘), S05 경계 유지(NOT_VERIFIED 그대로), S07 PASS(“속도 변화만 본 기록, 페달·주변 상황 판단 아님” 표기, 출처 라벨), S09 PASS(메모리만), S10 PASS
+
+## 2026-11-15 제출 전 점검 (AI — 웹 안전 수정·접근성·README·블라인드)
+
+- 일시(KST): 2026-11-15 04~06시
+- 브랜치 / 기준: `claude/confident-wright-u9iqdb` ← `dev` 52e551f
+- 환경: Linux 클라우드 컨테이너, Node 22, Playwright Chromium(헤드리스), axe-core 4.10.2. Android SDK 35 설치했으나 Gradle 의존성 받기가 Maven Central 429로 실패
+- 명령/시나리오: `node --test "web/test/*.test.mjs"` / axe WCAG 2 A·AA(라이트·다크 × 안전 확인·소개·온보딩, 평가 리포트·장면 재현 창) / 평가 모드에서 핸들을 돌린 채 출발해 주행 잠금 중 앱 화면 알림 여부 / 연습 자동 시연 끝까지 / Git 이력·파일 블라인드 검색
+- 결과:
+  - 웹 단위 **126/126 PASS**
+  - 주행 잠금 중 앱 화면 알림: 수정 전 '핸들을 가운데로…' 토스트가 앱 화면에 뜸(S04 **FAIL**) → 콘솔 쪽 표시로 옮긴 뒤 앱 화면 0건 **PASS**
+  - axe: 수정 전 꺼진 경고등 글자 대비 2.57:1 위반 → 토큰 수정 후 8개 화면 위반 **0**
+  - 연습·평가 자동 시연 끝까지, 브라우저 오류 0
+  - Android 로컬 빌드 **BLOCKED**(Maven Central 429, 코드 문제 아님). 대신 GitHub CI `dev` 52e551f 런 #159: 웹·Android 단위·mock/vehicle debug 빌드 **SUCCESS**
+  - release 빌드: `assembleMockRelease`/`assembleVehicleRelease` **NOT_RUN**(위 BLOCKED). release에서 `PLEOS_SIGNALS_ENABLED`·`AAOS_SPEED_ENABLED`·`PLEOS_NAVI_ENABLED`가 false로 고정된 것은 `app/build.gradle.kts`로 확인
+  - 블라인드: 파일 내용 실명·연락처·키 미발견. **Git 이력 작성자 정보에 실명 형태 1개·개인 메일 3개** → 공개 방식 결정 필요(docs/08 §6)
+- 규정: S04 PASS(웹, 수정 후) · S10 PASS(README에 확인 범위 분리) · S12 NOT_VERIFIED(release APK 설치·실행 미확인, 공개 방식 미결정)
