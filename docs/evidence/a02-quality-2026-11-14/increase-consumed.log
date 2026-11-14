@@ -1,0 +1,14 @@
+11-13 21:02:35.013  8702  8702 D A02SpeedTrace: consumed evaluated mps=0.5555555820465088 sampleMs=698009 event=null suppression=null
+11-13 21:02:35.165  8702  8702 D A02SpeedTrace: consumed evaluated mps=0.8333333730697632 sampleMs=698162 event=null suppression=null
+11-13 21:02:35.302  8702  8702 D A02SpeedTrace: consumed evaluated mps=0.8333333730697632 sampleMs=698300 event=null suppression=null
+11-13 21:02:35.406  8702  8702 D A02SpeedTrace: consumed evaluated mps=0.8333333730697632 sampleMs=698402 event=null suppression=null
+11-13 21:02:35.611  8702  8702 D A02SpeedTrace: consumed evaluated mps=0.8333333730697632 sampleMs=698604 event=null suppression=null
+11-13 21:02:35.708  8702  8702 D A02SpeedTrace: consumed evaluated mps=0.8333333730697632 sampleMs=698705 event=null suppression=null
+11-13 21:02:35.905  8702  8702 D A02SpeedTrace: consumed evaluated mps=0.8333333730697632 sampleMs=698902 event=null suppression=null
+11-13 21:02:36.005  8702  8702 D A02SpeedTrace: consumed evaluated mps=0.8333333730697632 sampleMs=699002 event=null suppression=null
+11-13 21:02:36.108  8702  8702 D A02SpeedTrace: consumed evaluated mps=0.8333333730697632 sampleMs=699106 event=null suppression=null
+11-13 21:02:36.302  8702  8702 D A02SpeedTrace: consumed evaluated mps=0.8333333730697632 sampleMs=699300 event=null suppression=null
+11-13 21:02:36.414  8702  8702 D A02SpeedTrace: consumed evaluated mps=0.8333333730697632 sampleMs=699412 event=null suppression=null
+11-13 21:02:36.608  8702  8702 D A02SpeedTrace: consumed evaluated mps=0.8333333730697632 sampleMs=699605 event=null suppression=null
+11-13 21:02:36.803  8702  8702 D A02SpeedTrace: consumed evaluated mps=0.8333333730697632 sampleMs=699801 event=null suppression=null
+11-13 21:02:36.911  8702  8702 D A02SpeedTrace: consumed evaluated mps=1.1111111640930176 sampleMs=699902 event=RAPID_SPEED_INCREASE suppression=null
