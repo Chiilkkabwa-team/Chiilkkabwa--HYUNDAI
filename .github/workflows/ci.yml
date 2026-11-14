@@ -48,10 +48,24 @@ jobs:
           yes | sdkmanager --licenses > /dev/null || true
           sdkmanager --install "platforms;android-35" "build-tools;35.0.0" "platform-tools"
       - uses: gradle/actions/setup-gradle@v4
-      - name: Run unit tests and compile both flavors
+      - name: Assemble A-part verification APKs
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon :app:testMockDebugUnitTest :app:assembleMockDebug :app:assembleVehicleDebug
+          ./gradlew --no-daemon :app:testMockDebugUnitTest :app:assembleMockDebug :app:assembleVehicleDebug -PenablePleosSignals=true -PenableAaosSpeed=true
+      - name: Attach the Pleos vehicle debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: chiilkkabwa-2a70830-pleos-vehicle-debug
+          path: app/build/outputs/apk/vehicle/debug/*.apk
+          if-no-files-found: error
+          retention-days: 7
+      - name: Attach the Android Mock debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: chiilkkabwa-2a70830-mock-debug
+          path: app/build/outputs/apk/mock/debug/*.apk
+          if-no-files-found: error
+          retention-days: 7
 
 # Normal feature PRs target dev. The main target is reserved for an explicitly approved dev -> main release PR.
 # CI is not a branch-protection rule; it reports failures but cannot prevent unauthorized direct pushes.
