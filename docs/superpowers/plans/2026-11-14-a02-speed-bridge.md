@@ -23,7 +23,6 @@ Base: 1acc54036c5660ff05d572dd904d250762f0dad5. Branch feature/a02-aaos-speed-br
 - [x] Both flavor JVM tests and debug builds + web regression; inspect manifest/flags; commit.
 
 ## Task 3: runtime and integration
-- [ ] Pleos AVD permission/config/callback/time/consumption evidence, or explicit BLOCKED. Restore console and end our processes.
-- [ ] A02_SPEED_BRIDGE.md, status/verification logs with S01/S02/S03/S05/S07/S09/S10 and G1-G5; fresh whole-branch review and regression fixes.
+- [x] Pleos AVD permission/config/callback/time/consumption evidence, or explicit BLOCKED. Restore console and end our processes.
+- [x] A02_SPEED_BRIDGE.md, status/verification logs with S01/S02/S03/S05/S07/S09/S10 and G1-G5; fresh whole-branch review and regression fixes.
 - [ ] Latest dev conflict check, CI, PR base dev merge and post-merge CI; main unchanged; no worktree/branch deletion.
-

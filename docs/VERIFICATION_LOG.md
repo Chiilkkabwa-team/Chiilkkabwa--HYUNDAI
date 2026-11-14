@@ -315,3 +315,29 @@ PR #20 최초 CI에서 웹 및 Android 테스트/양debug빌드 SUCCESS를 확�
 | Android / 에뮬레이터 | 해당 없음(웹 UI) | NOT_APPLICABLE |
 
 규정: S03·S04 PASS(웹, 잠금 조건 변경 없음, 코치 마크는 정차 중 온보딩 직후에만), S09 PASS(기록은 브라우저 저장소만), S10 PASS(웹 체험판 주석 유지), S12 NOT_APPLICABLE
+
+## 2026-11-14 A02 — AAOS 속도 관측과 이벤트 브리지
+
+- 담당/브랜치: Codex1 / `feature/a02-aaos-speed-bridge`, 전용 managed worktree `chiilkkabwa-codex1-a02-speed/a01-pleos`. 착수 기반 `1acc54036c5660ff05d572dd904d250762f0dad5`.
+- 구현 d3b19c1, 리뷰/플래그 수정 및 실측 코드 `8166fe443b4bd479b12c978be9928c1585cb14c3`. [공개 API·데이터/시계·B/C 계약·S-ID/Gate](A02_SPEED_BRIDGE.md), [원본 증거 구간](evidence/a02-2026-11-14/README.md).
+- Temurin17/Gradle8.10.2/Android SDK35 stub, 실제 Pleos2.1.0 API34/Service2.3.22/Emulator37.2.13/Arc140T/WHPX/ranchu/user10/emulator-5554. 실차 없음. 실기 APK SHA256 `882487C30FC4F72E485C24AD596FF90BA481BFC036E2AC6DAA82417DA75386D6`, A02 opt-in=true/A01=false/USE_MOCK=false.
+
+| 시험 | 실행·증거 | 실제 결과 |
+|---|---|---|
+| 기준 단위 | 최신 dev1acc540에서 두 flavor JVM | 각79/79 PASS |
+| TDD | 순수 계약 부재 및 integration 부재 RED → 구현 GREEN. 독립 리뷰의 inline receipt/미래/등록대기 stale/ns역전 네 회귀 RED→GREEN | 신규28개 추가, 기존 engine 정책/테스트 유지 |
+| 최종 로컬 | `.\gradlew.bat --offline :app:testMockDebugUnitTest :app:testVehicleDebugUnitTest :app:assembleMockDebug :app:assembleVehicleDebug` | 코드8166fe4에서 각107/107, 양 debug 빌드 PASS |
+| 웹 | `node --test web/test/*.test.mjs` | 기반 dev 웹109/109 PASS. 웹 파일 수정 없음 |
+| API/stub | javap android.car.jar의 PERF_VEHICLE_SPEED/Car.PERMISSION_SPEED/createCar(...lifecycle)/config/register/unregister/getTimestamp/getStatus/getValue | 실물·컴파일 PASS, 하드코딩 ID/제어/VHAL/GPS0 |
+| 권한 정의/부여 | dumpsys package permissions, user10 pm grant CAR_SPEED | com.android.car.updatable의 dangerous 정의 및 exit0/granted=true. 단순 pm list 필터 누락을 미지원으로 오진하지 않음 |
+| Emulator 속도 | 콘솔 D/ACCEL/BRAKE, A02SpeedTrace observation 및 consumed | 0→증가→감소→0, Baseline/Evaluated와 RAPID_SPEED_INCREASE/DECREASE 실수신 파이프라인 PASS. OK1733개에 미래propertyNs0개 |
+| R/lifecycle | R 카메라→P 복귀 | 같은PID에서 DISCONNECTED/null 후 새 sessionId/Baseline PASS. 실제 후진 음수 수신은 카메라 중단으로 NOT_VERIFIED |
+| 권한 거부 | pm revoke user10 후 앱 새 실행 | PERMISSION_DENIED/null 및 Rejected PASS. OS권한창 Allow/Deny 전체조작/자동재부여 복구는 NOT_VERIFIED |
+| 플래그 | opt-in 소스true/bytecodefalse 증분 잔류 재현 → debug Boolean.parseBoolean/GETSTATIC, 기본OFF 재빌드/재설치 | 실제 opt-in 콜백 PASS, 기본복원 새PID1349 A02 trace0 bytes. release 생성 상수false. A01 플래그 무변경 |
+| 실차/주행/정확성 | 활성화·실차 실행 안 함 | NOT_VERIFIED. 양자화된 속도 단계와 짧은dt가 이벤트를 유발하므로 임계값/센서 보정 검증 전 B/C·실사용에 연결하지 않음 |
+
+JVM 검증은 정상 증가/감소·정속·단위·후진·null/타입/NaN/Infinity·권한정의부재/거부·property부재·서비스/factory/등록실패·타임아웃·출처/세션·늦은콜백·중복/쿨다운/히스테리시스·정밀ns/등록중시각 보존을 포함한다. 실제 시험과 fake client 시험을 상호 대체하지 않는다.
+
+독립 리뷰의 ns 역전 방어 항목은 이 작업의 명시적 시간 역전 차단 계약에 따라 중요 수정으로 처리했다. 잘못된 시계에서 표본을 거부하는 편을 택했으며 임계값이나 엔진 판정을 완화하지 않았다. 공개 API를 이용한 앱 수신까지만 성공이며 실제 급출발·충돌·차간거리 위험을 확정하지 않는다.
+
+종료: 공식 콘솔P/0km/h 복원, 임시 사용자10 CAR_SPEED 철회, 기본OFF APK로 복원, 앱/우리adb로그수집/우리AVD 종료. SDK/APK/AVD/전체 장치 로그·실차/위치/계정정보는 커밋하지 않았다. main은 기존 c4c1568 보존. 최신 dev 통합 회귀/PR/CI는 후속 기록과 Actions 이력으로 추적한다.

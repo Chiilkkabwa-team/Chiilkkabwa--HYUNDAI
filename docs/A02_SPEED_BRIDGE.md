@@ -36,4 +36,45 @@ SpeedEventBridge 반환 Baseline/Rejected/Evaluated를 그대로 구분한다. �
 
 ## 검증 상태
 
-구현 후 로컬 mock/vehicle JVM 각103/103, 두 debug 빌드, 웹109/109 PASS. 기준 dev는 각79개였으며 신규24개 시나리오가 추가됐다. 실제 실행 명령과 최종 결과는 VERIFICATION_LOG의 A02 절에 기록한다. Emulator 권한·속성·실수신은 별도 실측 후 갱신하며, 실차와 주행 수집 정책은 NOT_VERIFIED다.
+최종 코드 `8166fe443b4bd479b12c978be9928c1585cb14c3`. 로컬 mock/vehicle JVM **각107/107**, 두 debug 빌드, 웹109/109 PASS. 기준 dev 각79개에서 신규28개 테스트가 추가됐다. 원본 엔진 테스트·정책은 유지했다. 아래는 실제 Pleos 실측이며 실차나 정책 승인과 구분한다.
+
+### 실제 Pleos 시험 (2026-11-14 KST 약14:01~14:08)
+
+- Pleos Connect2.1.0/API34/x86_64, Vehicle Service2.3.22, Emulator37.2.13/Windows Arc140T/WHPX, 기존 AVD RAM4096MB/4코어/GPUhost. Build.HARDWARE=ranchu, device=crp_avd_x86_64, 사용자10, serial emulator-5554. guest PST 11/13 21시는 KST 11/14 14시다.
+- 시험 APK SHA256 `882487C30FC4F72E485C24AD596FF90BA481BFC036E2AC6DAA82417DA75386D6`, AAOS speed opt-in=true, A01 Pleos opt-in=false, USE_MOCK=false. 후속 문서 변경은 시험 코드를 바꾸지 않는다.
+- `pm list permissions`의 단순 필터에 CAR_SPEED가 보이지 않았지만 **실제 정의는 존재했다**. `dumpsys package permissions`에서 sourcePackage=com.android.car.updatable, prot=dangerous를 확인했고 `pm grant --user 10 ... CAR_SPEED` exit0 및 사용자10 granted=true를 확인했다. 목록 누락을 미지원으로 처리하지 않는다.
+- 기본 APK에는 A02 trace0건. opt-in 및 권한 부여 후 원본 Float m/s/속성ns/수신ns/source=EMULATOR 관측과 Baseline/Evaluated 소비를 확인했다. runtime 전체의 AVAILABLE 관측1733개에서 propertyNs>receiptNs는0개였다. 원본 callback에서 decode/관측을 거쳐 기존 엔진이 소비한 결과는 각각 trace에서 구분한다.
+- 콘솔 DDS ONLINE, D/ACCEL 입력에0→증가, BRAKE 지속 입력에감소→0을 관측했다. `RAPID_SPEED_INCREASE`(guest21:02:36.911)와 `RAPID_SPEED_DECREASE`(21:04:16.172)가 실제 입력에서 발행됐다. 정속0 관측에서는 event=null이다.
+- **측정 양자화 주의:** 완만한 콘솔 가속에서도 0.8333334→1.1111112m/s 같은 계단과 약101ms 간격이2.5m/s² 임계값을 넘는 사건을 만들었다. 이는 실제 표본에 대한 엔진 계산/파이프라인 PASS이지 실제 급출발·위험 판정의 정확성 인증이 아니다. 초기 임계값·노이즈/주기 보정은 NOT_VERIFIED이며 무단 변경하지 않았다. B/C 실사용 연결 전 보정·검증이 필요하다.
+- R 전환 시 CarEvsCameraPreviewActivity가 앱을 가려 동일 PID의 speed가 DISCONNECTED/null로 폐기됐다. P 복귀 시 새 sessionId와 Baseline을 관측했다. 카메라 화면을 우회해 강제 수집하지 않았다. **실제 후진 음수 수신은 NOT_VERIFIED**이며 부호 보존·제외는 JVM에서만 검증했다.
+- 권한 철회 후 새 시작에서는 PERMISSION_DENIED/null 및 Rejected, OS GrantPermissionsActivity를 관측했다. 실제 사용자의 Allow/Deny 조작과 자동 재부여 복구 전체는 NOT_VERIFIED다. adb 재부여 후 기존 권한 창이 남는 구간은 복구 성공으로 표시하지 않는다.
+- opt-in→기본 OFF 증분 빌드/재설치 후 새 PID1349에서 A02 trace0건. 마지막에는 테스트 CAR_SPEED를 다시 철회하고 앱/우리 로그 수집/AVD 종료, 콘솔P/0km/h 복원, 기존 AVD 데이터 보존.
+
+[실제 증거와 구간](evidence/a02-2026-11-14/README.md). 후진 음수·권한 정의 부재·실서비스 영구 미응답·실차·전체 주행 생명주기/정책은 시험 등급을 별도로 유지한다.
+
+### 검토 및 빌드 플래그 보완
+
+독립 리뷰에서 등록 중 inline callback의 receipt가 등록 완료 시각으로 바뀌는 결함을 발견했다. callback 진입에서 decode한 관측을 pending에 보존하며, 등록 대기 중 오래된 표본은 발행 시 STALE로 내린다. 미래1ns가 대기 중 정상으로 바뀌지 않도록 했다. 또한 같은 ms 안의 now 역전에서도 이벤트가 발생할 수 있는 사례를 재현하여 bridge에 ns high-water를 추가했다. 이 방어 항목은 명시적 시간 역전 거부 계약에 따라 중요 수정으로 처리했다. 네 테스트 RED→GREEN, 전체107/107씩 통과했다.
+
+실기 준비 중 literal BuildConfig boolean을 바꿨는데 Kotlin bytecode에 이전 false가 남는 증분 빌드 현상도 재현됐다. 새 A02 debug 플래그는 `Boolean.parseBoolean`으로 초기화하여 Kotlin이 상수를 인라인하지 않고 GETSTATIC으로 읽도록 했다. 실제 opt-in과 이후 기본false 재설치를 모두 확인했다. release는 여전히 literal false다. 생성된 Java 소스만 보고 활성화를 주장하지 않는다.
+
+## S-ID 및 통합 게이트 (이번 변경 범위)
+
+| 규정 | 판정·근거 |
+|---|---|
+| S01 | PASS: 공개 속성 조회/config/register/unregister/disconnect만. CONTROL 권한·직접 VHAL·설정/차량 제어 API 추가0 |
+| S02 | 공개 API/stub/해당 Emulator 실행 PASS. 공모전·주행 수집 승인 자체는 NOT_VERIFIED. 신규 미공개 SDK·외부 STT 없음 |
+| S03 | PASS(회귀/정적): 속도0을 주차로 쓰지 않음, 기존 P+주차브레이크+UX 게이트 무변경 |
+| S04 | 카메라 pause의 구독 중지 관측 PASS. 전체 주행 UX 정책·화면 인증 NOT_VERIFIED |
+| S05 | NOT_VERIFIED: 실차·release·기본 수집 차단, foreground debug Emulator 시험만. 음성/백그라운드 서비스 미연결 |
+| S06 | NOT_APPLICABLE: 이번 음성/오디오 정책 변경 없음 |
+| S07 | PASS: signed m/s·원본ns·수신ns·세션/출처·상태 보존, 오류와 역전 차단, 관측 사건과 주변 위험 구분 |
+| S08 | NOT_APPLICABLE(미션 변경 없음); 안전 게이트/실차 활성화 변경0 |
+| S09 | PASS(변경 범위): 메모리의 고정 크기 엔진 상태와 opt-in 합성 시험 진단만. 새 영구 저장/업로드·계정·VIN·GPS 수집 없음 |
+| S10 | PASS: JVM/Mock/Emulator/실차 및 callback 관측/계산/판정 정확성 등급 구분 |
+| S11 | NOT_VERIFIED(장시간/CPU/RAM/양자화 보정); 외부 자산 신규 도입 없음 |
+| S12 | NOT_APPLICABLE(제출): release APK 업로드·공개 전환·main 변경 없음 |
+
+공식 근거의 적용 범위는 SAFETY_RULES/COMPLIANCE_REGISTER의 O03/P02/P03/P04/P06/P07/P08와 위 Android 원문을 따른다. 문서 열람이나 개발자 자체 검토를 플랫폼 승인으로 바꾸지 않는다.
+
+G1 PASS: 배정된 A02·전용 브랜치/worktree·범위 명시. G2 PASS(공개API/해당실측)/주행정책 NOT_VERIFIED. G3 PASS: default OFF·최소읽기권한·fail-closed·실차/release 차단. G4 아래 실행 등급별 증거만 PASS. G5: 최신 dev 충돌·전체회귀·CI 확인 후 개발 통합만 허용; B/C 실사용·실차·주행 정책 활성화는 하지 않는다.

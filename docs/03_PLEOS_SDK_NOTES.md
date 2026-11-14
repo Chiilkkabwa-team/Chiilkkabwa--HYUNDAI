@@ -255,3 +255,7 @@ opt-in debug EMULATOR에서만 최종 snapshot 진단을 추가했다. `SDK call
 - Settings에서 **325.96초** 중단 후 같은 PID로 복귀해 화면과 새 brake=true 수신을 확인했다. 중단 시 전체 DISCONNECTED/null, 복귀 이후 콘솔0% 복원으로 false 수신. 이 한정 시나리오 PASS.
 - Sleep의 Asleep/Display OFF에서 전체 RGB=0 캡처, Wake 후 정상 화면/새 초기 신호를 관측했다. 기존 검은 캡처도 전체 RGB=0이지만 당시 전원 상태가 없어 **기존 사건의 원인은 NOT_VERIFIED**다. ColorBuffer/EGL 경고가 정상 화면에서도 관측돼 GPU 결함 확정 근거로 쓰지 않는다. 더 긴 중단/호스트 절전/GPU 비교는 미검증.
 - 기본off·debug EMULATOR opt-in·실차/release 차단 유지. 앱 수정 없이 문서·합성 시험 증거만 갱신했다.
+
+## A02 AAOS 속도 입력 후속 — 2026-11-14
+
+공개 PERF_VEHICLE_SPEED(Float signed m/s)/CAR_SPEED 및 elapsedRealtime ns 계약을 로컬 stub와 실제 Pleos2.1.0에서 확인했다. 전용 속도 관측 타입으로 기존 epoch Signal과 분리하고, 기본OFF/debug EMULATOR opt-in의 독립 소스를 기존 엔진에 연결했다. 실제 전진 속도·증가/감소 이벤트는 관측했지만 후진 음수·실차·주행 정책·임계값 보정은 미검증이다. CAR_SPEED 단순 permission 목록 누락과 실제 정의 부재를 혼동하지 않는다. [상세 API·시계·실측·차단](A02_SPEED_BRIDGE.md), [원본 증거](evidence/a02-2026-11-14/README.md).

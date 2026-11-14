@@ -11,8 +11,8 @@ Android 구현 정적 점검일: 2026-11-11 KST (당시 기준 main: de612636cc2
 | 목표·혼자/멘토·약속 | ViewModel/Compose 구현 | 모의 구현 | 미검증 |
 | 벨트/브레이크/방향지시등 워밍업 | Pleos 읽기 어댑터 연결·기본 off | 모의 구현 | 초기 벨트/브레이크/방향지시등 수신 확인, 전체 미션 미검증 |
 | 가상 주차/조건부 페달 | Kotlin 로직·화면 존재, 실신호는 조건부 | 모의 구현 | 미검증 |
-| AAOS PERF_VEHICLE_SPEED | VehicleSnapshot/구독/권한 선언 없음 | 가상 속도 | 미검증 |
-| 속도 기반 주행 이벤트 | Android 미구현 | 가상 이벤트 | 미검증 |
+| AAOS PERF_VEHICLE_SPEED | 기본OFF 속도 관측/권한/독립 구독·엔진 브리지 | 가상 속도 | Pleos2.1.0 전진 콜백/소비 확인, 후진 음수·실차 미검증 |
+| 속도 기반 주행 이벤트 | 기존 코어+A02 입력 브리지, UI/음성/저장소 미연결 | 가상 이벤트 | Emulator 증가/감소 이벤트 관측, 양자화/임계값 보정·주행정책 미검증 |
 | 주행 중 음성 및 AudioFocus | Android 미구현 | Web Speech 구현 | 플랫폼 허용·실환경 미검증 |
 | 주차 후 시계열 이벤트 리플레이 | Android 미구현 | 웹 모의 타임라인 | 미검증 |
 | 복기 요약·배지·다음 목표 | Kotlin 코드 일부 구현 | 모의 구현 | 반복 세션 미검증 |
@@ -79,3 +79,11 @@ Android 구현 정적 점검일: 2026-11-11 KST (당시 기준 main: de612636cc2
 ### A01 신뢰성 후속 재검증 (2026-11-13 KST23시 / dev1140c74)
 
 [상세 보고서](A01_RELIABILITY_FOLLOWUP.md). 앱 코드 변경 없음. 공식 콘솔48개 카드·경고등 비교에서 벨트true 및 실제 주차브레이크ON 입력 경로가 없어 전체 워밍업은 계속 BLOCKED/NOT_VERIFIED다. 안전 조건을 완화하지 않았다. Settings에서325.96초 중단 후 같은 PID로 화면·새 신호 복귀는 PASS. Sleep/Display OFF에서 전체 검은 캡처 및 Wake 복구를 관측했지만 기존 장시간 검은 화면 사건의 원인/해결 완료는 NOT_VERIFIED다. 두 JVM 각각78/78, 양debug빌드, 웹79/79 PASS. 기본off·debug EMULATOR opt-in·실차/release 차단 유지. 증거는 `docs/evidence/a01-2026-11-13-reliability/`.
+
+
+
+### A02 AAOS 속도 입력 브리지 (2026-11-14 / 코드8166fe4)
+
+최신 dev1acc540 기반 Codex1 전용 worktree의 feature/a02-aaos-speed-bridge. 공개 PERF_VEHICLE_SPEED/CAR_SPEED의 signed Float m/s와 elapsed ns를 보존하는 독립 소스를 기존 SpeedEventEngine에 연결했다. Signal 벽시계 계약·엔진 정책·안전 게이트·UI/음성/저장소/Web은 유지했다. 기본OFF, debug의 명시적 opt-in+확인된 emulator hardware만 가능하며 실차/release는 차단한다.
+
+최종 JVM mock/vehicle 각107/107, 두debug빌드, 웹109/109 PASS. Pleos2.1.0에서 실제 속도 증가·감소/원본 callback 관측·엔진 소비와 두 이벤트 발행, R 카메라 pause의 폐기/새 세션 복귀, 권한 철회의 PERMISSION_DENIED를 확인했다. 기본OFF 재설치의 trace0건도 확인했다. 후진 음수 실제 수신, 권한창 전체 조작·재부여 복구, 실제 급가감속 판정/노이즈·양자화 보정 및 주행 수집 정책·실차는 NOT_VERIFIED다. B/C 실사용 연결은 하지 않았다. [계약·등급·실측](A02_SPEED_BRIDGE.md).
