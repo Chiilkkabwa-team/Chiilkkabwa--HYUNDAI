@@ -12,4 +12,3 @@ data class VehicleSpeedObservation(
     val kilometersPerHour: Double? get() = rawMps?.takeIf { status == SignalStatus.OK && it.isFinite() }?.toDouble()?.times(3.6)
     fun disconnected() = copy(rawMps = null, timestampNanos = null, status = SignalStatus.DISCONNECTED)
 }
-
