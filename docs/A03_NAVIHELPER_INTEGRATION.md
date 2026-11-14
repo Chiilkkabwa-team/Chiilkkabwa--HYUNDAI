@@ -164,7 +164,7 @@ NaviRuntime 기본값은 disabled다. debug + 명시 -PenablePleosNavi=true + EM
 | 3. 실제 탐색 시작 callback | NOT_VERIFIED |
 | 4. 실제 탐색 완료 callback/요청코스 검색 응답 | NOT_VERIFIED |
 | 5. 실제 안내 시작/기본내비 상태 변화 | NOT_VERIFIED. 합성 ROUTE_DRIVE는 실제 관측 아님 |
-| JVM mock/vehicle | 각각136/136 PASS, 신규 A03 26개 포함 |
+| JVM mock/vehicle | 최신dev0209187에서 각각164/164 PASS, 신규 A03 26개 포함 |
 | 두 debug APK | assembleMockDebug/assembleVehicleDebug PASS |
 | 웹 회귀 |110/110 PASS, 웹 변경 없음 |
 | opt-in/release | -PenablePleosNavi=true로 vehicleDebug 플래그true / vehicleRelease false 생성 확인 |
@@ -203,3 +203,8 @@ TDD: 타입 부재 compile FAIL→23개 PASS→signed-zero 회귀 포함26개 �
 규정근거는 SAFETY_RULES/COMPLIANCE_REGISTER의 O03,P02/P03(주행제한),P06(API가용성),P07/P08(개인정보·보안) 및 위 공식 SDK 문서.
 공통 대장은 최신 dev 확인 후 기존 기록에 append한다. PR/병합/병합 후 CI 결과는 검증 로그와 PR 이력으로 추적한다.
 남은 과제는 실제 정차/플랫폼/기본 내비 환경·유효 POI·안전한 독립 시험 소유자·실초기화/검색/코스대조/안내 실측이다.
+
+
+## 최신 통합 재검증
+
+A02 PR#27의dev02091872cf77650051318aa844517c0f3c033d19를 반영했다. Gradle충돌은두기능의플래그를모두보존했다. A03 debug필드는 Boolean.parseBoolean으로비상수화했고 실제소비자바이트코드의 getstatic을 ON→OFF 전환양쪽에서확인했다. 생성소스만바뀌고이전인라인소비자가남은초기검증실패도재컴파일후해소했다. release는opt-in에도false다. 최신기준양JVM164/164·양debug·Web110/110 PASS. A02·B/C 기능변경은없다. 기존조사사본의Markdown줄바꿈/EOF공백은원형보존하고새코드·통합문서의whitespace만검사했다.

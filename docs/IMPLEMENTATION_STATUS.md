@@ -96,3 +96,12 @@ Android 구현 정적 점검일: 2026-11-11 KST (당시 기준 main: de612636cc2
 - JVM mock/vehicle 각각110/110(신규31),두 debug빌드,웹110/110 PASS. SPOKEN은 합성 정상 완료callback 시험 결과이며 실제 TTS 재생 증거가 아니다. 실음성 길이·포커스·Emulator·실차·주행 플랫폼정책은 NOT_VERIFIED(S05). PR/병합/CI는 해당 검증 로그·PR 이력 참조.
 
 A02 통합 후 갱신: B01/B02/B04 dev44bfe68를 반영해 Android 양JVM **138/138**, 양debug빌드, 웹 **110/110 PASS**. A02 외 코드 변경은 최신dev에서 가져온 것이며 A02 PR의 B02·Web diff0이다. 실기/실차 등급과 차단 조건은 A02 전용 문서 그대로 유지한다.
+
+
+### A03 NaviHelper 독립 SDK 연동 기반 (2026-11-14)
+
+- feature/a03-navihelper-integration / 전용 Chiilkkabwa-Codex2-A03-Navi. 최초dev44bfe68, A02 병렬 통합 dev0209187 반영. [실제 구현·근거·검증 등급](A03_NAVIHELPER_INTEGRATION.md), [기존 조사 사본](A03_NAVIHELPER_FEASIBILITY.md).
+- 실제 NaviHelper3.0.5 의존성·공개API/모델,독립 클라이언트/어댑터·엄격한 정차/신선도/출처 게이트·명시적 요청·콜백세대/타임아웃·해제 구현. 경로 함수 Unit반환/검색시작/검색완료/nav상태를 구분하고 안내성공은 자동 확정하지 않는다.
+- 기본OFF,debug 명시opt-in+EMULATOR만 허용. 실제클라이언트가 빌드/기기 재확인,release는 항상false. NAVI_ROUTE_SEARCH만 추가. 기존B/C UI·음성·저장소·A02·웹 무변경. 자동요청/안내/취소/위치수집0.
+- SDK 실컴파일·양JVM164/164(신규A03 26),양debug빌드,웹110/110 PASS. ON→OFF 증분BuildConfig+getstatic 바이트코드 및 opt-in에도releasefalse 확인.
+- 실제 앱 SDK초기화·경로호출·검색callback·기본내비안내는 모두 NOT_VERIFIED. 현재 타작업 일반Android 기기를 사용하지 않았고 Pleos의 실제 정차신호가 준비되지 않아 UI시험진입점·실제호출을 보류했다. 기본비활성 기반만 통합 대상.

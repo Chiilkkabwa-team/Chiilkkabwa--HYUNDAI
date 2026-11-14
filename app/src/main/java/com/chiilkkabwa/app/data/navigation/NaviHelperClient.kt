@@ -79,7 +79,9 @@ internal class NaviHelperClient(context: Context) : NaviClient {
         const val ROUTE_PERMISSION = "pleos.car.permission.NAVI_ROUTE_SEARCH"
         fun actualRuntime(): NaviRuntime {
             val emulator = Build.HARDWARE == "ranchu" || Build.HARDWARE == "goldfish"
-            return NaviRuntime(BuildConfig.DEBUG, BuildConfig.PLEOS_NAVI_ENABLED,
+            // Debug flag is a non-constant Java field: retain a runtime read across incremental builds.
+            val enabled = BuildConfig.PLEOS_NAVI_ENABLED
+            return NaviRuntime(BuildConfig.DEBUG, enabled,
                 if (emulator) SignalSource.EMULATOR else SignalSource.VEHICLE)
         }
         private fun classify(error: Throwable): RouteProblem = when (error) {
