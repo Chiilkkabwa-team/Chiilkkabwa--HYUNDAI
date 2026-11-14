@@ -24,6 +24,7 @@ const server = http.createServer(async (req, res) => {
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const url = `http://127.0.0.1:${server.address().port}/`;
   const browser = await chromium.launch({ channel: 'chrome', headless: true });
+  const introVersion = Number((await fs.readFile(path.join(root, 'app.js'), 'utf8')).match(/const INTRO_V = (\d+)/)[1]);
   try {
     if (evidence) await fs.mkdir(evidence, { recursive: true });
     async function pageFor(mode, width) {
@@ -32,11 +33,11 @@ const server = http.createServer(async (req, res) => {
       page.on('pageerror', e => errors.push(e.message));
       page.on('console', msg => { if (msg.type() === 'error') errors.push(msg.text()); });
       page.on('requestfailed', req => externalFailures.push({ url: req.url(), error: req.failure()?.errorText }));
-      await page.addInitScript((mode) => localStorage.setItem('chiilkkabwa.web.v1', JSON.stringify({
-        introSeen: true, introV: 2, mode, sound: false, voiceOn: false, wasdHintSeen: true,
-      })), mode);
+      await page.addInitScript(({ mode, introVersion }) => localStorage.setItem('chiilkkabwa.web.v1', JSON.stringify({
+        introSeen: true, introV: introVersion, mode, sound: false, voiceOn: false, wasdHintSeen: true,
+      })), { mode, introVersion });
       await page.goto(url, { waitUntil: 'networkidle' });
-      await page.waitForFunction(() => !document.querySelector('#startBtn')?.disabled);
+      await page.waitForFunction(() => document.body.dataset.phase === 'READY');
       return { page, errors, externalFailures };
     }
 

@@ -1,0 +1,21 @@
+{
+  "browser": "157.0.8103.51",
+  "results": [
+    {
+      "width": 1440,
+      "height": 900,
+      "controls": "PASS",
+      "errors": []
+    },
+    {
+      "width": 390,
+      "height": 900,
+      "controls": "PASS",
+      "errors": []
+    },
+    {
+      "test": "existing onboarding / coach mark / GNB",
+      "errors": []
+    }
+  ]
+}

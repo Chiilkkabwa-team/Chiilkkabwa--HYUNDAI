@@ -15,7 +15,7 @@ function fakePedal() {
       remove(name) { classes.delete(name); },
       contains(name) { return classes.has(name); },
     },
-    emit(name) { handlers.get(name)?.({ preventDefault() {}, pointerId: 1 }); },
+    emit(name, extra = {}) { handlers.get(name)?.({ preventDefault() {}, stopPropagation() {}, pointerId: 1, ...extra }); },
   };
 }
 
@@ -33,6 +33,7 @@ function fakeFrames() {
       cb(t);
     },
     get active() { return pending.size; },
+    get nextCallback() { return pending.values().next().value; },
   };
 }
 
@@ -48,6 +49,31 @@ function setup() {
   bindBrakeSlider(slider, cancelBrakeHold, (value) => { pct = value; }, () => { ticks++; });
   return { pedal, frames, slider, get pct() { return pct; }, get ticks() { return ticks; } };
 }
+
+test('A05 pointer cancellation immediately releases pressure without a tail', () => {
+  const f = setup(); f.pedal.emit('pointerdown'); f.frames.runOne(640);
+  f.pedal.emit('pointercancel'); assert.equal(f.pct, 0); assert.equal(f.frames.active, 0);
+});
+test('A05 unexpected capture loss releases pressure', () => {
+  const f = setup(); f.pedal.emit('pointerdown'); f.frames.runOne(320);
+  f.pedal.emit('lostpointercapture'); assert.equal(f.pct, 0); assert.equal(f.frames.active, 0);
+});
+test('A05 second pointer and non-owner releases cannot steal a hold', () => {
+  const f = setup(); f.pedal.emit('pointerdown'); f.frames.runOne(160);
+  f.pedal.emit('pointerdown', { pointerId: 2 });
+  f.pedal.emit('pointerup', { pointerId: 2 });
+  assert.equal(f.pedal.classList.contains('down'), true);
+  f.pedal.emit('pointerup'); assert.equal(f.pedal.classList.contains('down'), false);
+});
+test('A05 canceled callbacks cannot overwrite a newer slider value', () => {
+  const f = setup(); f.pedal.emit('pointerdown'); const late = f.frames.nextCallback;
+  f.slider.oninput({ target: { value: '63' } }); late(500);
+  assert.equal(f.pct, 63); assert.equal(f.frames.active, 0);
+});
+test('A05 secondary mouse button cannot press a pedal', () => {
+  const f = setup(); f.pedal.emit('pointerdown', { button: 2 });
+  assert.equal(f.frames.active, 0); assert.equal(f.pct, 0);
+});
 
 test('A05 brake slider takes over an active pedal hold without ReferenceError', () => {
   const { pedal, frames, slider, ...unused } = setup();

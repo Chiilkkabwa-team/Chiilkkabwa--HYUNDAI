@@ -1,0 +1,45 @@
+{
+  "browser": "157.0.8103.51",
+  "results": [
+    {
+      "test": "controls-1440",
+      "errors": [],
+      "externalFailures": [],
+      "bounds": {
+        "x": 1084,
+        "y": 495.671875,
+        "width": 304,
+        "height": 46
+      }
+    },
+    {
+      "test": "controls-390",
+      "errors": [],
+      "externalFailures": [],
+      "bounds": {
+        "x": 28,
+        "y": 625.28125,
+        "width": 334,
+        "height": 46
+      }
+    },
+    {
+      "test": "demo-eval",
+      "screen": "report",
+      "errors": [],
+      "externalFailures": []
+    },
+    {
+      "test": "demo-coach",
+      "screen": "report",
+      "errors": [],
+      "externalFailures": []
+    },
+    {
+      "test": "demo-practice",
+      "screen": "goal",
+      "errors": [],
+      "externalFailures": []
+    }
+  ]
+}

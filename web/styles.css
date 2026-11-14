@@ -551,7 +551,7 @@ input[type="range"]:disabled { opacity: .35; }
 .coach-head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .lock-tag.soft { background: color-mix(in srgb, var(--yellow) 15%, transparent); color: var(--accent-text); font-size: .95rem; }
 .stop-btn { display: flex; align-items: center; gap: 18px; width: 100%; min-height: 104px; padding: 16px 24px; border: 0; border-radius: 22px; background: linear-gradient(180deg, var(--danger), var(--danger-3)); color: var(--on-danger); text-align: left; box-shadow: 0 10px 30px color-mix(in srgb, var(--danger-2) 35%, transparent), inset 0 -4px 0 var(--shadow-1); }
-.stop-btn[data-k="on"] { background: var(--surface2); color: var(--text); box-shadow: inset 0 0 0 2px var(--danger); }
+.stop-btn[data-requested="true"] { background: var(--surface2); color: var(--text); box-shadow: inset 0 0 0 2px var(--danger); }
 .stop-btn b { display: block; font-size: 1.7rem; letter-spacing: -.02em; }
 .stop-btn small { display: block; font-size: .95rem; opacity: .85; }
 .stop-ico { flex: none; width: 52px; height: 52px; border-radius: 50%; background: var(--on-danger); position: relative; }
@@ -935,6 +935,12 @@ body:not([data-mode="practice"]) .sim-canvas {
 .wh-top { fill: var(--primary); }
 .c-hint { display: flex; align-items: center; gap: 10px; margin-top: 8px; padding: 10px 12px; border-radius: 12px; background: var(--surface3); font-size: .85rem; color: var(--text); }
 .c-hint[hidden] { display: none; }
+.control-help { margin-top: 8px; min-height: 44px; }
+.c-hint { align-items: flex-start; }
+.c-hint p { flex: 1; min-width: 0; margin: 0; line-height: 1.6; }
+.gear-state { display: block; margin: 6px 0 12px; padding: 10px 12px; border-radius: 12px; background: var(--surface3); color: var(--primary-text); font-size: 1rem; font-weight: 600; line-height: 1.5; }
+#c-gear { flex-wrap: wrap; }
+#c-gear button { min-width: 46px; min-height: 46px; font-size: 1.1rem; }
 .buckle { position: relative; display: inline-block; width: 22px; height: 12px; margin-right: 6px; vertical-align: -1px; }
 .buckle i { position: absolute; top: 2px; height: 8px; border-radius: 2px; background: var(--muted); }
 .bk-latch { right: 0; width: 10px; }

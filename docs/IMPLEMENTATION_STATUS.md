@@ -97,6 +97,11 @@ Android 구현 정적 점검일: 2026-11-11 KST (당시 기준 main: de612636cc2
 
 A02 통합 후 갱신: B01/B02/B04 dev44bfe68를 반영해 Android 양JVM **138/138**, 양debug빌드, 웹 **110/110 PASS**. A02 외 코드 변경은 최신dev에서 가져온 것이며 A02 PR의 B02·Web diff0이다. 실기/실차 등급과 차단 조건은 A02 전용 문서 그대로 유지한다.
 
+### A05 웹 Mock 조작 반응 보완 (2026-11-14 / 5cb0612)
+
+- `feature/a05-web-control-polish`, 최초 dev44bfe68 / 최신 dev0209187 반영. 기존 E1 페달 수정을 재사용해 입력 채널 소유권·점진 WASD·포인터 취소/늦은 콜백 차단·슬라이더 우선·정보 버튼·가상 기어/정지 요청 상태를 보완했다. [A05 상세·입력 수치·한계](A05_CONTROL_POLISH.md).
+- 웹126/126, 390×900/1440×900 실제 조작·온보딩/코치 마크/GNB, 기존 세 모드 자동 시연과 A04 회귀 PASS. 최종 브라우저 오류0. Android/B·C 모듈·저장·SafetyGate·sim.js 계약은 최신dev 대비 무변경이다.
+- 전부 웹 2D Mock 결과이며 실제 차량 제어·자동D·실차 운전 평가가 아니다. C02 작업물을 포함하지 않으며 기존 Worktree/AVD는 보존한다. main 변경 없음. 원격 CI/통합은 A05 PR 및 Actions 이력으로 추적한다.
 
 ### A03 NaviHelper 독립 SDK 연동 기반 (2026-11-14)
 
@@ -105,3 +110,5 @@ A02 통합 후 갱신: B01/B02/B04 dev44bfe68를 반영해 Android 양JVM **138/
 - 기본OFF,debug 명시opt-in+EMULATOR만 허용. 실제클라이언트가 빌드/기기 재확인,release는 항상false. NAVI_ROUTE_SEARCH만 추가. 기존B/C UI·음성·저장소·A02·웹 무변경. 자동요청/안내/취소/위치수집0.
 - SDK 실컴파일·양JVM164/164(신규A03 26),양debug빌드,웹110/110 PASS. ON→OFF 증분BuildConfig+getstatic 바이트코드 및 opt-in에도releasefalse 확인.
 - 실제 앱 SDK초기화·경로호출·검색callback·기본내비안내는 모두 NOT_VERIFIED. 현재 타작업 일반Android 기기를 사용하지 않았고 Pleos의 실제 정차신호가 준비되지 않아 UI시험진입점·실제호출을 보류했다. 기본비활성 기반만 통합 대상.
+
+A05 A03 통합 재검증: dev9a72969를 dbce435에 반영. 공통문서2곳 충돌은 A02/A03/A05 전부 보존. 웹126/126,양JVM164/164,양debug빌드,390/1440 조작 PASS. A03·Android·Gradle 및 B/C보호diff0. 최종통합/CI는 PR#28 이력 참조.
