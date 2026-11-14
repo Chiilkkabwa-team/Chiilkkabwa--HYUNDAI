@@ -30,7 +30,7 @@
   /* 출처 라벨 */
   --emu: #3B4656; --emu-text: #DCE4EE;
   /* 부품 */
-  --knob: #FFFFFF; --tell-off: #4A5666;
+  --knob: #FFFFFF; --tell-off: #7D8999; /* 꺼진 경고등도 글자는 읽혀야 한다(AA 4.5:1, 11/15 axe) */
   --on-accent: #1B2430;   /* 노란 강조색 위의 글자 — --surface를 쓰면 테마에서 뒤집힌다 */
   --sign-bg: #FFFFFF; --sign-text: #111111;     /* 도로 표지는 두 테마에서 같다 */
   --scrim-strong: rgba(10,14,19,.88); --scrim: rgba(10,14,19,.72); --scrim-soft: rgba(15,20,27,.6);
@@ -66,7 +66,7 @@
   --danger-text: #A51F1F; --on-danger: #FFFFFF; --lock: #FBDADA;
   --purple: #7C3AED; --purple-text: #5B21B6;
   --emu: #D4DCE7; --emu-text: #27313C;
-  --knob: #FFFFFF; --tell-off: #A3AEBC;
+  --knob: #FFFFFF; --tell-off: #667282;
   --on-accent: #2B1D00;
   --scrim-strong: rgba(255,255,255,.94); --scrim: rgba(255,255,255,.86); --scrim-soft: rgba(255,255,255,.72);
   --shadow-1: rgba(16,22,30,.07); --shadow-2: rgba(16,22,30,.12); --shadow-3: rgba(16,22,30,.18);
@@ -1081,3 +1081,7 @@ body:not([data-mode="practice"]) .sim-canvas {
 @media (prefers-reduced-motion: reduce) {
   .ob[data-dir] .ob-text, .cm-ring, .cm-tip { animation: none; }
 }
+
+/* 주행 잠금 중 콘솔 쪽 짧은 알림(S04 — 앱 화면 대신 여기) */
+.c-flash { margin: 0 0 12px; padding: 10px 12px; border-radius: 12px; background: var(--surface3); color: var(--text); font-size: .88rem; font-weight: 600; }
+.c-flash[hidden] { display: none; }

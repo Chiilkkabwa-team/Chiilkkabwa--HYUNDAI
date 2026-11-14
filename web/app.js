@@ -1437,6 +1437,13 @@ function onPhaseChange(from, to) {
   if (from === C.Phase.DRIVING_LOCK) endVoiceDrive();
 }
 function flashNote(t) {
+  // 주행 잠금 중에는 앱 화면에 아무것도 띄우지 않는다(S04: 주행 중 화면은 정적).
+  // 이 알림들은 모두 콘솔·시연 조작에 대한 것이라 콘솔 쪽에 보여 준다.
+  if (session.phase === C.Phase.DRIVING_LOCK) {
+    const c = $('#consoleFlash'); c.textContent = t; c.hidden = false;
+    clearTimeout(flashNote.t); flashNote.t = setTimeout(() => { c.hidden = true; }, 2600);
+    return;
+  }
   const el = document.createElement('div'); el.className = 'toast note timed'; el.style.setProperty('--life', '1.6s'); el.textContent = t; $('#toasts').appendChild(el);
   setTimeout(() => el.remove(), 1600);
 }
