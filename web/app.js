@@ -104,9 +104,10 @@ function endVoiceDrive() {
 
 /** 발화 문구와 사건 종류가 달라도 같은 ID로 복기에 연결한다. */
 function recordVoiceEvent(event) {
-  const row = { ...event, eventId: ++nextVoiceEventId };
-  replayRows.push(row);
-  return row.eventId;
+  // 시뮬레이터 리포트도 원본 사건을 읽으므로 같은 ID를 사용한다.
+  event.eventId = ++nextVoiceEventId;
+  replayRows.push(event);
+  return event.eventId;
 }
 
 async function playCoaching(guide, utterance) {
@@ -333,7 +334,7 @@ Screens.goal = () => ({
         </button>
         <button type="button" class="how" id="mentorBtn" disabled>
           ${icon('mentor', 26)}<b>함께 연습</b>
-          <small>출발 전에 <b>약속 카드</b>를 맞춰요. 음성 길잡이는 그대로 켜져 있고, 설정에서 끌 수 있어요.</small>
+          <small>출발 전에 <b>약속 카드</b>를 맞춰요. 음성 길잡이는 기본으로 꺼져 있고, 설정에서 켤 수 있어요.</small>
         </button>
       </div>
       <p class="caption" id="soloNote">어느 쪽이든 워밍업 3개 + 원하면 선택 미션 · 약 5분. 실제 도로 연습은 처음엔 동승자와 함께 하시면 더 안전해요.</p>
@@ -1658,13 +1659,13 @@ Screens.coach = () => ({
 function evItem(e, i) {
   const sensor = e.sensor ? `<em class="sens">${SENSOR_LABEL[e.sensor]} 센서(가상)</em>` : '';
   const tag = e.pts > 0 ? `<b class="pts bad">−${e.pts}</b>` : e.good ? '<b class="pts good">잘함</b>' : '<b class="pts info">기록</b>';
-  const spoke = voice?.didSpeak(e.code, e.t) ? `<span class="rp-spoke" title="주행 중에 음성으로 말한 항목">${icon('sound', 16)} 말했어요</span>` : '';
+  const spoke = voice?.didSpeak(e.eventId) ? `<span class="rp-spoke" title="주행 중에 음성으로 말한 항목">${icon('sound', 16)} 말했어요</span>` : '';
   const basis = e.phase === 'ENTRY' ? `<small>2D Mock · 가상 진행 ${{ LEFT: '좌회전', RIGHT: '우회전', STRAIGHT: '직진' }[e.dir] || '미확인'} · 깜빡이 ${{ LEFT: '왼쪽', RIGHT: '오른쪽', NONE: '끔' }[e.basis.signal] || '미확인'} · 진입 ${e.basis.speedKmh.toFixed(1)}km/h · 가상 ${['왼쪽', '가운데', '오른쪽'][e.basis.lane + 1]} 차로</small>` : '';
   return `<li class="${e.pts > 0 ? 'bad' : e.good ? 'good' : 'info'}"><span class="t">${fmtT(e.t)}</span>${tag}<div><b>${e.title}</b> ${sensor}${spoke}<small>${e.kmh}km/h · ${srcChip('MOCK')} · ${e.advice}</small>${basis}${sceneBtn(i, e.t)}</div></li>`;
 }
 
 // 리포트 사건 → 리플레이 항목 모양(그래프·재현 창이 같은 모양을 쓴다). 순서는 r.events와 같다.
-const reportRows = (r) => r.events.map((e) => ({ atSec: e.t, title: e.title, kind: e.pts > 0 ? 'note' : e.good ? 'good' : 'info', spoken: !!voice?.didSpeak(e.code, e.t), source: 'MOCK' }));
+const reportRows = (r) => r.events.map((e) => ({ atSec: e.t, title: e.title, kind: e.pts > 0 ? 'note' : e.good ? 'good' : 'info', spoken: !!voice?.didSpeak(e.eventId), source: 'MOCK' }));
 
 // ── 주행 리포트 ──
 Screens.report = () => ({
