@@ -1,0 +1,61 @@
+{
+  "dateKST": "2026-11-15",
+  "base": "01eff12a2ecdbd4ae3e0fdb78f6031504aa13540",
+  "branch": "test/a02-driving-lifecycle",
+  "environment": "Pleos2.1.0/API34 emulator-5558 user10",
+  "testApkSha256": "6FD8228174FC8583B8353CD5B475EBC7B6B3E0E375D7ECCE33A40B36A6830FE6",
+  "baselineTestsPerFlavor": 206,
+  "finalTestsPerFlavor": 210,
+  "newSyntheticTests": 4,
+  "androidFailures": 0,
+  "mockDebugBuild": "PASS",
+  "vehicleDebugBuild": "PASS",
+  "webTests": 126,
+  "webFailures": 0,
+  "observedOKSpeedSamples": 3416,
+  "maxRawMps": 0.8333334,
+  "rapidCandidateEventsThisRun": 0,
+  "newRapidEventEmission": "NOT_VERIFIED",
+  "uxRestrictedObserved": true,
+  "activityPausedByDrivingRestriction": false,
+  "activityRemainedResumed": true,
+  "platformBlockingScreenObserved": true,
+  "homeTriggeredPause": false,
+  "settingsTriggeredPause": true,
+  "pauseLogEpochSeconds": [
+    1794671236.158,
+    1794671258.151
+  ],
+  "a02ObservationsOrConsumedWithinPause": 0,
+  "prePauseSession": "01312755-c46c-4970-aa90-2815439337a7",
+  "reentrySession": "8a4d2d92-445a-4da3-9b88-8fa2003b2194",
+  "cpuSample": {
+    "uptimeSeconds": [
+      521.07,
+      535.2
+    ],
+    "utimeTicks": [
+      1146,
+      1160
+    ],
+    "stimeTicks": [
+      1712,
+      1732
+    ],
+    "clockTicksPerSecond": 100,
+    "cpuSeconds": 0.34,
+    "note": "Whole process, approximate sample; not A02 CPU or performance certification"
+  },
+  "lateBinderInjection": "NOT_VERIFIED",
+  "syntheticLateCallbackGuard": "PASS",
+  "defaultOffRestored": true,
+  "restoredPid": 15536,
+  "restoredTraceLines": 0,
+  "testPermissionRevoked": true,
+  "drivingUIOfficialPermission": "NOT_ALLOWED for DO-undeclared app",
+  "continuousDrivingCollectionOfficialPermission": "NOT_VERIFIED",
+  "productEnablement": "BLOCKED",
+  "bOrCConnected": false,
+  "shadowPromoted": false,
+  "mainChanged": false
+}

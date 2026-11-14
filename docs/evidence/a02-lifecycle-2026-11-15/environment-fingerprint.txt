@@ -1,0 +1,11 @@
+Pleos/crp_avd/crp_avd_x86_64:14/RELEASE.release_connect_v2.1.0/release_connect_v2.1.0:user/test-keys
+*Dump versions*
+Android SDK_INT: 34
+Car Version: CarVersion[name=Car.CAR_VERSION, major=34, minor=0]
+Platform Version: PlatformVersion[name=Car.PLATFORM_VERSION, major=34, minor=1]
+CarBuiltin Platform minor: 1
+Legacy versions (might differ from above as they can't be emulated)
+  Car API major: 34
+  Car API minor: 0
+  Car Platform minor: 1
+  VHAL and Car User Service Priority Init: true

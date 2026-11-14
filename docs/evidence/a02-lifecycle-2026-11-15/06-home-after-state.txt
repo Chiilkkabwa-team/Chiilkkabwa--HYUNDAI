@@ -1,0 +1,97 @@
+Phase=06-home-after; hostUTC=2026-11-14T15:46:34.4715395Z; serial=emulator-5558
+Current user:
+10
+Guest wall time (not speed clock):
+Sat Nov 14 15:46:34 UTC 2026
+Guest uptime:
+479.34 378.41
+App PID=12030
+12030 (chiilkkabwa.app) S 423 423 0 0 -1 4194624 36539 0 1042 0 1045 1613 0 0 10 -10 21 0 20424 14078234624 37942 18446744073709551615 1 1 0 0 0 0 4612 1 1073775864 0 0 0 17 2 0 0 0 0 0 0 0 0 0 0 0 0 0
+  * Task{1a1a306 #1000009 type=standard A=1010175:com.chiilkkabwa.app U=10 visible=true visibleRequested=true mode=multi-window translucent=true sz=1}
+    topResumedActivity=ActivityRecord{1058ff4 u10 com.chiilkkabwa.app/.MainActivity t1000009}
+    * Hist  #0: ActivityRecord{1058ff4 u10 com.chiilkkabwa.app/.MainActivity t1000009}
+      packageName=com.chiilkkabwa.app processName=com.chiilkkabwa.app
+      app=ProcessRecord{6240cde 12030:com.chiilkkabwa.app/u10a175}
+      Intent { flg=0x10000000 cmp=com.chiilkkabwa.app/.MainActivity }
+      rootOfTask=true task=Task{1a1a306 #1000009 type=standard A=1010175:com.chiilkkabwa.app}
+      taskAffinity=1010175:com.chiilkkabwa.app
+      mActivityComponent=com.chiilkkabwa.app/.MainActivity
+      baseDir=/data/app/~~7wF7YFq3JHVcGx7MPMr_Jg==/com.chiilkkabwa.app-NH8iHe3b6jf-ihbWLiQudA==/base.apk
+      dataDir=/data/user/10/com.chiilkkabwa.app
+      state=RESUMED delayedResume=false finishing=false
+      windows=[Window{9b511f6 u10 com.chiilkkabwa.app/com.chiilkkabwa.app.MainActivity}]
+    topResumedActivity=ActivityRecord{d3552b3 u10 ai.umos.drivingview/.DrivingViewActivity t1000006}
+      state=RESUMED delayedResume=false finishing=false
+      topResumedActivity=ActivityRecord{37ea680 u10 ai.umos.homescreen/.HomeActivity t1000004}
+        state=RESUMED delayedResume=false finishing=false
+    Resumed: ActivityRecord{1058ff4 u10 com.chiilkkabwa.app/.MainActivity t1000009}
+  ResumedActivity: ActivityRecord{1058ff4 u10 com.chiilkkabwa.app/.MainActivity t1000009}
+  topDisplayFocusedRootTask=Task{1a1a306 #1000009 type=standard A=1010175:com.chiilkkabwa.app}
+  mCurrentFocus=Window{9b511f6 u10 com.chiilkkabwa.app/com.chiilkkabwa.app.MainActivity}
+  mFocusedApp=ActivityRecord{1058ff4 u10 com.chiilkkabwa.app/.MainActivity t1000009}
+      mPreferredTopFocusableRootTask=Task{1a1a306 #1000009 type=standard A=1010175:com.chiilkkabwa.app}
+      mLastFocusedRootTask=Task{1a1a306 #1000009 type=standard A=1010175:com.chiilkkabwa.app}
+      * Task{1a1a306 #1000009 type=standard A=1010175:com.chiilkkabwa.app U=10 visible=true visibleRequested=true mode=multi-window translucent=true sz=1}
+        * ActivityRecord{1058ff4 u10 com.chiilkkabwa.app/.MainActivity t1000009}
+    mFocusedWindow=Window{9b511f6 u10 com.chiilkkabwa.app/com.chiilkkabwa.app.MainActivity}
+    mTopFullscreenOpaqueWindowState=Window{9b511f6 u10 com.chiilkkabwa.app/com.chiilkkabwa.app.MainActivity}
+        (multi-window) Task{1a1a306 #1000009 type=standard A=1010175:com.chiilkkabwa.app}
+  VisibleActivityProcess:[ ProcessRecord{9d9c5dc 5675:ai.umos.drivingview/u10a140} ProcessRecord{ffac598 5035:ai.umos.homescreen/u10s1000} ProcessRecord{6240cde 12030:com.chiilkkabwa.app/u10a175}]
+** Dumping CarUxRestrictionsManagerService
+
+*CarUxRestrictionsManagerService*
+UX Restrictions Clients:
+  callbacks: 10
+  killed: false
+  broadcasts count: -1
+Display id: 0 UXR: DO: false UxR: 0 time: 419923164300
+UX Restriction configurations:
+Physical display port: null
+Occupant zone id of the display: -1
+Display type: 0
+===========================================
+baseline mode UXR:
+-------------------------------------------
+State:unknown num restrictions:1
+Requires DO? true
+Restrictions: 0x1ff
+Speed Range: None
+-------------------------------------------
+State:parked num restrictions:1
+Requires DO? false
+Restrictions: 0x0
+Speed Range: None
+-------------------------------------------
+State:idling num restrictions:1
+Requires DO? true
+Restrictions: 0x50
+Speed Range: None
+-------------------------------------------
+State:moving num restrictions:1
+Requires DO? true
+Restrictions: 0x50
+Speed Range: None
+-------------------------------------------
+Max String length: 120
+Max Cumulative Content Items: 21
+Max Content depth: 3
+===========================================
+UX Restriction change log:
+11-14 07:43:42 CarUxRestrictionsManagerService: No DO -> DO changed from 0 to 80
+11-14 07:45:35 CarUxRestrictionsManagerService: DO -> No DO changed from 80 to 0
+
+** Dumping CarDrivingStateService
+
+*CarDrivingStateService*
+Driving State Clients:
+  callbacks: 2
+  killed: false
+  broadcasts count: -1
+Driving state change log:
+08-29 15:10:36 CarDrivingStateService Boot: changed from -1 to 0
+11-14 07:43:42 CarDrivingStateService: changed from 0 to 1
+11-14 07:44:31 CarDrivingStateService: changed from 1 to 2
+11-14 07:45:23 CarDrivingStateService: changed from 2 to 1
+11-14 07:45:35 CarDrivingStateService: changed from 1 to 0
+Current Driving State: 0
+Supported gears: 4 1 2 8 16 32 64 128 256
