@@ -115,3 +115,5 @@ Windows/PowerShell/Temurin17.0.20.101/Gradle8.10.2/SDK35/Node24.18.1. 기준 양
 G1 PASS: 배정·기준dev·전용범위·인수판정 정의. G2 PASS: 현재P02/P03 원문 및 플랫폼/공모전/팀 규칙 구별. G3 PASS: 읽기·기본OFF·원본상태·중단·새세션·B/C미연결. G4: JVM/빌드/웹/위의 제한된 실측만 PASS, 미수행 시나리오는 NOT_VERIFIED. G5: 안전 FAIL 없이 **비활성 진단·검증 자료만** 통합하며 PR/최신dev/CI 결과는 VERIFICATION_LOG와 해당 PR을 정본으로 기록한다. 정책 미확인을 실제 사용 가능 상태로 승격하지 않는다.
 
 최신 통합: 코드22fe372와dev2bea4d3(A03 PR#33 문서) 반영, A02/A03 공통기록 모두 보존. 독립리뷰 결함0. 양JVM210/210·양debug 이전 실행 결과 유지, 문서 통합 후 전체 명령 재확인 UP-TO-DATE/성공, 웹126/126 재실행 PASS. 원격CI·최종HEAD·병합SHA는 해당 base=dev PR이 정본이다. 실측 증거의 state txt는 EOF 빈 줄만 정리했고 원래 사본은 로컬 보존했다.
+
+원격 통합 정본: [PR #35](https://github.com/Chiilkkabwa-team/Chiilkkabwa--HYUNDAI/pull/35), base=`dev`. 실측 source22fe372 / 문서 통합f5e5b0c. 최종HEAD·CI·병합SHA·병합후dev CI는 PR의 최종 통합 결과와 Actions로 추적한다. 시험자료 통합과 제품주행 활성화 BLOCKED 판정은 별개다.

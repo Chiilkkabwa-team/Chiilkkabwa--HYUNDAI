@@ -563,3 +563,5 @@ node --test web/test/*.test.mjs 126/126 PASS. defaultOFF APK재설치 후 실제
 우리5562만정상종료, 별도5558/기존Worktree/AVD원본/main보존. G5 원격PR/병합SHA/CI는base=dev PR과연결Actions이력참조.
 
 A02 lifecycle 최신 통합·리뷰: 코드22fe372(실측된 A02 진단 마커와 동일 source),최신dev2bea4d3(PR#33 A03 runtime 문서)를반영했다. 제품코드충돌0,공통대장append2곳충돌은A02/A03기록모두보존. 독립read-only리뷰결함0,원본실측3416/최대0.8333334/급변0/명시pause관측0·양JVM210실패0을별도재집계확인. 새evidence최초stage검사에서state덤프13개의EOF빈줄이검출되어끝빈줄만정리했고원본EOF사본도ignoredraw-state-snapshots에보존. 값·시각·PNG변경0. 최신변경은문서뿐이므로전체Android명령재실행은86tasks UP-TO-DATE/BUILD SUCCESSFUL(1초),XML210/210유지,웹126/126새실행PASS. 전체최종diff검사및PR/CI/병합은후속정본참조. 초기diffcheck는미추적증거를검사하지못했으므로최초stage EOF경고를누락해통과라고판정하지않는다.
+
+A02 생명주기 PR 정본: https://github.com/Chiilkkabwa-team/Chiilkkabwa--HYUNDAI/pull/35 (base=dev). 실측source22fe372, 최신dev2bea4d3303b241cd10f3b592ea7734980edfd8b3 통합f5e5b0c555c8b51d02ab29ea3cc80c74b5899dba. 최종range git diff origin/dev --check PASS. PR최종HEAD/원격CI/병합SHA/병합후dev CI는연결Actions와PR최종결과를정본으로추적한다. G5는원격성공확인후진행하며로컬210개결과를CI성공으로대체하지않음. main기준c4c15686a30e788143ccc88d8ebaa52500d3187b보존.
