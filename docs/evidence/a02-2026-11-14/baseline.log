@@ -1,0 +1,26 @@
+11-13 21:01:21.152  8702  8702 D A02SpeedTrace: observation source=EMULATOR status=STALE rawMps=0.0 propertyNs=623000886300 receiptNs=624152293500 session=911d810e-c101-4592-8129-cf1071825f43
+11-13 21:01:21.153  8702  8702 D A02SpeedTrace: consumed rejected reason=INVALID_STATUS
+11-13 21:01:21.158  8702  8702 D A02SpeedTrace: observation source=EMULATOR status=STALE rawMps=0.0 propertyNs=623101688000 receiptNs=624153240600 session=911d810e-c101-4592-8129-cf1071825f43
+11-13 21:01:21.159  8702  8702 D A02SpeedTrace: consumed rejected reason=INVALID_STATUS
+11-13 21:01:21.212  8702  8702 D A02SpeedTrace: observation source=EMULATOR status=OK rawMps=0.0 propertyNs=623301318600 receiptNs=624211793300 session=911d810e-c101-4592-8129-cf1071825f43
+11-13 21:01:21.212  8702  8702 D A02SpeedTrace: consumed baseline reason=FIRST_SAMPLE mps=0.0 sampleMs=623301
+11-13 21:01:21.214  8702  8702 D A02SpeedTrace: observation source=EMULATOR status=OK rawMps=0.0 propertyNs=623501006700 receiptNs=624214145700 session=911d810e-c101-4592-8129-cf1071825f43
+11-13 21:01:21.219  8702  8702 D A02SpeedTrace: consumed evaluated mps=0.0 sampleMs=623501 event=null suppression=null
+11-13 21:01:21.221  8702  8702 D A02SpeedTrace: observation source=EMULATOR status=OK rawMps=0.0 propertyNs=623601519300 receiptNs=624221359200 session=911d810e-c101-4592-8129-cf1071825f43
+11-13 21:01:21.222  8702  8702 D A02SpeedTrace: consumed evaluated mps=0.0 sampleMs=623601 event=null suppression=null
+11-13 21:01:21.223  8702  8702 D A02SpeedTrace: observation source=EMULATOR status=OK rawMps=0.0 propertyNs=623801740600 receiptNs=624222655100 session=911d810e-c101-4592-8129-cf1071825f43
+11-13 21:01:21.223  8702  8702 D A02SpeedTrace: consumed evaluated mps=0.0 sampleMs=623801 event=null suppression=null
+11-13 21:01:21.224  8702  8702 D A02SpeedTrace: observation source=EMULATOR status=OK rawMps=0.0 propertyNs=623902577000 receiptNs=624224115100 session=911d810e-c101-4592-8129-cf1071825f43
+11-13 21:01:21.225  8702  8702 D A02SpeedTrace: consumed evaluated mps=0.0 sampleMs=623902 event=null suppression=null
+11-13 21:01:21.227  8702  8702 D A02SpeedTrace: observation source=EMULATOR status=OK rawMps=0.0 propertyNs=624004567600 receiptNs=624225205600 session=911d810e-c101-4592-8129-cf1071825f43
+11-13 21:01:21.227  8702  8702 D A02SpeedTrace: consumed evaluated mps=0.0 sampleMs=624004 event=null suppression=null
+11-13 21:01:21.231  8702  8702 D A02SpeedTrace: observation source=EMULATOR status=OK rawMps=0.0 propertyNs=624200724300 receiptNs=624231231200 session=911d810e-c101-4592-8129-cf1071825f43
+11-13 21:01:21.231  8702  8702 D A02SpeedTrace: consumed evaluated mps=0.0 sampleMs=624200 event=null suppression=null
+11-13 21:01:21.404  8702  8702 D A02SpeedTrace: observation source=EMULATOR status=OK rawMps=0.0 propertyNs=624400684300 receiptNs=624403635400 session=911d810e-c101-4592-8129-cf1071825f43
+11-13 21:01:21.404  8702  8702 D A02SpeedTrace: consumed evaluated mps=0.0 sampleMs=624400 event=null suppression=null
+11-13 21:01:21.521  8702  8702 D A02SpeedTrace: observation source=EMULATOR status=OK rawMps=0.0 propertyNs=624501445600 receiptNs=624520273800 session=911d810e-c101-4592-8129-cf1071825f43
+11-13 21:01:21.521  8702  8702 D A02SpeedTrace: consumed evaluated mps=0.0 sampleMs=624501 event=null suppression=null
+11-13 21:01:21.704  8702  8702 D A02SpeedTrace: observation source=EMULATOR status=OK rawMps=0.0 propertyNs=624702131200 receiptNs=624703495900 session=911d810e-c101-4592-8129-cf1071825f43
+11-13 21:01:21.704  8702  8702 D A02SpeedTrace: consumed evaluated mps=0.0 sampleMs=624702 event=null suppression=null
+11-13 21:01:21.903  8702  8702 D A02SpeedTrace: observation source=EMULATOR status=OK rawMps=0.0 propertyNs=624902000700 receiptNs=624902901100 session=911d810e-c101-4592-8129-cf1071825f43
+11-13 21:01:21.903  8702  8702 D A02SpeedTrace: consumed evaluated mps=0.0 sampleMs=624902 event=null suppression=null

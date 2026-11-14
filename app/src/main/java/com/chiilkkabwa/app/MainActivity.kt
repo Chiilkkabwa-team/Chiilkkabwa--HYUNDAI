@@ -1,6 +1,8 @@
 package com.chiilkkabwa.app
 
 import android.os.Bundle
+import android.car.Car
+import com.chiilkkabwa.app.data.vehicle.AaosSpeedSource
 import android.content.pm.PackageManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -36,8 +38,15 @@ class MainActivity : ComponentActivity() {
 
     private val pedalPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* 결과는 AaosVehicleSource가 재시작 시 확인 */ }
 
+    private val speedPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) {
+        vm.stopSignals()
+        if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) vm.startSignals()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (!BuildConfig.USE_MOCK && AaosSpeedSource.isTestEnabled() && hasPermissionDefinition(Car.PERMISSION_SPEED) &&
+            checkSelfPermission(Car.PERMISSION_SPEED) != PackageManager.PERMISSION_GRANTED) speedPermission.launch(Car.PERMISSION_SPEED)
         if (!BuildConfig.USE_MOCK && hasPedalPermissionDefinition()) {
             pedalPermission.launch(AaosVehicleSource.PEDAL_PERMISSION)
         }
@@ -67,8 +76,10 @@ class MainActivity : ComponentActivity() {
     }
 
     /** API 34 Pleos에는 이 선택 권한 자체가 없을 수 있다. 미지원 권한 창을 열지 않는다. */
-    private fun hasPedalPermissionDefinition(): Boolean = try {
-        packageManager.getPermissionInfo(AaosVehicleSource.PEDAL_PERMISSION, 0)
+    private fun hasPedalPermissionDefinition(): Boolean = hasPermissionDefinition(AaosVehicleSource.PEDAL_PERMISSION)
+
+    private fun hasPermissionDefinition(permission: String): Boolean = try {
+        packageManager.getPermissionInfo(permission, 0)
         true
     } catch (_: PackageManager.NameNotFoundException) {
         false

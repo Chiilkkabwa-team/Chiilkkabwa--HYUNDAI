@@ -1,0 +1,2 @@
+  public static final boolean AAOS_SPEED_ENABLED = Boolean.parseBoolean("false");
+  public static final boolean PLEOS_SIGNALS_ENABLED = false;

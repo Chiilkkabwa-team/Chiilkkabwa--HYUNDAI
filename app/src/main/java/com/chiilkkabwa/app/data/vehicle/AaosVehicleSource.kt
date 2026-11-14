@@ -25,6 +25,7 @@ import com.chiilkkabwa.app.core.signal.SignalStatus
  * TODO(day1): 에뮬레이터에서 getPropertyList() 결과를 로그로 남기고 docs/03 표를 갱신할 것.
  */
 class AaosVehicleSource(private val context: Context) : VehicleSource {
+    private val speedSource = AaosSpeedSource(context)
     private var car: Car? = null
     private var props: CarPropertyManager? = null
     private var ux: CarUxRestrictionsManager? = null
@@ -78,6 +79,7 @@ class AaosVehicleSource(private val context: Context) : VehicleSource {
     }
 
     override fun start(sink: SnapshotSink) {
+        speedSource.start(sink)
         this.sink = sink
         // 이전 Binder callback은 이전 repository 세션 sink만 참조한다.
         callback = callbackFor(sink)
@@ -241,6 +243,7 @@ class AaosVehicleSource(private val context: Context) : VehicleSource {
     }
 
     override fun stop() {
+        speedSource.stop()
         // stop() 후 도착한 이벤트는 현재 sink에 반영되지 않도록 먼저 차단한다.
         sink = null
         try { callback?.let { props?.unregisterCallback(it) } } catch (e: Exception) { Log.w(TAG, "AAOS unregister property failed", e) }

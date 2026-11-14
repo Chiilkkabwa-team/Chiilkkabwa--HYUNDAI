@@ -1,0 +1,2 @@
+      android.car.permission.CAR_SPEED
+        android.car.permission.CAR_SPEED: granted=false

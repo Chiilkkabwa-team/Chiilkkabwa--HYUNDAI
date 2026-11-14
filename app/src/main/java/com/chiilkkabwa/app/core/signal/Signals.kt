@@ -89,4 +89,6 @@ data class VehicleSnapshot(
     val tripDistanceKm: Signal<Float> = Signal.unknown(),
     val tripTimeSec: Signal<Long> = Signal.unknown(),
     val carDimensions: Signal<CarDimensions> = Signal.unknown(),
+    /** A02: signed m/s and elapsed ns; intentionally separate from epoch-based Signal. */
+    val speed: VehicleSpeedObservation = VehicleSpeedObservation(),
 )
