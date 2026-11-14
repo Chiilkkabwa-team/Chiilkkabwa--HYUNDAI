@@ -17,7 +17,7 @@ Android 구현 정적 점검일: 2026-11-11 KST (당시 기준 main: de612636cc2
 | 주차 후 시계열 이벤트 리플레이 | Android 미구현 | 웹 모의 타임라인 | 미검증 |
 | 복기 요약·배지·다음 목표 | Kotlin 코드 일부 구현 | 모의 구현 | 반복 세션 미검증 |
 | NaviHelper 경로 전달 | Android 미구현 | 제품 계획 | 미검증 |
-| 프로필 선택/삭제 UX | Store API 존재, 화면 구현 불완전 | 별도 | 미검증 |
+| 프로필 선택/삭제 UX | **C02(11/15): 안전 확인 화면에서 전환·추가(최대 4)·삭제, 재실행 시 마지막 프로필 복원, 깨진 저장 항목 무시** + 단위 테스트 | 별도 | 미검증(에뮬레이터) |
 | 암호화 Room 저장 | 미구현. 현재 SharedPreferences JSON | 브라우저 localStorage | 미검증 |
 | Pleos Vehicle 신호 구독 | Seat 벨트·Brake·TurnSignal 구현, 나머지 미연동 | 해당 없음 | API34 Pleos2.1.0에서 일부 실수신 확인, 실차 미검증 |
 

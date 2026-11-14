@@ -577,3 +577,19 @@ A02 lifecycle 최신 통합·리뷰: 코드22fe372(실측된 A02 진단 마커�
 A02 생명주기 PR 정본: https://github.com/Chiilkkabwa-team/Chiilkkabwa--HYUNDAI/pull/35 (base=dev). 실측source22fe372, 최신dev2bea4d3303b241cd10f3b592ea7734980edfd8b3 통합f5e5b0c555c8b51d02ab29ea3cc80c74b5899dba. 최종range git diff origin/dev --check PASS. PR최종HEAD/원격CI/병합SHA/병합후dev CI는연결Actions와PR최종결과를정본으로추적한다. G5는원격성공확인후진행하며로컬210개결과를CI성공으로대체하지않음. main기준c4c15686a30e788143ccc88d8ebaa52500d3187b보존.
 
 A02 PR#35 최종 동기화: CI 대기 중 A01 PR#34 dev3c0c824ca35951891f72d9c8fb24d2c098b7694b를 반영했다. 제품코드 충돌0, 공통대장 A01/A02/A03 기록 모두 보존. 필수 전체회귀 재실행: 양JVM230/230(최신dev226+A02신규4)·양debug BUILD SUCCESSFUL(13초), 웹126/126, 최종diff check PASS. 실측source22fe372 기록은 그대로이며 최신A01 선택센서의 실수신을 새로 주장하지 않는다. 추가조사/실험 없이 새HEAD의 CI→dev자체병합→사후CI만 진행한다.
+
+
+## 2026-11-15 C02 — Android 프로필 분리·전환·삭제·복원
+
+- 담당 역할: C / 브랜치 `feature/c02-profiles` ← `origin/dev` 3d9777a
+- 환경: Linux 클라우드 컨테이너, JDK 21, Gradle 8.10.2, Android SDK 35. 에뮬레이터 없음
+- 문제: 저장소는 프로필별 저장이 가능했지만 앱은 항상 첫 프로필만 열었다(두 번째 가족이 쓰고 재실행하면 첫 사람 기록이 뜸). 전환·추가·삭제 수단 없음. 저장 JSON의 모르는 미션/배지 이름 하나로 앱 시작이 예외로 죽을 수 있었다
+- 수정: `PracticeStore` 마지막 프로필 기억(`activeId`), 깨진/모르는 항목은 그 항목만 건너뜀, 순수 규칙 `pick`·`newProfile`. `ChiilViewModel` 전환·추가·삭제(안전 확인 단계 CHECKING/READY에서만). 안전 확인 화면에 프로필 칩(글자 입력 없이 '나·가족 1~3'), 기록 지우기는 두 번 눌러 확인
+- 기존 유지: `allowBackup=false`(기기 밖 백업 없음), 서버·계정 없음. **암호화 Room은 여전히 미구현**(SharedPreferences JSON)
+
+| 시험 | 명령 | 결과 |
+|---|---|---|
+| Android 단위 + 빌드 | `./gradlew :app:testMockDebugUnitTest :app:assembleMockDebug :app:assembleVehicleDebug` | PASS 235/235(신규 `ProfileRulesTest` 5개), 두 플레이버 빌드 |
+| 기기·에뮬레이터 화면 | 미실행 | NOT_VERIFIED |
+
+규정: S09 PASS(기기 내 저장·프로필 분리·삭제, 백업 꺼짐) / 암호화 저장 NOT_IMPLEMENTED, S03·S04 PASS(주행·연습 중 프로필 변경 차단), 에뮬레이터 NOT_VERIFIED

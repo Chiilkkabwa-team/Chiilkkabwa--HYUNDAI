@@ -52,6 +52,7 @@ data class UiState(
     val pact: Set<String> = emptySet(),
     val summary: PracticeSummary? = null,
     val profile: Profile = Profile("default", "나"),
+    val profiles: List<Profile> = emptyList(),
     val newBadges: List<EarnedBadge> = emptyList(),
     val mockMode: Boolean = BuildConfig.USE_MOCK,
 )
@@ -70,7 +71,7 @@ class ChiilViewModel(app: Application) : AndroidViewModel(app) {
     private val store = PracticeStore(app)
     private val policy = GatePolicy()
 
-    private val _ui = MutableStateFlow(UiState(profile = store.profiles().firstOrNull() ?: Profile("default", "나")))
+    private val _ui = MutableStateFlow(store.profiles().let { UiState(profile = PracticeStore.pick(it, store.activeId()), profiles = it) })
     val ui: StateFlow<UiState> = _ui.asStateFlow()
 
     private var runner: MissionRunner? = null
@@ -180,14 +181,41 @@ class ChiilViewModel(app: Application) : AndroidViewModel(app) {
 
     fun dismissBadges() = _ui.update { it.copy(newBadges = emptyList()) }
 
+    // ── C02 프로필(가족 공유 차량) ──
+    // 연습·복기·주행 중에는 바꾸지 않는다: 기록이 다른 사람에게 섞이지 않게. 안전 확인 화면에서만.
+    private fun profileEditable() = _ui.value.session.phase.let { it == Phase.CHECKING || it == Phase.READY }
+
+    private fun showProfile(p: Profile) {
+        store.setActive(p.id)
+        _ui.update { it.copy(profile = p, profiles = store.profiles(), newBadges = emptyList()) }
+    }
+
+    fun switchProfile(id: String) {
+        if (!profileEditable()) return
+        store.profiles().firstOrNull { it.id == id }?.let(::showProfile)
+    }
+
+    fun addProfile() {
+        if (!profileEditable()) return
+        val p = PracticeStore.newProfile(store.profiles(), System.currentTimeMillis()) ?: return
+        store.save(p); showProfile(p)
+    }
+
+    /** 지금 프로필의 기록을 이 기기에서 지운다. 남은 프로필이 없으면 빈 '나'로 시작 */
+    fun deleteCurrentProfile() {
+        if (!profileEditable()) return
+        store.delete(_ui.value.profile.id)
+        showProfile(PracticeStore.pick(store.profiles(), null))
+    }
+
     private fun updateProfile(f: (Profile) -> Profile) {
         val now = System.currentTimeMillis()
         val p0 = f(_ui.value.profile)
         val warmIds = MissionCatalog.warmupRequired().map { it.id }.toSet()
         val earned = AchievementRules.newlyEarned(p0.history, warmIds, now)
         val p = p0.copy(history = p0.history.copy(badges = p0.history.badges + earned))
-        store.save(p)
-        _ui.update { it.copy(profile = p, newBadges = it.newBadges + earned) }
+        store.save(p); store.setActive(p.id)
+        _ui.update { it.copy(profile = p, profiles = store.profiles(), newBadges = it.newBadges + earned) }
     }
 
     override fun onCleared() { repo.stop() }

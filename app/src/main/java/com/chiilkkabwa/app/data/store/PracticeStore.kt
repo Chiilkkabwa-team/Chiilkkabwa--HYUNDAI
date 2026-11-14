@@ -29,8 +29,8 @@ class PracticeStore(context: Context) {
     private val prefs = context.getSharedPreferences("chiilkkabwa_store", Context.MODE_PRIVATE)
 
     fun profiles(): List<Profile> {
-        val arr = JSONArray(prefs.getString(KEY, "[]"))
-        return (0 until arr.length()).map { fromJson(arr.getJSONObject(it)) }
+        val arr = runCatching { JSONArray(prefs.getString(KEY, "[]")) }.getOrElse { JSONArray() }
+        return (0 until arr.length()).mapNotNull { runCatching { fromJson(arr.getJSONObject(it)) }.getOrNull() }
     }
 
     fun save(p: Profile) {
@@ -42,6 +42,10 @@ class PracticeStore(context: Context) {
         val list = profiles().filterNot { it.id == id }
         prefs.edit().putString(KEY, JSONArray(list.map { toJson(it) }).toString()).apply()
     }
+
+    /** 마지막으로 쓴 프로필. 재실행해도 다른 가족의 기록이 뜨지 않게(C02) */
+    fun activeId(): String? = prefs.getString(ACTIVE, null)
+    fun setActive(id: String) = prefs.edit().putString(ACTIVE, id).apply()
 
     private fun toJson(p: Profile) = JSONObject().apply {
         put("id", p.id); put("name", p.displayName); put("nextGoal", p.nextGoal ?: JSONObject.NULL)
@@ -65,12 +69,13 @@ class PracticeStore(context: Context) {
             displayName = o.optString("name", "나"),
             nextGoal = o.optString("nextGoal").takeIf { it.isNotEmpty() && it != "null" },
             history = PracticeHistory(
-                missionResults = (0 until res.length()).map { i -> res.getJSONObject(i).let {
+                // 모르는 미션·출처 이름(다른 버전에서 저장 등)은 그 항목만 건너뛴다. 예외로 앱 시작이 죽지 않게
+                missionResults = (0 until res.length()).mapNotNull { i -> runCatching { res.getJSONObject(i).let {
                     MissionResult(MissionId.valueOf(it.getString("id")), SignalSource.valueOf(it.getString("src")), it.getLong("at"), if (it.isNull("m")) null else it.getDouble("m").toFloat())
-                } },
+                } }.getOrNull() },
                 parkingSimCompleted = o.optInt("parking"), pactsMade = o.optInt("pacts"), reviewsSaved = o.optInt("reviews"),
                 graduated = o.optBoolean("grad"), mentorSessions = o.optInt("mentor"),
-                badges = (0 until badges.length()).map { i -> badges.getJSONObject(i).let { EarnedBadge(Badge.valueOf(it.getString("b")), it.getLong("at"), it.getBoolean("mock")) } },
+                badges = (0 until badges.length()).mapNotNull { i -> runCatching { badges.getJSONObject(i).let { EarnedBadge(Badge.valueOf(it.getString("b")), it.getLong("at"), it.getBoolean("mock")) } }.getOrNull() },
             ),
             reviews = (0 until log.length()).map { i -> log.getJSONObject(i).let {
                 ReviewRecord(it.getLong("at"), it.getInt("min"), if (it.isNull("km")) null else it.getDouble("km").toFloat(),
@@ -79,5 +84,19 @@ class PracticeStore(context: Context) {
         )
     }
 
-    companion object { private const val KEY = "profiles_v1" }
+    companion object {
+        private const val KEY = "profiles_v1"
+        private const val ACTIVE = "active_profile_v1"
+
+        /** 기기 안에서만 쓰는 별칭. 글자 입력 없이 고른다(UI 규칙: 텍스트 입력 없음) */
+        val ALIASES = listOf("나", "가족 1", "가족 2", "가족 3")
+
+        /** 열 프로필: 저장된 활성 프로필 → 없으면 첫 프로필 → 없으면 새 '나' */
+        fun pick(list: List<Profile>, activeId: String?): Profile =
+            list.firstOrNull { it.id == activeId } ?: list.firstOrNull() ?: Profile("default", ALIASES[0])
+
+        /** 새 프로필: 아직 안 쓴 별칭. 다 쓰면 null(최대 4명) */
+        fun newProfile(list: List<Profile>, nowMs: Long): Profile? =
+            ALIASES.firstOrNull { a -> list.none { it.displayName == a } }?.let { Profile("p$nowMs", it) }
+    }
 }
