@@ -428,3 +428,34 @@ B01/B02/B04가 먼저 병합된 `44bfe68c7aec5dd4cfe97cd20b1fa839c8b9ec05`를 �
 초기 브라우저 검사에서 제가 추가한 콘솔 초기화 선택자 오타를 발견해 수정했고 최종 오류0을 확인했다. 예전 A04 검사기의 온보딩 버전2 고정값을 현재 버전 읽기로 보완했으며 제품 온보딩은 변경하지 않았다. 주행/교차로 물리와 이벤트 계약, B/C 음성/복기/학습/소개·저장 코드는 최신 dev 대비 diff0이다.
 
 규정: S01 PASS(웹 Mock/실제제어0), S03/S04 PASS(기존 게이트/잠금 회귀), S07/S10 PASS(Mock·요청/실제 가상 속도 구분), S11 자산/라이브러리 추가0·실장비 성능NOT_VERIFIED. S02/S05/S06/S08/S09/S12는 이번 변경 대상 기능 없음(NOT_APPLICABLE), 기존 제품 전체를 인증하지 않음. 근거는 SAFETY_RULES/COMPLIANCE_REGISTER와 A05 문서의 P04/P06 링크. G1~G4 PASS, G5는 최신dev/보호diff/CI 확인 후 웹 변경만 dev 통합한다. main 보존. 병합·원격CI 최종 상태는 A05 PR/Actions 이력으로 추적한다.
+
+## 2026-11-14 A03 — NaviHelper 3.0.5 독립 정차 요청 어댑터
+
+- 담당A/Codex2 / feature/a03-navihelper-integration / Chiilkkabwa-Codex2-A03-Navi.
+- 최초dev44bfe68c7aec5dd4cfe97cd20b1fa839c8b9ec05, 병합 전 최신dev02091872cf77650051318aa844517c0f3c033d19(A02 PR#27) 반영. 구현커밋992c36f, dev반영1867848; debug 비상수필드 소비 보완은 후속커밋/PR 참조.
+- B02/C02/A02/A04 기능코드 및 기존Worktree·브랜치 원형 보존. 원본 A03조사 문서 SHA256 14C861DF11C3823018429D5DA4E6E8062084DB2C76706155DA50897D21173FC0와 동일 사본을 추적. 역사적 사본의 Markdown hard-break/EOF 공백은 그대로 보존하고 새 코드·통합문서 whitespace 검사는 PASS.
+- Windows/PowerShell,Temurin17.0.20,Gradle8.10.2,Android35,Node24.18.1. 실제 공식 Maven SDK 해석 후 offline 회귀.
+- NaviHelper3.0.5 캐시 AAR SHA256 15FADD11C7C611B1ABDF7EBF9CE91F2A6CE2728E60B4E38B4343E11BB9C12E97. 실제 initialize(onConnected,onFailed)/requestRoute/requestRouteWithWaypoints/리스너/remove/release 컴파일. 내부API/리플렉션/제어/자동취소0. [시그니처·권한·상태계약](A03_NAVIHELPER_INTEGRATION.md).
+
+| 실행 | 결과 |
+|---|---|
+| TDD | 타입부재 compile FAIL→신규23 PASS. signed-zero중복 누락 회귀26중1 FAIL→정규화 후26/26 PASS |
+| 초기기준dev44bfe68 | 양JVM136/136(기존110+A03 26),양debug빌드 PASS |
+| 최신dev0209187 | .\gradlew.bat --offline :app:testMockDebugUnitTest :app:testVehicleDebugUnitTest :app:assembleMockDebug :app:assembleVehicleDebug —양JVM164/164,실패/오류0,양debug BUILD SUCCESSFUL(11초) |
+| Web | node --test web/test/*.test.mjs —110/110 PASS. Web변경0 |
+| debug플래그 | 상수 인라이닝 RED(getstatic없음)→Java非상수필드+소비코드 재컴파일→opt-in true 및 이후기본false 모두 javap getstatic PLEOS_NAVI_ENABLED 유지. debugON→OFF 증분빌드 검증 |
+| release플래그 | -PenablePleosNavi=true :app:generateVehicleReleaseBuildConfig 에도PLEOS_NAVI_ENABLED=false |
+| 실제앱/SDK/Emulator/실차 | 초기화/경로호출/탐색/안내 전부NOT_VERIFIED. 합성Fake콜백은 실제검색증거 아님 |
+| 장치조회 | adb devices -l: 타작업 일반Android emulator-5560만. AVD목록에PleosA01존재하나비실행. 기기점유/설치/주차조건대체 없음 |
+
+신규 JVM26: 기본off/실차·release차단,초기화결과·재시작,명시적동작/strict기어P·브레이크ON·UX해제,모든신호상태/신선도/출처,좌표·필수필드·순서·중복/부호0,실제SDK변환,Unit/검색/nav단계분리,중복/ID상한,권한·미지원·끊김오류,게이트상실/timeout/stop/release후지연/세대격리,cleanup불명차단,단조시계역전,원본리스트변경방어.
+
+Gradle은A02 AAOS_SPEED_ENABLED와A03 PLEOS_NAVI_ENABLED의 삽입위치2곳이 충돌했고 양쪽을 보존. Manifest는자동병합 후 A02속도조회와A03경로요청권한 각각 유지. 최신dev대비 A02·B/C·웹diff0. 단순정적파일경고를 플랫폼성공으로 바꾸지 않았다.
+
+규정: S01 PASS(제어/자동취소0),S02 공개SDK·실컴파일PASS/공모전O03재열람도구접근실패·기기권한/재배포승인NOT_VERIFIED,S03 PASS JVM(strict/fresh/source/상실차단)·실기게이트NOT_VERIFIED,S04 UI/주행터치변경0·실환경NOT_VERIFIED,S07 PASS(관측·상관관계·단계분리),S09 PASS(새위치수집/저장/업로드0·메모리상한),S10 PASS(합성/빌드/실환경구분),S12 main/기존작업보존·제출/릴리스NOT_APPLICABLE. S05/S06은음성/주행서비스변경없음. 공식SDK링크·O03/P02/P03/P06/P07/P08 적용범위는A03문서/SAFETY_RULES/COMPLIANCE_REGISTER참조.
+
+G1/G2 PASS(배정·독립범위·공식근거/미확인),G3 PASS(기본off/실차·release차단/최소권한/실패격리),G4 JVM·빌드·Web만PASS/실초기화·검색·안내·자원회수NOT_VERIFIED,G5 기본off연동기반만 자체통합. 실제코스안내완료 주장 없음. 최종PR·병합SHA·CI는 후속 기록 또는 해당PR이력으로 추적.
+
+### A03 최종 출처 계약 회귀
+
+NaviProgress.signalSource/requestDataSource 부재 compile RED→최소필드 추가→양JVM164/164(신규26)·양debug BUILD SUCCESSFUL(5초). 기존 차량/코칭/프로필/웹 코드는 무변경. 출처·초기화/함수/검색/nav 단계 분리를 유지한다.

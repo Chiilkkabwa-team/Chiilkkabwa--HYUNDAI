@@ -19,6 +19,9 @@
     <uses-permission android:name="pleos.car.permission.CAR_INFO" />    <!-- 차체 크기 -->
     <!-- TODO(day1): SteeringWheel 조회 권한 상수 확인 후 추가 -->
 
+    <!-- A03 explicit parked route request only; no nav info/map/control permission. -->
+    <uses-permission android:name="pleos.car.permission.NAVI_ROUTE_SEARCH" />
+
     <queries>
         <intent>
             <action android:name="android.intent.action.TTS_SERVICE" />
