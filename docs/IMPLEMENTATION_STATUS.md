@@ -134,3 +134,7 @@ A03 Probe 최신 통합: A01 PR#30의dev91413da를c159d15에반영,대장append�
 A02 최신통합: A01 PR#30 dev91413da의14개테스트/기존기록을보존해양JVM194/194,양debug빌드,웹126/126 PASS. PR#31(base=dev)의최종HEAD/CI/병합결과참조. A02외제품코드는최신dev와동일하다.
 
 A03 Probe PR#32 최종동기화: dev8993d25(A02 PR#31)와공통기록전부보존. 양JVM206/206·양debug·시험APK·release제외·웹126/126 PASS. 실제장치NOT_VERIFIED유지. 최종PR/CI는#32이력참조.
+
+### A01 선택 센서 공개 SDK 연결 (2026-11-15)
+
+기준dev01eff12 / feature/a01-optional-vehicle-signals / 전용 OptionalSignals. 코드19e4ec3e8e4cad17012984a10b7c2124dc6efb3a. Wiper실제상태·LowBeam실제상태·앞오른쪽착석·현재Trip거리(m→km)/시간(분→Long초)을 기존세션에연결. Steering은public전륜각≠기존핸들회전각,CarInfo는public치수없어미연결폴백유지. 차량미지원확정과구분. 선택Toggle/Center 중단·시각·출처회귀보완. 양JVM226/226(신규20),양Debug/opt-in컴파일·release차단·웹126/126 PASS. **AVD인계전 미접근,실수신·실미션 NOT_VERIFIED**. [정확한API/권한/단위/안전/한계](A01_OPTIONAL_SIGNALS.md). A02/A03/B·C/웹/게이트/Manifest/Gradle과기존Worktree/main보존.

@@ -520,3 +520,12 @@ A02 최신dev 통합(2026-11-15): PR#31 생성 직전 dev가91413da9e581c0fd4d18
 ### A03 Probe PR #32 최종 동기화
 
 PR#32의원격CI진행중 A02 PR#31이dev8993d25c3b93a0d0b70c13f604b540196a42bbab에통합되어반영. 두공통대장각append2블록충돌을A01/A02/A03전부보존해해결했고새기능코드충돌0. 최종전체명령재실행 BUILD SUCCESSFUL(11초/129tasks),양JVM206/206(기존194+owner12),양debug·시험APK·release manifest/Kotlin PASS,웹126/126 PASS. git diff --check 및최신dev대비보호범위diff0. 실제장치시험NOT_VERIFIED유지. 최종head/병합SHA/dev CI는 https://github.com/Chiilkkabwa-team/Chiilkkabwa--HYUNDAI/pull/32 와연결Actions이력이정본이다.
+## 2026-11-15 A01 — 선택 센서 공개 SDK·오프라인 워밍업 회귀
+
+기준dev01eff12a2ecdbd4ae3e0fdb78f6031504aa13540,코드19e4ec3e8e4cad17012984a10b7c2124dc6efb3a,feature/a01-optional-vehicle-signals/새전용Worktree. [보고서·S01~S12/G1~G5](A01_OPTIONAL_SIGNALS.md),[원본public선언·hash·XML집계](evidence/a01-optional-2026-11-15/README.md). Windows/Temurin17.0.20/Gradle8.10.2/Node24.22.1.
+
+실물sources+javap/컴파일로Wiper/LowBeam/Passenger/Trip의공개읽기·capability·동일listener/area해제·권한·타입·단위를확인. 새권한0. 미구현channel/helper compile RED→선택센서11 GREEN후14확장,선택미션6/6 assertion RED→GREEN. 기존필수3종·Mock6미션·SDK수명/오류와A02/A03전체JVM포함.
+
+.\gradlew.bat --offline --rerun-tasks :app:testMockDebugUnitTest :app:testVehicleDebugUnitTest :app:assembleMockDebug :app:assembleVehicleDebug —최종기본복원BUILD SUCCESSFUL42초/86tasks모두실행/양226/226·실패오류0/양DebugPASS. node --test web/test/*.test.mjs —126/126·실패건너뜀0. git diff --check PASS. -PenablePleosSignals=true assembleVehicleDebug+generateVehicleReleaseBuildConfig —6초PASS/debugtrue·releasefalse,이후기본false복원. 기존deprecated/strip경고는유지하며실패로숨기지않음.
+
+실환경: 사용자미인계지시로AVD조회/접근/설치/시작/종료0,새센서실수신·실선택미션전부NOT_VERIFIED. steeringDeg는전륜각/핸들각계약차이,carDimensions는publicAPI부재로BLOCKED;fallback은실제차량capabilityfalse의증거가아님. P/PB/UX게이트필드쓰기0·실차/release/default차단유지. 기존벨트true/실PBON/전체Emulator워밍업BLOCKED유지. main/기존A01/A05/C02/AVD데이터보존. 최신dev/충돌·최종HEAD CI후dev만통합하고최종PR·merge·사후CI는PR/Actions이력참조.
