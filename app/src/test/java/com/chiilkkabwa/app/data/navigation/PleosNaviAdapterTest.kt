@@ -125,6 +125,8 @@ class PleosNaviAdapterTest {
     }
     @Test fun unitReturnStartCompleteAndNavigationAreDistinctObservations() {
         val a = ready(); assertTrue(a.request(request(), true))
+        assertEquals(SignalSource.EMULATOR, a.progress.signalSource)
+        assertEquals(RouteDataSource.SYNTHETIC_TEST, a.progress.requestDataSource)
         assertTrue(a.progress.callReturned); assertFalse(a.progress.searchStarted)
         assertFalse(a.progress.searchCompleted); assertNull(a.progress.navigationStatus)
         clients.last().sink(NaviEvent.SearchStarted)

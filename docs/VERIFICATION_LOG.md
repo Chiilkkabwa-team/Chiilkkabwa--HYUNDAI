@@ -435,3 +435,7 @@ Gradle은A02 AAOS_SPEED_ENABLED와A03 PLEOS_NAVI_ENABLED의 삽입위치2곳이 
 규정: S01 PASS(제어/자동취소0),S02 공개SDK·실컴파일PASS/공모전O03재열람도구접근실패·기기권한/재배포승인NOT_VERIFIED,S03 PASS JVM(strict/fresh/source/상실차단)·실기게이트NOT_VERIFIED,S04 UI/주행터치변경0·실환경NOT_VERIFIED,S07 PASS(관측·상관관계·단계분리),S09 PASS(새위치수집/저장/업로드0·메모리상한),S10 PASS(합성/빌드/실환경구분),S12 main/기존작업보존·제출/릴리스NOT_APPLICABLE. S05/S06은음성/주행서비스변경없음. 공식SDK링크·O03/P02/P03/P06/P07/P08 적용범위는A03문서/SAFETY_RULES/COMPLIANCE_REGISTER참조.
 
 G1/G2 PASS(배정·독립범위·공식근거/미확인),G3 PASS(기본off/실차·release차단/최소권한/실패격리),G4 JVM·빌드·Web만PASS/실초기화·검색·안내·자원회수NOT_VERIFIED,G5 기본off연동기반만 자체통합. 실제코스안내완료 주장 없음. 최종PR·병합SHA·CI는 후속 기록 또는 해당PR이력으로 추적.
+
+### A03 최종 출처 계약 회귀
+
+NaviProgress.signalSource/requestDataSource 부재 compile RED→최소필드 추가→양JVM164/164(신규26)·양debug BUILD SUCCESSFUL(5초). 기존 차량/코칭/프로필/웹 코드는 무변경. 출처·초기화/함수/검색/nav 단계 분리를 유지한다.

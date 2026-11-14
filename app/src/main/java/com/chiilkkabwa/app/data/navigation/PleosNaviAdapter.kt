@@ -17,7 +17,7 @@ class PleosNaviAdapter(
     private val responseTimeoutMs: Long = 15_000,
 ) {
     init { require(initTimeoutMs > 0 && responseTimeoutMs > 0) }
-    var progress = NaviProgress()
+    var progress = NaviProgress(signalSource = runtime.source)
         private set
     var lastRejection: RouteProblem? = null
         private set
@@ -39,7 +39,7 @@ class PleosNaviAdapter(
         safety = VehicleSnapshot() // Never carry a pre-stop safety snapshot into a new connection.
         requestedAt = null
         connectedAt = now
-        progress = NaviProgress(phase = NaviPhase.INITIALIZING)
+        progress = NaviProgress(phase = NaviPhase.INITIALIZING, signalSource = runtime.source)
         val epoch = ++generation
         try {
             val created = clientFactory()
@@ -72,7 +72,8 @@ class PleosNaviAdapter(
         RouteRequestGate.check(safety, wallClockMs(), runtime.source)?.let { return deny(it) }
         consumedIds += frozen.requestId
         requestedAt = lastElapsed
-        progress = progress.copy(phase = NaviPhase.REQUESTING, requestId = frozen.requestId, problem = null)
+        progress = progress.copy(phase = NaviPhase.REQUESTING, requestId = frozen.requestId,
+            requestDataSource = frozen.dataSource, problem = null)
         lastRejection = null
         val epoch = generation
         try {

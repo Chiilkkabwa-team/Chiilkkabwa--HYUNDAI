@@ -49,6 +49,8 @@ enum class RouteProblem {
 data class NaviProgress(
     val phase: NaviPhase = NaviPhase.STOPPED,
     val initialized: Boolean = false,
+    val signalSource: SignalSource? = null,
+    val requestDataSource: RouteDataSource? = null,
     val requestId: String? = null,
     val callReturned: Boolean = false,
     val searchStarted: Boolean = false,
