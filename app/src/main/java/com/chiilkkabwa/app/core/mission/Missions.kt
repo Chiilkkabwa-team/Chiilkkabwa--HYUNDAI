@@ -64,16 +64,25 @@ class EdgeTracker<T> {
 class SeatBeltJudge : MissionJudge {
     override val id = MissionId.SEAT_BELT
     override val title = "안전벨트 매기"
+    private var startedAt = Long.MAX_VALUE
+    private var initialBuckled: Signal<Boolean>? = null
     override fun start(s: VehicleSnapshot, nowMs: Long) {
-        // 벨트는 조작 이력이 아닌 현재 유효 신호를 update()에서 확인한다.
+        startedAt = nowMs
+        // 이미 체결된 유효 초기 상태만 예외. 미체결/불명 시작은 새 관측이 필요하다.
+        initialBuckled = s.driverBeltBuckled.takeIf {
+            it.isUsable && it.value == true && it.receivedAtMs <= nowMs
+        }
     }
     override fun update(s: VehicleSnapshot, nowMs: Long): Progress {
         val belt = s.driverBeltBuckled
+        if (!belt.isUsable || belt.value != true) initialBuckled = null
         belt.blockingStatus()?.let { return Progress.Unavailable(it) }
         if (!belt.isUsable) {
             return Progress.InProgress(1, 1, "안전벨트 상태를 확인 중이에요. 이미 맸다면 그대로 유지해 주세요.")
         }
-        return if (belt.value == true) {
+        val observedSinceStart = belt.receivedAtMs in startedAt..nowMs
+        val retainedInitial = belt == initialBuckled && belt.receivedAtMs <= nowMs
+        return if (belt.value == true && (observedSinceStart || retainedInitial)) {
             Progress.Done(belt.source, "안전벨트가 체결되어 있어요. 그대로 유지해 주세요.")
         } else {
             Progress.InProgress(1, 1, "안전벨트를 매 주세요. 이미 맸다면 풀지 말고 그대로 두세요.")
@@ -90,6 +99,9 @@ class BrakePressReleaseJudge : MissionJudge {
     private var maxPct: Float? = null
     override fun start(s: VehicleSnapshot, nowMs: Long) { edge.reset(s.brakePressed, nowMs); pressed = false; maxPct = null }
     override fun update(s: VehicleSnapshot, nowMs: Long): Progress {
+        if (!s.brakePressed.isUsable) {
+            edge.reset(s.brakePressed, nowMs); pressed = false; maxPct = null
+        }
         s.brakePressed.blockingStatus()?.let { return Progress.Unavailable(it) }
         if (pressed && s.brakePedalPct.isUsable) maxPct = maxOf(maxPct ?: 0f, s.brakePedalPct.value!!)
         when (edge.newValue(s.brakePressed)) {
@@ -110,6 +122,9 @@ class TurnSignalJudge : MissionJudge {
     private var step = 0 // 0: 왼쪽 대기, 1: 오른쪽 대기, 2: 끄기 대기
     override fun start(s: VehicleSnapshot, nowMs: Long) { edge.reset(s.turnSignal, nowMs); step = 0 }
     override fun update(s: VehicleSnapshot, nowMs: Long): Progress {
+        if (!s.turnSignal.isUsable) {
+            edge.reset(s.turnSignal, nowMs); step = 0
+        }
         s.turnSignal.blockingStatus()?.let { return Progress.Unavailable(it) }
         val v = edge.newValue(s.turnSignal)
         when {
