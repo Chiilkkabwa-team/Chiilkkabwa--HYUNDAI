@@ -407,3 +407,24 @@ G1/G2 PASS(배정·범위·근거·계약),G3 PASS(기본차단·순수코어·�
 B01/B02/B04가 먼저 병합된 `44bfe68c7aec5dd4cfe97cd20b1fa839c8b9ec05`를 기능 브랜치에 반영했다. 상태·검증 대장의 말미 append 충돌 두 곳에서 A02와 B01/B02/B04의 모든 절을 보존했다. 차량/이벤트 코드 충돌은 없으며 최신 dev 대비 B02 음성 정책·웹 diff는0이다. 기존 엔진 정책과 UI·저장소·게이트도 무변경이다.
 
 `.\gradlew.bat --offline --rerun-tasks :app:testMockDebugUnitTest :app:testVehicleDebugUnitTest :app:assembleMockDebug :app:assembleVehicleDebug` — **86/86 tasks 실제 실행, BUILD SUCCESSFUL(56초), JVM mock138/138·vehicle138/138, 두debug빌드 PASS**. `node --test web/test/*.test.mjs` — 최신 웹 **110/110 PASS**. A02 신규28개, B02 신규31개를 함께 검증했다. 기본debug flag는 Boolean.parseBoolean(false), release 상수false 유지. 실기 결과는 코드8166fe4의 명시적 opt-in APK에 한정하고 이 통합 단위/빌드를 실차 증거로 승격하지 않는다.
+
+## 2026-11-14 A05 — 웹 2D Mock 조작 반응·입력 충돌·상태 표시
+
+- 담당/브랜치: 사용자 A05 배정 / feature/a05-web-control-polish / 별도 Chiilkkabwa-Codex3-A05-Controls Worktree. 최초 dev44bfe68c7aec5dd4cfe97cd20b1fa839c8b9ec05, 시험 코드5cb0612. 최신 dev02091872cf77650051318aa844517c0f3c033d19를 c20197d6f99b4cd5b77485dbcf144f4c2f2da5e2에 반영. 웹 코드는 시험 코드와 동일하며 A02 Android 변경을 그대로 보존했다.
+- 환경: Windows / Node24.22.1 / Chrome157.0.8103.51 / 기존 Playwright / 독립 localhost·headless 브라우저. A05는 Android/실차/AVD를 실행하지 않았다. C02를 읽거나 조작하는 검증 절차를 사용하지 않았다.
+- 상세: [설계·수치·안전 한계](A05_CONTROL_POLISH.md). 실제 [A05 브라우저 결과](evidence/a05-2026-11-14/controls-results.json), [A04/자동 시연 결과](evidence/a05-2026-11-14/junction-results.json). 화면은 git 제외 build/a05-evidence 및 build/a05-junction-evidence에 보존.
+
+| 실행 | 결과 | 판정 |
+|---|---|---|
+| 변경 전 node --test web/test/*.test.mjs | 110/110 | 기준 PASS |
+| 페달 새5회귀를 기존 코드에 실행 | 포인터 취소/캡처 상실 잔류·소유권·늦은 콜백·보조 버튼 모두 실패 확인 | 결함 재현 |
+| 최종 node --test web/test/*.test.mjs | 126/126, 실패0/건너뜀0. 새 입력11+페달5 포함 | PASS |
+| node --check web/app.js, git diff --check | 오류 없음 | PASS |
+| NODE_PATH=<기존 Playwright 경로> node web/test/controls.browser.cjs | 1440×900/390×900 조작, 슬라이더 우선, 포커스/동시 키, 페달, PRND, 정지 요청/감속/정지/해제. 온보딩5단계·코치 마크·GNB 회귀. pageerror/console error0 | PASS |
+| NODE_PATH=<기존 Playwright 경로> node web/test/junction.browser.cjs | 평가/강습 정상 회전 및report, 연습 복기 저장 후goal. 390/1440px, 브라우저 오류0/요청 실패0 | PASS |
+| 최신 dev0209187 동기화 후 웹 동일성·단위 재실행 | 웹diff0 및126/126 | PASS |
+| Android 로컬 실행 / 실제 음질·실차 | A05 범위 외. 브라우저 음성/효과음은 껐음 | NOT_RUN / NOT_VERIFIED |
+
+초기 브라우저 검사에서 제가 추가한 콘솔 초기화 선택자 오타를 발견해 수정했고 최종 오류0을 확인했다. 예전 A04 검사기의 온보딩 버전2 고정값을 현재 버전 읽기로 보완했으며 제품 온보딩은 변경하지 않았다. 주행/교차로 물리와 이벤트 계약, B/C 음성/복기/학습/소개·저장 코드는 최신 dev 대비 diff0이다.
+
+규정: S01 PASS(웹 Mock/실제제어0), S03/S04 PASS(기존 게이트/잠금 회귀), S07/S10 PASS(Mock·요청/실제 가상 속도 구분), S11 자산/라이브러리 추가0·실장비 성능NOT_VERIFIED. S02/S05/S06/S08/S09/S12는 이번 변경 대상 기능 없음(NOT_APPLICABLE), 기존 제품 전체를 인증하지 않음. 근거는 SAFETY_RULES/COMPLIANCE_REGISTER와 A05 문서의 P04/P06 링크. G1~G4 PASS, G5는 최신dev/보호diff/CI 확인 후 웹 변경만 dev 통합한다. main 보존. 병합·원격CI 최종 상태는 A05 PR/Actions 이력으로 추적한다.

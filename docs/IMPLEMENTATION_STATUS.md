@@ -96,3 +96,9 @@ Android 구현 정적 점검일: 2026-11-11 KST (당시 기준 main: de612636cc2
 - JVM mock/vehicle 각각110/110(신규31),두 debug빌드,웹110/110 PASS. SPOKEN은 합성 정상 완료callback 시험 결과이며 실제 TTS 재생 증거가 아니다. 실음성 길이·포커스·Emulator·실차·주행 플랫폼정책은 NOT_VERIFIED(S05). PR/병합/CI는 해당 검증 로그·PR 이력 참조.
 
 A02 통합 후 갱신: B01/B02/B04 dev44bfe68를 반영해 Android 양JVM **138/138**, 양debug빌드, 웹 **110/110 PASS**. A02 외 코드 변경은 최신dev에서 가져온 것이며 A02 PR의 B02·Web diff0이다. 실기/실차 등급과 차단 조건은 A02 전용 문서 그대로 유지한다.
+
+### A05 웹 Mock 조작 반응 보완 (2026-11-14 / 5cb0612)
+
+- `feature/a05-web-control-polish`, 최초 dev44bfe68 / 최신 dev0209187 반영. 기존 E1 페달 수정을 재사용해 입력 채널 소유권·점진 WASD·포인터 취소/늦은 콜백 차단·슬라이더 우선·정보 버튼·가상 기어/정지 요청 상태를 보완했다. [A05 상세·입력 수치·한계](A05_CONTROL_POLISH.md).
+- 웹126/126, 390×900/1440×900 실제 조작·온보딩/코치 마크/GNB, 기존 세 모드 자동 시연과 A04 회귀 PASS. 최종 브라우저 오류0. Android/B·C 모듈·저장·SafetyGate·sim.js 계약은 최신dev 대비 무변경이다.
+- 전부 웹 2D Mock 결과이며 실제 차량 제어·자동D·실차 운전 평가가 아니다. C02 작업물을 포함하지 않으며 기존 Worktree/AVD는 보존한다. main 변경 없음. 원격 CI/통합은 A05 PR 및 Actions 이력으로 추적한다.
