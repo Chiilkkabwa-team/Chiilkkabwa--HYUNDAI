@@ -66,6 +66,7 @@ class VehicleRepository(private val sources: List<VehicleSource>) {
                 tripDistanceKm = snapshot.tripDistanceKm.disconnected(),
                 tripTimeSec = snapshot.tripTimeSec.disconnected(),
                 carDimensions = snapshot.carDimensions.disconnected(),
+                speed = snapshot.speed.disconnected(),
             )
         }
     }

@@ -1,0 +1,4 @@
+11-13 21:06:32.942 25602 25602 D A02SpeedTrace: observation source=EMULATOR status=UNKNOWN rawMps=null propertyNs=null receiptNs=935931755800 session=3154b436-9555-48d6-84a1-e687fe8ab4df
+11-13 21:06:32.945 25602 25602 D A02SpeedTrace: consumed rejected reason=INVALID_STATUS
+11-13 21:06:32.949 25602 25602 D A02SpeedTrace: observation source=EMULATOR status=PERMISSION_DENIED rawMps=null propertyNs=null receiptNs=935931755800 session=3154b436-9555-48d6-84a1-e687fe8ab4df
+11-13 21:06:32.950 25602 25602 D A02SpeedTrace: consumed rejected reason=INVALID_STATUS
