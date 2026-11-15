@@ -642,3 +642,10 @@ A02 PR#35 최종 동기화: CI 대기 중 A01 PR#34 dev3c0c824ca35951891f72d9c8f
 - 앱 판단 로직(JVM, `PerfBudgetTest`): 주행 잠금 1회 갱신 **1.3µs** → 10Hz에서 1코어의 **0.0013%**, 준비 단계 1회 **3.5µs** → 5Hz에서 **0.0017%**. P10 차량 앱 기준 3%의 1/1000 수준. **화면 그리기(Compose)·시스템 서비스·실기기 CPU는 포함하지 않음** → 에뮬레이터 프로파일러 실측은 **NOT_VERIFIED**
 - APK: 두 개 모두 약 **22.9MB**(dex 22.3MB — `isMinifyEnabled=false`라 줄이지 않은 Compose·라이브러리), targetSdk 34, 디버그 인증서 서명(설치·실행용). 권한: 읽기 권한만, `CONTROL_CAR_*`·`INTERNET` **없음**(aapt2 dump permissions)
 - 메모리(RAM 400MB 기준): 런타임 측정 **NOT_RUN**(기기·에뮬레이터 필요)
+
+## 2026-11-15 저녁 — 저장소 점검 도구로 재확인 (AI)
+
+- `node tools/web-check.cjs demo`: 연습 → 리플레이 OK, 평가 → 리포트 시간표 OK, 브라우저 오류 0
+- `node tools/web-check.cjs axe`: 처음 1건(라이트 테마 리포트 감점 칩 `.pts.bad` 대비) → 배경 25%→14%로 수정 후 8개 화면 **0**
+- `node tools/web-check.cjs perf`: 연습 정차 2.3%, 연습 주행 잠금 2.4%, 평가 가상 주행 11.4%(데스크톱 Chromium)
+- 웹 단위 126/126
