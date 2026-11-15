@@ -415,7 +415,6 @@ function recordMission(id, prog) {
 }
 
 // A-3 워밍업 미션
-const STATUS_HELP = { UNSUPPORTED: '이 차에서는 이 신호를 읽을 수 없어요.', PERMISSION_DENIED: '이 신호를 읽을 권한이 없어요.', DISCONNECTED: '차량 신호가 잠시 끊겼어요.' };
 Screens.mission = () => ({
   mount(el) {
     const j = judgeState.judge; const meta = C.MISSION_META[j.id];
@@ -461,7 +460,7 @@ Screens.mission = () => ({
       $('#mIll').classList.add('ok');
       setTimeout(() => $('#nextBtn')?.focus(), 50);
     } else {
-      st.innerHTML = `<div class="banner warn">${icon('info', 22)}<span>${STATUS_HELP[p.status] || '신호를 읽을 수 없어요.'} 이 미션은 건너뛸게요.</span></div>`;
+      st.innerHTML = `<div class="banner warn">${icon('info', 22)}<span>${C.StatusText[p.status] || '신호를 읽을 수 없어요.'} 이 미션은 건너뛸게요.</span></div>`;
       act.innerHTML = btn('skipBtn', '건너뛰기', 'secondary big');
     }
     const go = () => {
@@ -530,7 +529,7 @@ Screens.pedal = () => ({
       $('#pActions').innerHTML = btn('nextBtn', `다음: ${{ parking: '가상 주차', pact: '멘토 약속', go: '출발 준비' }[nx]}`, 'primary big');
       $('#nextBtn').onclick = () => nextPrepStep();
     } else if (p.kind === 'unavailable') {
-      $('#pState').innerHTML = `<div class="banner warn">${icon('info', 22)}<span>${STATUS_HELP[p.status]} 이 단계는 건너뛸게요.</span></div>`;
+      $('#pState').innerHTML = `<div class="banner warn">${icon('info', 22)}<span>${C.StatusText[p.status]} 이 단계는 건너뛸게요.</span></div>`;
       $('#pActions').innerHTML = btn('skipBtn', '건너뛰기', 'secondary big'); $('#skipBtn').onclick = () => nextPrepStep();
     } else {
       $('#pState').innerHTML = '';
