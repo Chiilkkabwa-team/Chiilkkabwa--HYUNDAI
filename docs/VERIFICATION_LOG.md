@@ -626,3 +626,11 @@ A02 PR#35 최종 동기화: CI 대기 중 A01 PR#34 dev3c0c824ca35951891f72d9c8f
   - release 빌드: `assembleMockRelease`/`assembleVehicleRelease` **NOT_RUN**(위 BLOCKED). release에서 `PLEOS_SIGNALS_ENABLED`·`AAOS_SPEED_ENABLED`·`PLEOS_NAVI_ENABLED`가 false로 고정된 것은 `app/build.gradle.kts`로 확인
   - 블라인드: 파일 내용 실명·연락처·키 미발견. **Git 이력 작성자 정보에 실명 형태 1개·개인 메일 3개** → 공개 방식 결정 필요(docs/08 §6)
 - 규정: S04 PASS(웹, 수정 후) · S10 PASS(README에 확인 범위 분리) · S12 NOT_VERIFIED(release APK 설치·실행 미확인, 공개 방식 미결정)
+
+## 2026-11-15 오후 — 3D 모형·성능·ponytail 정리 (AI)
+
+- 기준: `dev` 46e5eae + 이 브랜치 커밋 e72dea4·ee5e968·88820de
+- 웹 단위 **126/126 PASS**, axe WCAG 2 A/AA 8개 화면 위반 **0**, 연습·평가 자동 시연 끝까지 브라우저 오류 0
+- 성능(헤드리스 Chromium, CDP TaskDuration 8초): 연습 정차 2.2% · 연습 주행 잠금 3.0→**2.4%** · 평가 가상 주행 10.8% · 리포트 3.7% · 장면 재현 재생 9.4%, JS 힙 ≤4.7MB. 데스크톱 브라우저 측정이며 Pleos 차량 앱 기준(P10)과 직접 비교 불가 — Android 실측 **NOT_RUN**
+- Android 변경(Praise·Mock 헬퍼 삭제)은 이 환경에서 컴파일 **NOT_RUN**(Maven Central 429) → PR CI로 확인
+- 상세: [WORKLOG_CLAUDE_2026-11-12_15.md](WORKLOG_CLAUDE_2026-11-12_15.md)
