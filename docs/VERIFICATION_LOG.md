@@ -656,3 +656,9 @@ A02 PR#35 최종 동기화: CI 대기 중 A01 PR#34 dev3c0c824ca35951891f72d9c8f
 - GitHub CI: Android 단위 테스트·mock/vehicle debug 빌드 **SUCCESS**, 웹 단위 **SUCCESS**(run 43712260638)
 - 새 단위 테스트: `MockDriveCoachTest` 설정 끄기·켜기 1개(총 5개)
 - 화면 표시·온보딩 흐름·설정 저장·실제 소리: **NOT_VERIFIED** — PC 에뮬레이터에서 [ANDROID_STUDIO_CHECK.md](ANDROID_STUDIO_CHECK.md) 순서로
+
+## 2026-11-15 밤 — 넓은 차량 화면 대응·Android lint (AI)
+
+- Android lint(GitHub Actions run 43713578781, mockDebug·vehicleDebug): **오류 0**, 경고 7/11. 고친 것: 앱 아이콘 없음(MissingApplicationIcon) → 도형 벡터 아이콘, 데이터 이전 규칙 없음(DataExtractionRules) → 클라우드 백업·기기 이전에서 기록 제외(S09). 남긴 경고: targetSdk 34(Pleos API 34 기준이라 의도), 의존성 새 버전 알림, 디버그 전용 NaviProbe 문자열
+- 넓은 화면: 앱 내용 최대 1000dp·세로 스크롤(주행 잠금 제외) — 실제 Pleos 화면 표시는 **NOT_VERIFIED**(에뮬레이터)
+- 웹: 단위 126/126, 자동 시연 OK, 1920×720·1600×600·1280×720·2560×1080·800×600·390×844에서 가로 넘침 0·오류 0. 1280×720 이하 가로 화면에서는 기기 틀 안 '연습 시작' 버튼이 스크롤 아래에 있음(틀 안 스크롤로 닿음)

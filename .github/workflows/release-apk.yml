@@ -32,14 +32,20 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon :app:testMockDebugUnitTest --tests '*PerfBudgetTest' :app:assembleMockRelease :app:assembleVehicleRelease
+      - name: Android lint (결과만 모은다 — 오류가 있어도 다음 단계로)
+        run: ./gradlew --no-daemon :app:lintMockDebug :app:lintVehicleDebug || true
       - name: Report
         run: |
           grep -h "PERF" app/build/test-results/testMockDebugUnitTest/*.xml || true
+          # Android lint 요약: 오류 수·경고 수·오류 내용
+          for f in app/build/reports/lint-results-*.xml; do echo "== $f"; grep -c 'severity="Error"' "$f" || true; grep -c 'severity="Warning"' "$f" || true; grep -B1 -A3 'severity="Error"' "$f" | grep -E 'id=|message=|file=' | head -60 || true; done
           ls -l app/build/outputs/apk/*/release/*.apk
           AAPT=$(ls "$ANDROID_HOME"/build-tools/35.0.0/aapt2)
           for f in app/build/outputs/apk/*/release/*.apk; do echo "== $f"; "$AAPT" dump permissions "$f" || true; "$AAPT" dump badging "$f" | grep -E "^package|sdkVersion|targetSdk" || true; done
       - uses: actions/upload-artifact@v4
         with:
           name: release-apks
-          path: app/build/outputs/apk/*/release/*.apk
+          path: |
+            app/build/outputs/apk/*/release/*.apk
+            app/build/reports/lint-results-*.html
           retention-days: 14

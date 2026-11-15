@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -17,6 +18,9 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
@@ -81,6 +85,11 @@ fun AppRoot(
     // 처음 실행이면 사용법을 한 번 보여 준다(닫으면 다시 안 뜸)
     val shown = if (!parkedMenu) null else sheet ?: if (!ui.onboardingSeen) Sheet.INTRO else null
     Box(Modifier.fillMaxSize().background(Tokens.Bg).padding(24.dp)) {
+        // 차량 화면(Connect-S·W)은 가로로 아주 넓고 세로가 짧다. 버튼·글줄이 화면 끝까지 늘어나지 않게 가운데 최대 1000dp만 쓰고,
+        // 짧은 가로 화면에서 아래가 잘리지 않게 세로 스크롤. 주행 잠금은 정적 화면이라 스크롤하지 않는다(S04)
+        val scroll = rememberScrollState()
+        Box(Modifier.align(Alignment.TopCenter).widthIn(max = MaxContentWidth).fillMaxWidth().fillMaxHeight()
+            .then(if (ui.session.phase == Phase.DRIVING_LOCK) Modifier else Modifier.verticalScroll(scroll))) {
         when (ui.session.phase) {
             Phase.DRIVING_LOCK -> DrivingLockScreen()
             Phase.CHECKING -> GateScreen(ui, onStart = {}, profiles = vm, onOpen = { sheet = it })
@@ -88,6 +97,7 @@ fun AppRoot(
             Phase.PREPARING -> if (ui.gate is GateState.Locked) GateScreen(ui, onStart = {}) else PrepRouter(vm, ui)
             // 복기 중 주차 확인이 깨지면(E3) 복기 대신 확인 화면을 보여 준다. 기록은 남아 있다
             Phase.REVIEW -> if (ui.session.lockReason != null) GateScreen(ui, onStart = {}) else ReviewScreen(ui, vm::saveReview)
+        }
         }
         shown?.let { s -> SheetHost(s, ui, vm) { if (s == Sheet.INTRO) vm.markOnboardingSeen(); sheet = null } }
         if (ui.newBadges.isNotEmpty() && ui.session.phase != Phase.DRIVING_LOCK) BadgeToast(ui) { vm.dismissBadges() }
@@ -104,6 +114,9 @@ private fun PrepRouter(vm: ChiilViewModel, ui: UiState) = when (ui.step) {
     PrepStep.PACT -> PactScreen(ui, vm::togglePact, vm::confirmPact)
     PrepStep.READY_TO_GO -> ReadyToGoScreen(ui)
 }
+
+/** 넓은 차량 화면에서 내용이 너무 넓게 퍼지지 않게 하는 최대 폭 */
+val MaxContentWidth = 1000.dp
 
 // ── 공통 컴포넌트 ─────────────────────────────────────────
 @Composable fun Title(t: String) = Text(t, color = Tokens.TextMain, fontSize = Tokens.Title, fontWeight = FontWeight.Bold)

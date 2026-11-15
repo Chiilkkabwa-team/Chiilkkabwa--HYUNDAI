@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -19,6 +20,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
@@ -42,7 +44,8 @@ enum class Sheet { HISTORY, SETTINGS, ABOUT, INTRO }
 @Composable
 fun SheetHost(sheet: Sheet, ui: UiState, vm: ChiilViewModel, onClose: () -> Unit) {
     Box(Modifier.fillMaxSize().background(Tokens.Bg)) {
-        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Column(Modifier.align(Alignment.TopCenter).widthIn(max = MaxContentWidth).fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)) {
             when (sheet) {
                 Sheet.HISTORY -> HistorySheet(ui)
                 Sheet.SETTINGS -> SettingsSheet(ui, vm)

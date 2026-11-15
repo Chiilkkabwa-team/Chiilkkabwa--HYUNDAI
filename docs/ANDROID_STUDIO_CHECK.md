@@ -3,6 +3,11 @@
 > 클라우드 환경에서는 컴파일·단위 테스트까지만 확인했다(GitHub CI). **화면이 실제로 맞게 뜨는지, 소리가 나는지는 PC의 Android Studio + Pleos 에뮬레이터에서만 볼 수 있다.** 아래 순서대로 보고, 안 되는 번호와 캡처를 남긴다.
 > 준비(저장소 받기·dev로 바꾸기·빌드)는 [SUBMISSION_RUNBOOK.md](SUBMISSION_RUNBOOK.md) 1~2단계.
 
+## 0-1. 앱이 휴대폰 크기로 보이면
+- **기기 목록에서 휴대폰 에뮬레이터(Pixel 등)를 고른 것**이다. 위쪽 기기 목록에서 **Pleos Connect v2.1.0(Automotive)** 를 고른다. 없으면 README §2 '에뮬레이터 설치' 순서로 만든다
+- 에뮬레이터 없이 차량 비율만 보려면: `ui/screens/CarPreviews.kt`를 열고 오른쪽 위 **Split** 또는 **Design** → 넓은 1창·2창 분할 미리보기(크기는 가정값 — `adb shell wm size` 값으로 바꾼다)
+- 넓은 차량 화면에서 내용은 가운데 최대 1000dp, 세로가 짧으면 스크롤된다(주행 잠금 화면 제외)
+
 ## 0. 실행 준비
 1. 왼쪽 아래 **Build Variants** → `app`을 **mockDebug**로
 2. 위쪽 기기 목록에서 **Pleos Connect v2.1.0** 에뮬레이터 → 초록 ▶ Run
@@ -45,6 +50,10 @@
 ## 7. 차량 신호용(vehicle) — 선택
 - Build Variants를 **vehicleDebug**로 바꾸고 실행. Virtual Console(`adb forward tcp:8088 tcp:8088` → 브라우저 `http://127.0.0.1:8088/`)을 만져 본다
 - 예상: 주차 브레이크 ON을 콘솔로 만들 수 없어 **안전 확인에서 잠긴다**(A01 실측). 설정 화면에는 "차량 신호용 앱은 주행 중에 말하지 않아요"가 보인다
+
+## 7-1. 앱 아이콘·백업
+- [ ] 런처(App library)에 **파란 바탕 핸들 아이콘**으로 보인다(전에는 아이콘이 없었음)
+- 백업: 연습 기록은 클라우드 백업·기기 이전에서 제외(`data_extraction_rules.xml`)
 
 ## 8. README에 넣을 값
 - [ ] `adb shell wm size` 결과(화면 규격) — 공식 README 필수 항목
