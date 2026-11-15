@@ -43,6 +43,7 @@ import com.chiilkkabwa.app.data.store.PracticeStore
 import com.chiilkkabwa.app.core.mission.ParkingSim
 import com.chiilkkabwa.app.core.mission.ParkingSlot
 import com.chiilkkabwa.app.core.mission.Progress
+import com.chiilkkabwa.app.core.mission.MissionCatalog
 import com.chiilkkabwa.app.core.review.Goals
 import com.chiilkkabwa.app.core.review.PactOptions
 import com.chiilkkabwa.app.core.review.ReviewChips
@@ -73,15 +74,22 @@ fun AppRoot(
     onVoicePreview: (() -> Unit)? = null,
     voicePreviewStatus: String? = null,
 ) {
+    // 시트(내 기록·설정·소개·사용법)는 정차 확인 화면에서만. 그 밖의 단계가 되면 바로 닫는다(S04)
+    val parkedMenu = ui.session.phase == Phase.CHECKING || ui.session.phase == Phase.READY
+    var sheet by remember { mutableStateOf<Sheet?>(null) }
+    LaunchedEffect(parkedMenu) { if (!parkedMenu) sheet = null }
+    // 처음 실행이면 사용법을 한 번 보여 준다(닫으면 다시 안 뜸)
+    val shown = if (!parkedMenu) null else sheet ?: if (!ui.onboardingSeen) Sheet.INTRO else null
     Box(Modifier.fillMaxSize().background(Tokens.Bg).padding(24.dp)) {
         when (ui.session.phase) {
             Phase.DRIVING_LOCK -> DrivingLockScreen()
-            Phase.CHECKING -> GateScreen(ui, onStart = {}, profiles = vm)
-            Phase.READY -> GateScreen(ui, vm::startPractice, onVoicePreview, voicePreviewStatus, profiles = vm)
+            Phase.CHECKING -> GateScreen(ui, onStart = {}, profiles = vm, onOpen = { sheet = it })
+            Phase.READY -> GateScreen(ui, vm::startPractice, onVoicePreview, voicePreviewStatus, profiles = vm, onOpen = { sheet = it })
             Phase.PREPARING -> if (ui.gate is GateState.Locked) GateScreen(ui, onStart = {}) else PrepRouter(vm, ui)
             // 복기 중 주차 확인이 깨지면(E3) 복기 대신 확인 화면을 보여 준다. 기록은 남아 있다
             Phase.REVIEW -> if (ui.session.lockReason != null) GateScreen(ui, onStart = {}) else ReviewScreen(ui, vm::saveReview)
         }
+        shown?.let { s -> SheetHost(s, ui, vm) { if (s == Sheet.INTRO) vm.markOnboardingSeen(); sheet = null } }
         if (ui.newBadges.isNotEmpty() && ui.session.phase != Phase.DRIVING_LOCK) BadgeToast(ui) { vm.dismissBadges() }
         if (ui.mockMode) DebugPanel(vm, ui, Modifier.align(Alignment.BottomEnd))
     }
@@ -129,10 +137,12 @@ fun GateScreen(
     onVoicePreview: (() -> Unit)? = null,
     voicePreviewStatus: String? = null,
     profiles: ChiilViewModel? = null,   // 안전 확인 단계에서만 넘긴다(복기 잠금 화면에서는 null → 프로필 줄 숨김)
+    onOpen: ((Sheet) -> Unit)? = null,
 ) {
     val s = ui.snapshot
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         profiles?.let { ProfileRow(ui, it) }
+        onOpen?.let { MenuRow(it) }
         Title("연습 준비를 확인할게요")
         CheckRow("기어 P", s.gear.isUsable && s.gear.value == Gear.PARK)
         CheckRow("주차 브레이크", s.parkingBrakeOn.isUsable && s.parkingBrakeOn.value == true)
@@ -161,6 +171,17 @@ private fun ProfileRow(ui: UiState, vm: ChiilViewModel) {
     }
     Body("기록은 이 기기에만, 사람마다 따로 저장돼요")
 }
+
+/** 정차 화면 전용 메뉴(웹 머리말의 내 기록·설정·소개·사용법) */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun MenuRow(onOpen: (Sheet) -> Unit) =
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Chip("내 기록", false) { onOpen(Sheet.HISTORY) }
+        Chip("설정", false) { onOpen(Sheet.SETTINGS) }
+        Chip("소개", false) { onOpen(Sheet.ABOUT) }
+        Chip("사용법", false) { onOpen(Sheet.INTRO) }
+    }
 
 @Composable
 private fun CheckRow(label: String, ok: Boolean) = Row(verticalAlignment = Alignment.CenterVertically) {
@@ -202,7 +223,9 @@ fun WarmupScreen(ui: UiState, onSkip: () -> Unit, onNext: () -> Unit) {
             Title("운전석 워밍업 ${minOf(r.index + 1, r.total)}/${r.total}"); Spacer(Modifier.width(16.dp))
             SourceBadge(r.results.lastOrNull()?.source ?: ui.snapshot.brakePressed.source)
         }
-        r.results.forEach { Body("● ${it.id.name.lowercase()} 완료", Tokens.SuccessText) }
+        // 사용자에게 영어 내부 이름(seat_belt)을 보이지 않는다
+        val titles = remember { (MissionCatalog.warmupRequired() + MissionCatalog.warmupOptional()).associate { it.id to it.title } }
+        r.results.forEach { Body("● ${titles[it.id] ?: "미션"} 완료", Tokens.SuccessText) }
         if (!r.finished) {
             Body(r.currentTitle ?: "", Tokens.TextMain)
             when (val p = r.progress) {
@@ -219,7 +242,7 @@ fun WarmupScreen(ui: UiState, onSkip: () -> Unit, onNext: () -> Unit) {
                 null -> Body("조작해 보세요")
             }
         } else {
-            Body("워밍업 완료! 출발 준비가 됐어요", Tokens.SuccessText)
+            Body("워밍업 완료. 출발 준비가 됐어요", Tokens.SuccessText)
             BigButton("가상 주차 연습으로", onClick = onNext)
         }
     }
@@ -272,7 +295,7 @@ fun ParkingSimScreen(ui: UiState, onDone: () -> Unit) {
                 BigButton("전진", ghost = speed <= 0) { speed = if (speed > 0) 0f else 0.8f }
             }
         }
-        Body(if (parked) "칸 안에 들어왔어요! 기준점을 기억해 둬요" else "뒷바퀴가 옆 차 범퍼를 지날 때 핸들을 끝까지 돌려 보세요",
+        Body(if (parked) "칸 안에 들어왔어요. 기준점을 기억해 둬요" else "뒷바퀴가 옆 차 범퍼를 지날 때 핸들을 끝까지 돌려 보세요",
             if (parked) Tokens.SuccessText else Tokens.TextSub)
         BigButton(if (parked) "다음" else "그만하고 다음", onClick = onDone)
     }
@@ -335,9 +358,9 @@ fun ReviewScreen(ui: UiState, onSave: (String?, String?, String?, Boolean) -> Un
     var next by remember { mutableStateOf<String?>(null) }
     val sum = ui.summary
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Title("수고했어요!")
+        Title("수고했어요")
         sum?.let { Body("오늘 연습 ${it.durationMin}분" + (it.distanceKm?.let { d -> " · %.1fkm".format(d) } ?: "") + if (!it.durationFromVehicle) " (앱 기준 시간)" else "") }
-        TimelineSection(ui.timeline)
+        TimelineSection(ui.timeline, ui.spokenEventIds)
         Body("오늘 어땠어요?", Tokens.TextMain)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) { ReviewChips.learner.forEach { Chip(it, it == learner) { learner = it } } }
         if (ui.mentorMode) {
@@ -355,7 +378,7 @@ fun ReviewScreen(ui: UiState, onSave: (String?, String?, String?, Boolean) -> Un
 
 /** C01: 주차 후에만 보이는 정적 속도 시간표. 사건 점 + 글 목록(그래프를 못 보는 사람도 같은 내용을 읽는다) */
 @Composable
-private fun TimelineSection(tl: com.chiilkkabwa.app.core.review.DriveTimeline) {
+private fun TimelineSection(tl: com.chiilkkabwa.app.core.review.DriveTimeline, spoken: Set<String> = emptySet()) {
     if (!tl.hasData) {
         Body("이번 주행의 속도 기록은 없어요. 속도 신호가 꺼져 있거나 받지 못했어요", Tokens.TextSub)
         return
@@ -373,7 +396,8 @@ private fun TimelineSection(tl: com.chiilkkabwa.app.core.review.DriveTimeline) {
     if (tl.marks.isEmpty()) Body("급하게 속도가 바뀐 순간은 없었어요")
     tl.marks.take(5).forEach { m ->
         val what = if (m.type == com.chiilkkabwa.app.core.event.SpeedEventType.RAPID_SPEED_DECREASE) "속도가 빠르게 줄었어요" else "속도가 빠르게 늘었어요"
-        Body("%d:%02d  %s  %.0f → %.0fkm/h".format(m.tSec.toInt() / 60, m.tSec.toInt() % 60, what, m.fromKmh, m.toKmh))
+        Body("%d:%02d  %s  %.0f → %.0fkm/h".format(m.tSec.toInt() / 60, m.tSec.toInt() % 60, what, m.fromKmh, m.toKmh) +
+            if (m.eventId in spoken) "  · 주행 중에 말했어요(모의)" else "")
     }
     Text("속도 변화만 본 기록이에요. 페달 조작이나 주변 상황을 판단한 것이 아니에요", color = Tokens.TextSub, fontSize = Tokens.Caption)
 }

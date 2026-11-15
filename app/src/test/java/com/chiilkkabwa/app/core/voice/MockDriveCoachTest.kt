@@ -52,6 +52,13 @@ class MockDriveCoachTest {
         assertNull(offerFor(MockDriveCoach(null, mentor = false, startedAtMs = 0), e))
     }
 
+    @Test fun voice_setting_off_stays_silent_and_on_overrides_mentor_default() {
+        val e = rapidIncrease(SignalSource.MOCK)
+        assertNull(offerFor(MockDriveCoach("출발·정지", mentor = false, startedAtMs = 0, voiceEnabled = false), e))
+        // 설정에서 직접 켰다면 멘토와 함께여도 말한다(설정이 기본값보다 우선)
+        assertTrue(offerFor(MockDriveCoach("출발·정지", mentor = true, startedAtMs = 0, voiceEnabled = true), e) != null)
+    }
+
     @Test fun focus_lost_is_dropped_not_counted() {
         val coach = MockDriveCoach("그냥 몸풀기", mentor = false, startedAtMs = 0)
         val e = rapidIncrease(SignalSource.MOCK)

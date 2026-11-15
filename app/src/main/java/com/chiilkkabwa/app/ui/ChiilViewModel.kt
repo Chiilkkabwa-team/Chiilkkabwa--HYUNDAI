@@ -17,6 +17,7 @@ import com.chiilkkabwa.app.core.mission.RunnerState
 import com.chiilkkabwa.app.core.safety.GatePolicy
 import com.chiilkkabwa.app.core.safety.GateState
 import com.chiilkkabwa.app.core.safety.SafetyGate
+import com.chiilkkabwa.app.core.review.PactOptions
 import com.chiilkkabwa.app.core.session.Phase
 import com.chiilkkabwa.app.core.session.PracticeSummary
 import com.chiilkkabwa.app.core.session.SessionReducer
@@ -60,6 +61,12 @@ data class UiState(
     val timeline: com.chiilkkabwa.app.core.review.DriveTimeline = com.chiilkkabwa.app.core.review.DriveTimeline(),
     val newBadges: List<EarnedBadge> = emptyList(),
     val mockMode: Boolean = BuildConfig.USE_MOCK,
+    /** 기기 설정(웹 '설정'과 같은 뜻) */
+    val voiceOn: Boolean? = null,
+    val voiceCap: Int = 5,
+    val onboardingSeen: Boolean = true,
+    /** 이번 주행에서 실제로 말한 사건 id — 복기 시간표의 '말했어요' 표시 */
+    val spokenEventIds: Set<String> = emptySet(),
 )
 
 /**
@@ -76,7 +83,10 @@ class ChiilViewModel(app: Application) : AndroidViewModel(app) {
     private val store = PracticeStore(app)
     private val policy = GatePolicy()
 
-    private val _ui = MutableStateFlow(store.profiles().let { UiState(profile = PracticeStore.pick(it, store.activeId()), profiles = it) })
+    private val _ui = MutableStateFlow(store.profiles().let {
+        UiState(profile = PracticeStore.pick(it, store.activeId()), profiles = it,
+            voiceOn = store.voiceOn(), voiceCap = store.voiceCap(), onboardingSeen = store.onboardingSeen())
+    })
     val ui: StateFlow<UiState> = _ui.asStateFlow()
 
     private var runner: MissionRunner? = null
@@ -86,6 +96,7 @@ class ChiilViewModel(app: Application) : AndroidViewModel(app) {
 
     // B02 모의 음성 길잡이: mock 플레이버의 주행 잠금 동안만. Activity가 이 값을 보고 소리를 내고 coachDone으로 결과를 돌려준다.
     private var coach: MockDriveCoach? = null
+    private var spoken: Set<String> = emptySet()
     private val _coachOffer = MutableStateFlow<CoachingOffer?>(null)
     val coachOffer: StateFlow<CoachingOffer?> = _coachOffer.asStateFlow()
 
@@ -126,7 +137,7 @@ class ChiilViewModel(app: Application) : AndroidViewModel(app) {
         if (session.phase == Phase.DRIVING_LOCK) {
             if (prev.session.phase != Phase.DRIVING_LOCK) {
                 timelineRecorder.start()
-                if (BuildConfig.USE_MOCK) coach = MockDriveCoach(prev.goal, prev.mentorMode, SystemClock.elapsedRealtime())
+                if (BuildConfig.USE_MOCK) coach = MockDriveCoach(prev.goal, prev.mentorMode, SystemClock.elapsedRealtime(), prev.voiceOn, prev.voiceCap)
             }
             val event = timelineRecorder.accept(s.speed, SystemClock.elapsedRealtimeNanos())
             if (event != null) coach?.let { c ->
@@ -135,11 +146,14 @@ class ChiilViewModel(app: Application) : AndroidViewModel(app) {
                 viewModelScope.launch { delay(900); _coachOffer.value = c.flush(SystemClock.elapsedRealtime()) ?: _coachOffer.value }
             }
         } else if (coach != null) {
-            coach?.stop(SystemClock.elapsedRealtime()); coach = null; _coachOffer.value = null
+            val c = coach!!
+            spoken = timelineRecorder.snapshot().marks.map { it.eventId }.filter(c::didSpeak).toSet()
+            c.stop(SystemClock.elapsedRealtime()); coach = null; _coachOffer.value = null
         }
         val timeline = if (session.phase == Phase.REVIEW && prev.session.phase == Phase.DRIVING_LOCK) timelineRecorder.snapshot() else prev.timeline
 
-        _ui.value = prev.copy(session = session, gate = gate, snapshot = s, runner = runnerState, pedal = pedal, summary = summary, timeline = timeline)
+        _ui.value = prev.copy(session = session, gate = gate, snapshot = s, runner = runnerState, pedal = pedal, summary = summary, timeline = timeline,
+            spokenEventIds = if (session.phase == Phase.REVIEW) spoken else emptySet())
         // A01 진단: 명시적 opt-in debug 에뮬레이터에서 앱이 소비한 값/상태만 기록한다.
         if (BuildConfig.DEBUG && BuildConfig.PLEOS_SIGNALS_ENABLED && !BuildConfig.USE_MOCK &&
             s.driverBeltBuckled.source == com.chiilkkabwa.app.core.signal.SignalSource.EMULATOR) {
@@ -186,7 +200,7 @@ class ChiilViewModel(app: Application) : AndroidViewModel(app) {
     fun pedalDone() = _ui.update { it.copy(step = if (it.mentorMode) PrepStep.PACT else PrepStep.READY_TO_GO) }
 
     fun togglePact(item: String) = _ui.update {
-        val next = if (item in it.pact) it.pact - item else if (it.pact.size < 3) it.pact + item else it.pact
+        val next = if (item in it.pact) it.pact - item else if (it.pact.size < PactOptions.MAX) it.pact + item else it.pact
         it.copy(pact = next)
     }
 
@@ -212,6 +226,11 @@ class ChiilViewModel(app: Application) : AndroidViewModel(app) {
         coach?.complete(offer, outcome, SystemClock.elapsedRealtime())
         if (_coachOffer.value === offer) _coachOffer.value = null
     }
+
+    // ── 설정·온보딩(정차 화면에서만 연다) ──
+    fun setVoiceOn(on: Boolean) { store.setVoiceOn(on); _ui.update { it.copy(voiceOn = on) } }
+    fun setVoiceCap(n: Int) { store.setVoiceCap(n); _ui.update { it.copy(voiceCap = store.voiceCap()) } }
+    fun markOnboardingSeen() { store.setOnboardingSeen(); _ui.update { it.copy(onboardingSeen = true) } }
 
     fun dismissBadges() = _ui.update { it.copy(newBadges = emptyList()) }
 
