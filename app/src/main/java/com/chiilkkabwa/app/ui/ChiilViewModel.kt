@@ -215,7 +215,8 @@ class ChiilViewModel(app: Application) : AndroidViewModel(app) {
             p.copy(
                 nextGoal = nextGoal,
                 history = p.history.copy(reviewsSaved = p.history.reviewsSaved + 1, graduated = p.history.graduated || graduate),
-                reviews = p.reviews + ReviewRecord(System.currentTimeMillis(), sum?.durationMin ?: 0, sum?.distanceKm, learner, mentor, nextGoal),
+                // 기기 안에도 필요한 만큼만(S09): 최근 30개만 남긴다(내 기록 화면은 10개를 보여 줌)
+                reviews = (p.reviews + ReviewRecord(System.currentTimeMillis(), sum?.durationMin ?: 0, sum?.distanceKm, learner, mentor, nextGoal)).takeLast(30),
             )
         }
         _ui.update { it.copy(session = SessionReducer.onReviewDone(it.session), step = PrepStep.GOAL, pact = emptySet(), summary = null) }

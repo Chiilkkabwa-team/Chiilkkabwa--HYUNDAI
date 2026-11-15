@@ -7,14 +7,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -22,12 +22,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.chiilkkabwa.app.BuildConfig
 import com.chiilkkabwa.app.core.achievement.AchievementRules
 import com.chiilkkabwa.app.core.achievement.Badge
-import com.chiilkkabwa.app.ui.ChiilViewModel
 import com.chiilkkabwa.app.ui.UiState
 import com.chiilkkabwa.app.ui.theme.Tokens
 import java.text.SimpleDateFormat
@@ -37,105 +35,158 @@ import java.util.Locale
 /**
  * 웹 체험판에만 있던 정차 화면 메뉴를 앱으로 옮긴 것: 내 기록·설정·소개·사용법(온보딩).
  * 정차 확인 화면(CHECKING·READY)에서만 열리고, 그 밖의 단계가 되면 AppRoot가 닫는다(S04).
- * 글 입력 없이 고르기만 한다(차량 UI 규칙).
+ * 글 입력 없이 고르기만 한다(차량 UI 규칙). ViewModel 대신 함수만 받아 미리보기·스크린샷에서도 그린다.
  */
 enum class Sheet { HISTORY, SETTINGS, ABOUT, INTRO }
 
 @Composable
-fun SheetHost(sheet: Sheet, ui: UiState, vm: ChiilViewModel, onClose: () -> Unit) {
+fun SheetHost(
+    sheet: Sheet,
+    ui: UiState,
+    onVoiceOn: (Boolean) -> Unit = {},
+    onVoiceCap: (Int) -> Unit = {},
+    onClose: () -> Unit,
+) {
     Box(Modifier.fillMaxSize().background(Tokens.Bg)) {
         Column(Modifier.align(Alignment.TopCenter).widthIn(max = MaxContentWidth).fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            verticalArrangement = Arrangement.spacedBy(16.dp)) {
             when (sheet) {
                 Sheet.HISTORY -> HistorySheet(ui)
-                Sheet.SETTINGS -> SettingsSheet(ui, vm)
+                Sheet.SETTINGS -> SettingsSheet(ui, onVoiceOn, onVoiceCap)
                 Sheet.ABOUT -> AboutSheet()
                 Sheet.INTRO -> IntroSheet(onClose)
             }
-            if (sheet != Sheet.INTRO) BigButton("닫기", ghost = true, onClick = onClose)
+            if (sheet != Sheet.INTRO) Box(Modifier.widthIn(max = 420.dp)) { BigButton("닫기", ghost = true, onClick = onClose) }
         }
     }
 }
 
+/** 시트 머리: 아이콘 + 제목 */
+@Composable
+private fun SheetTitle(icon: Ico, t: String) = Row(verticalAlignment = Alignment.CenterVertically) {
+    IconTile(icon, 64.dp); Spacer(Modifier.width(16.dp)); Display(t)
+}
+
+/** 점 목록 한 줄 */
+@Composable
+private fun Bullet(t: String, icon: Ico = Ico.CHECK, color: androidx.compose.ui.graphics.Color = Tokens.SuccessText) =
+    Row(verticalAlignment = Alignment.CenterVertically) { LineIcon(icon, 24.dp, color); Spacer(Modifier.width(12.dp)); Body(t, Tokens.TextMain) }
+
 // ── 내 기록: 레벨(이어 간 횟수), 복기 기록, 배지, 수료 카드 ──
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun HistorySheet(ui: UiState) {
     val p = ui.profile
     val h = p.history
     val fmt = remember { SimpleDateFormat("M월 d일 HH:mm", Locale.KOREA) }
-    Title("${p.displayName}의 연습 기록")
-    Body("레벨 ${AchievementRules.level(h)} · 복기 ${h.reviewsSaved}번 · 가상 주차 ${h.parkingSimCompleted}번", Tokens.TextMain)
-    Text("레벨은 실력이 아니라 이어 간 연습 횟수예요", color = Tokens.TextSub, fontSize = Tokens.Caption)
-    p.nextGoal?.let { Body("다음 목표: $it", Tokens.TextMain) }
+    SheetTitle(Ico.STAR, "${p.displayName}의 연습 기록")
+    Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        StatTile("${AchievementRules.level(h)}", "레벨(이어 간 횟수)", Modifier.weight(1f))
+        StatTile("${h.reviewsSaved}번", "복기", Modifier.weight(1f))
+        StatTile("${h.parkingSimCompleted}번", "가상 주차", Modifier.weight(1f))
+        StatTile("${h.badges.size}/${Badge.entries.size}", "배지", Modifier.weight(1f))
+    }
+    Caption("레벨은 실력이 아니라 이어 간 연습 횟수예요")
+    p.nextGoal?.let { Banner("다음 목표: $it", Pill.INFO) }
 
     if (h.graduated) Certificate(p.displayName, h.badges.firstOrNull { it.badge == Badge.GRADUATE }?.atMs, fmt)
 
-    Body("배지 ${h.badges.size}/${Badge.entries.size}", Tokens.TextMain)
-    if (h.badges.isEmpty()) Body("아직 없어요. 안전벨트 미션부터 해 봐요")
-    h.badges.forEach { b -> Body("● ${b.badge.title}" + (if (b.mockOnly) " (모의)" else "") + " — ${b.badge.desc}") }
-
-    Body("최근 복기", Tokens.TextMain)
-    if (p.reviews.isEmpty()) Body("아직 저장한 복기가 없어요")
-    p.reviews.asReversed().take(10).forEach { r ->
-        val parts = listOfNotNull(
-            fmt.format(Date(r.atMs)), "${r.durationMin}분", r.distanceKm?.let { "%.1fkm".format(it) },
-            r.learnerChip, r.mentorChip?.let { "멘토: $it" }, r.nextGoal?.let { "다음: $it" },
-        )
-        Body(parts.joinToString(" · "))
+    Card {
+        Heading("배지")
+        if (h.badges.isEmpty()) Body("아직 없어요. 안전벨트 미션부터 해 봐요")
+        h.badges.forEach { b ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                LineIcon(Ico.STAR, 28.dp, Tokens.Yellow); Spacer(Modifier.width(12.dp))
+                Column { Body(b.badge.title + if (b.mockOnly) " (모의)" else "", Tokens.TextMain); Caption(b.badge.desc) }
+            }
+        }
     }
-    Text("기록은 이 기기에만 있어요. 서버·계정·위치는 쓰지 않아요", color = Tokens.TextSub, fontSize = Tokens.Caption)
+    Card {
+        Heading("최근 복기")
+        if (p.reviews.isEmpty()) Body("아직 저장한 복기가 없어요")
+        p.reviews.asReversed().take(10).forEach { r ->
+            val parts = listOfNotNull(
+                "${r.durationMin}분", r.distanceKm?.let { "%.1fkm".format(it) },
+                r.learnerChip, r.mentorChip?.let { "멘토: $it" }, r.nextGoal?.let { "다음: $it" },
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Caption(fmt.format(Date(r.atMs)), Tokens.TextSub); Spacer(Modifier.width(14.dp)); Body(parts.joinToString(" · "), Tokens.TextMain)
+            }
+        }
+    }
+    Caption("기록은 이 기기에만 있어요. 서버·계정·위치는 쓰지 않아요")
 }
 
 /** 수료 카드: '혼자 운전 시작'을 고른 사람. 면허·실력 인증이 아니다 */
 @Composable
-private fun Certificate(name: String, atMs: Long?, fmt: SimpleDateFormat) =
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Tokens.Surface).padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text("수료 카드", color = Tokens.SuccessText, fontSize = Tokens.Caption)
-        Title("$name, 혼자 출발")
-        Body("치일까봐 연습을 마치고 혼자 운전을 시작했어요" + (atMs?.let { " · ${fmt.format(Date(it))}" } ?: ""))
-        Text("연습 기록일 뿐 운전 실력이나 면허를 인증하지 않아요", color = Tokens.TextSub, fontSize = Tokens.Caption)
+private fun Certificate(name: String, atMs: Long?, fmt: SimpleDateFormat) = Card(color = Tokens.SuccessBg) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Mascot(Mood.HAPPY, 96.dp); Spacer(Modifier.width(16.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            StatusPill("수료 카드", Pill.OK)
+            Title("$name, 혼자 출발")
+            Body("치일까봐 연습을 마치고 혼자 운전을 시작했어요" + (atMs?.let { " · ${fmt.format(Date(it))}" } ?: ""), Tokens.TextMain)
+            Caption("연습 기록일 뿐 운전 실력이나 면허를 인증하지 않아요", Tokens.TextSub)
+        }
     }
+}
 
 // ── 설정: 주행 중 모의 음성 켜기·횟수 ──
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun SettingsSheet(ui: UiState, vm: ChiilViewModel) {
-    Title("설정")
-    Body("주행 중 음성 길잡이", Tokens.TextMain)
-    if (BuildConfig.USE_MOCK) {
-        val on = ui.voiceOn ?: true
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Chip("켜기", on) { vm.setVoiceOn(true) }
-            Chip("끄기", !on) { vm.setVoiceOn(false) }
+private fun SettingsSheet(ui: UiState, onVoiceOn: (Boolean) -> Unit, onVoiceCap: (Int) -> Unit) {
+    SheetTitle(Ico.SOUND, "설정")
+    Card {
+        Heading("주행 중 음성 길잡이")
+        if (BuildConfig.USE_MOCK) {
+            val on = ui.voiceOn ?: true
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(Tokens.TouchGap)) {
+                ChoiceCard("켜기", on, Ico.SOUND) { onVoiceOn(true) }
+                ChoiceCard("끄기", !on, Ico.LOCK) { onVoiceOn(false) }
+            }
+            Caption(if (ui.voiceOn == null) "정한 적 없으면 혼자 연습은 켜짐, 멘토와 함께는 꺼짐이에요" else "끈 상태도 기억해요")
+        } else {
+            Body("차량 신호용 앱은 주행 중에 말하지 않아요. 실제 주행 중 음성이 허용되는지 확인한 뒤에 켤게요")
         }
-        Body(if (ui.voiceOn == null) "정한 적 없으면 혼자 연습은 켜짐, 멘토와 함께는 꺼짐이에요" else "끈 상태도 기억해요")
-        Body("주행당 최대 횟수", Tokens.TextMain)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            listOf(3, 5).forEach { n -> Chip("${n}번", ui.voiceCap == n) { vm.setVoiceCap(n) } }
+    }
+    if (BuildConfig.USE_MOCK) Card {
+        Heading("주행당 최대 횟수")
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(Tokens.TouchGap)) {
+            listOf(3, 5).forEach { n -> ChoiceCard("${n}번", ui.voiceCap == n) { onVoiceCap(n) } }
         }
-        Text("간격은 45초로 고정이에요. 안전 정책상 앱은 5번까지만 말해요. 이 앱은 모의 신호로만 말해요", color = Tokens.TextSub, fontSize = Tokens.Caption)
-    } else {
-        Body("차량 신호용 앱은 주행 중에 말하지 않아요. 실제 주행 중 음성이 허용되는지 확인한 뒤에 켤게요")
+        Caption("간격은 45초로 고정이에요. 안전 정책상 앱은 5번까지만 말해요. 이 앱은 모의 신호로만 말해요")
     }
 }
 
 // ── 소개: 왜·무엇을·어디까지(웹 '소개'와 같은 내용) ──
 @Composable
 private fun AboutSheet() {
-    Title("치일까봐")
-    Body("운전석이 아직 낯선 사람을 위한 차 안 연습", Tokens.TextMain)
-    Body("1 · 주차 중 5분 — 벨트·브레이크·깜빡이를 해 보면 차가 신호로 확인해 줘요")
-    Body("2 · 주행 중 0터치 — 화면은 잠기고, 필요할 때만 짧게 한마디")
-    Body("3 · 다시 주차 3분 — 속도 시간표로 돌아보고 다음 목표를 골라요")
-    Body("지키는 약속", Tokens.TextMain)
-    Body("● 확인은 차가, 판단은 사람이. 운전 실력을 판정하지 않아요")
-    Body("● 차를 읽기만 해요. 브레이크·핸들을 조종하지 않아요")
-    Body("● 모르면 잠가요. 기어 P + 주차 브레이크 + 주행 제한 없음일 때만 열어요")
-    Body("● 기록은 기기 안에만. 서버·계정·위치 수집 없음")
-    Body("지금 어디까지", Tokens.TextMain)
-    Body("● 모의 신호로 전체 흐름 동작(이 앱의 '모의' 표시)")
-    Body("● 에뮬레이터에서 일부 차량 신호 수신 확인, 실제 차는 아직 시험 전")
-    Body("● 주행 중 음성은 모의 신호로만. 실제 주행 중 허용은 확인 전")
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Mascot(Mood.CALM, 120.dp); Spacer(Modifier.width(18.dp))
+        Column { Display("치일까봐"); Body("운전석이 아직 낯선 사람을 위한 차 안 연습", Tokens.TextMain) }
+    }
+    Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        listOf(
+            Triple(Ico.PARKING, "주차 중 5분", "벨트·브레이크·깜빡이를 해 보면 차가 신호로 확인해 줘요"),
+            Triple(Ico.LOCK, "주행 중 0터치", "화면은 잠기고, 필요할 때만 짧게 한마디"),
+            Triple(Ico.NOTE, "다시 주차 3분", "속도 시간표로 돌아보고 다음 목표를 골라요"),
+        ).forEachIndexed { i, (ic, t, d) ->
+            Card(Modifier.weight(1f)) { IconTile(ic, 72.dp); Caption("${i + 1}단계", Tokens.PrimaryText); Heading(t); Body(d) }
+        }
+    }
+    Card {
+        Heading("지키는 약속")
+        Bullet("확인은 차가, 판단은 사람이. 운전 실력을 판정하지 않아요")
+        Bullet("차를 읽기만 해요. 브레이크·핸들을 조종하지 않아요")
+        Bullet("모르면 잠가요. 기어 P + 주차 브레이크 + 주행 제한 없음일 때만 열어요")
+        Bullet("기록은 기기 안에만. 서버·계정·위치 수집 없음")
+    }
+    Card {
+        Heading("지금 어디까지")
+        Bullet("모의 신호로 전체 흐름 동작(이 앱의 '모의' 표시)", Ico.INFO, Tokens.PrimaryText)
+        Bullet("에뮬레이터에서 일부 차량 신호 수신 확인, 실제 차는 아직 시험 전", Ico.INFO, Tokens.PrimaryText)
+        Bullet("주행 중 음성은 모의 신호로만. 실제 주행 중 허용은 확인 전", Ico.INFO, Tokens.PrimaryText)
+    }
 }
 
 // ── 사용법(온보딩): 처음 실행 때 한 번, 메뉴에서 다시 ──
@@ -160,18 +211,25 @@ private val introPages = listOf(
         "메뉴의 '사용법'으로 이 안내를 다시 볼 수 있어요."),
 )
 
+private val introArt = listOf(Mood.CALM, Mood.HAPPY, Mood.REST, Mood.HAPPY, Mood.CALM)
+
 @Composable
 private fun IntroSheet(onDone: () -> Unit) {
     var i by remember { mutableIntStateOf(0) }
     val p = introPages[i]
-    Text("${i + 1}/${introPages.size} · ${p.tag}", color = Tokens.SuccessText, fontSize = Tokens.Caption)
-    Title(p.title)
-    Body(p.body, Tokens.TextMain)
-    Body(p.note)
-    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Box(Modifier.weight(1f)) { BigButton("건너뛰기", ghost = true, onClick = onDone) }
-        Box(Modifier.weight(1f)) {
-            BigButton(if (i == introPages.lastIndex) "시작하기" else "다음") { if (i == introPages.lastIndex) onDone() else i++ }
-        }
-    }
+    TwoPane(
+        left = { Mascot(introArt[i], 200.dp); StepDots(introPages.size, i) },
+        right = {
+            StatusPill("${i + 1}/${introPages.size} · ${p.tag}", Pill.INFO)
+            Display(p.title)
+            Body(p.body, Tokens.TextMain)
+            Banner(p.note, Pill.WAIT)
+            Row(horizontalArrangement = Arrangement.spacedBy(Tokens.TouchGap)) {
+                Box(Modifier.weight(1f)) { BigButton("건너뛰기", ghost = true, onClick = onDone) }
+                Box(Modifier.weight(1f)) {
+                    BigButton(if (i == introPages.lastIndex) "시작하기" else "다음") { if (i == introPages.lastIndex) onDone() else i++ }
+                }
+            }
+        },
+    )
 }

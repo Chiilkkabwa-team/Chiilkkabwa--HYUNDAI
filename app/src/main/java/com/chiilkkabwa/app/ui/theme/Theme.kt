@@ -19,8 +19,23 @@ object Tokens {
     val Lock = Color(0xFF6E2A2A)
     val TextMain = Color(0xFFE9EEF5)
     val TextSub = Color(0xFFB8C4D2)
-    val TouchMin = 76.dp        // 큰 터치 영역(차량 화면)
+    // 웹 styles.css 다크 테마와 같은 값(docs/04 §0-2)
+    val Surface3 = Color(0xFF2A3544)
+    val Line = Color(0xFF2A3544)
+    val Muted = Color(0xFF93A1B3)
+    val PrimaryText = Color(0xFFA9CBFA)
+    val Yellow = Color(0xFFFFD66B)
+    val OnAccent = Color(0xFF1B2430)
+    val Danger = Color(0xFFD9483F)
+    val DangerText = Color(0xFFFFD3D3)
+    val SuccessBg = Color(0xFF173A28)
+    val WarnBg = Color(0xFF3A2F12)
+    // Pleos 주행 안전 가이드(P01): 버튼 최소 12.5×12.5mm, 버튼 사이 4mm. 1dp=1/160인치 기준 79dp·25.2dp → 올림
+    val TouchMin = 80.dp        // 큰 터치 영역(차량 화면)
+    val TouchGap = 26.dp        // 누르는 것끼리 띄우는 최소 간격
+    val Display = 40.sp
     val Title = 30.sp
+    val Heading = 25.sp
     val Body = 22.sp
     val Caption = 17.sp
 }
