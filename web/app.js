@@ -1939,7 +1939,8 @@ function simLoop(t) {
   const driving = session.phase === C.Phase.DRIVING_LOCK;
   // 연습 모드에서는 주행 중이 아닐 때 루프를 멈춘다(성능). 주행 중에는 음성 감시 때문에 돌려야 한다.
   if (appMode === 'practice' && !simRunning() && !driving) { simLoopOn = false; return; }
-  const dt = siteOverlayOpen() ? 0 : Math.min(0.06, (t - simLast) / 1000); simLast = t;   // 체험판 안내를 읽는 동안 가상 주행 정지
+  const slow = appMode === 'practice' && !simRunning();   // 연습 주행 잠금: 화면이 정적이라 초당 10번이면 음성 감시에 충분
+  const dt = siteOverlayOpen() ? 0 : Math.min(slow ? 0.25 : 0.06, (t - simLast) / 1000); simLast = t;   // 체험판 안내를 읽는 동안 가상 주행 정지
   if (driving) { voiceSec += dt * timeScale; voiceRealSec += dt; pumpVoice(); recordTrack(); }
   if (!simRunning() || overlay) applyKeyboard(keyboardDrive.releaseAll());
   else applyKeyboard(keyboardDrive.sample(dt));
@@ -1959,7 +1960,7 @@ function simLoop(t) {
   }
   // 주행 중이 아니면 도로 미리보기는 0.4초에 한 번만 그린다(정차 중 CPU 절약)
   if (appMode !== 'practice' && (simRunning() || t - lastIdleDraw > 400)) { drawSimView(); lastIdleDraw = t; }
-  requestAnimationFrame(simLoop);
+  if (slow) setTimeout(() => requestAnimationFrame(simLoop), 90); else requestAnimationFrame(simLoop);
 }
 startSimLoop();
 
