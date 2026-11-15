@@ -6,6 +6,7 @@ import * as VOICE from './voice.js';
 import * as THEME from './theme.js';
 import * as OB from './onboarding.js';
 import * as RP from './replay.js';
+import * as CAR3D from './car3d.js';
 import * as LEARN from './learn.js';
 import { aboutHtml } from './about.js';
 import { holdPedal, bindBrakeSlider } from './pedal-control.js';
@@ -282,6 +283,7 @@ Screens.gate = () => ({
     el.innerHTML = `<div class="screen center">
       <div class="hero"><div class="hero-m" id="gm">${mascot('worried', 104)}</div>
         <div><h1>연습 준비를 확인할게요</h1><p class="sub">차가 직접 확인해요. 셋 다 ‘확인’이면 시작할 수 있어요.</p></div></div>
+      ${CAR3D.html()}
       <ul class="checks">
         <li data-k="gear">${icon('gear', 30)}<span class="ck-l">기어 P</span><span class="ck-s"></span></li>
         <li data-k="pb">${icon('pbrake', 30)}<span class="ck-l">주차 브레이크</span><span class="ck-s"></span></li>
@@ -297,9 +299,11 @@ Screens.gate = () => ({
       render();
     };
     this.lastMood = 'worried';
+    CAR3D.bind(el);
   },
   update() {
     const s = snapshot();
+    CAR3D.show(document, { parkingBrake: s.parkingBrakeOn.status === 'OK' && s.parkingBrakeOn.value === true, gearP: s.gear.status === 'OK' && s.gear.value === 'P' });
     const st = (sig, okFn) => (sig.status !== 'OK' ? (sig.status === 'UNKNOWN' ? 'checking' : 'blocked') : okFn(sig.value) ? 'ok' : 'wait');
     const rows = { gear: st(s.gear, (v) => v === 'P'), pb: st(s.parkingBrakeOn, (v) => v === true), ux: st(s.uxRestricted, (v) => v === false) };
     const text = { ok: '확인', wait: '대기', checking: '확인 중', blocked: '읽을 수 없음' };

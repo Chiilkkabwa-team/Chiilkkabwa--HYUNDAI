@@ -1085,3 +1085,23 @@ body:not([data-mode="practice"]) .sim-canvas {
 /* 주행 잠금 중 콘솔 쪽 짧은 알림(S04 — 앱 화면 대신 여기) */
 .c-flash { margin: 0 0 12px; padding: 10px 12px; border-radius: 12px; background: var(--surface3); color: var(--text); font-size: .88rem; font-weight: 600; }
 .c-flash[hidden] { display: none; }
+
+/* ── 정차 중 3D 차 모형(A06) — 스스로 움직이지 않는다. 색은 토큰만 ── */
+.c3 { position: relative; height: 150px; margin: 4px auto 10px; width: min(360px, 100%); perspective: 720px; cursor: grab; touch-action: pan-y; outline: none; border-radius: 16px; }
+.c3:active { cursor: grabbing; }
+.c3:focus-visible { box-shadow: 0 0 0 3px var(--primary); }
+.c3-car { --ry: -32deg; position: absolute; left: 50%; top: 58%; transform-style: preserve-3d; transform: rotateX(-22deg) rotateY(var(--ry)); }
+.c3-box { position: absolute; transform-style: preserve-3d; }
+.c3-box .f { position: absolute; left: 0; top: 0; backface-visibility: hidden; }
+.c3 .body .f { background: var(--primary); }
+.c3 .body .sd { filter: brightness(.82); }
+.c3 .body .fr, .c3 .body .bk { filter: brightness(.7); }
+.c3 .body .bt { background: var(--text); opacity: .4; }
+.c3 .cab .f { background: var(--car-glass); border: 2px solid var(--primary); box-sizing: border-box; }
+.c3 .cab .tp { background: var(--primary); filter: brightness(1.1); }
+.c3-wheel { position: absolute; left: -15px; top: -15px; width: 30px; height: 30px; border-radius: 50%; background: var(--text); border: 5px solid var(--surface3); box-sizing: border-box; }
+.c3[data-pb="on"] .c3-wheel.rear { border-color: var(--danger-2); }
+.c3-shadow { position: absolute; left: -100px; top: -50px; width: 200px; height: 100px; border-radius: 50%; background: var(--text); opacity: .12; transform: rotateX(90deg) translateZ(-26px); }
+.c3-p { position: absolute; left: -14px; top: -14px; width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; font-size: 18px; background: var(--surface); color: var(--muted); }
+.c3[data-p="on"] .c3-p { background: var(--primary); color: var(--on-primary); }
+@media (max-width: 640px) { .c3 { height: 130px; } }
