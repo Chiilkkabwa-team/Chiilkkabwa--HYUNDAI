@@ -250,7 +250,7 @@ body:not([data-mode="practice"]) .dv-tell { top: auto; bottom: 86px; }
 .dots i { width: 26px; height: 6px; border-radius: 3px; background: var(--surface3); }
 .dots i.d { background: var(--success); }
 .dots i.c { background: var(--primary); }
-.m-card { display: grid; grid-template-columns: 220px 1fr; gap: 28px; align-items: center; padding: 24px; border-radius: var(--r-lg); background: var(--surface); box-shadow: inset 0 0 0 1px var(--surface3); }
+.m-card { display: grid; grid-template-columns: 260px 1fr; gap: 28px; align-items: center; padding: 24px; border-radius: var(--r-lg); background: var(--surface); box-shadow: inset 0 0 0 1px var(--surface3); }
 .m-ill { position: relative; width: 200px; height: 200px; border-radius: 50%; display: grid; place-items: center; background: radial-gradient(circle at 50% 40%, var(--surface3), var(--surface-2d)); color: var(--primary-text); box-shadow: inset 0 0 0 3px var(--line-2); transition: box-shadow .3s, color .3s; }
 .m-ill.ok { color: var(--success-text); box-shadow: inset 0 0 0 4px var(--success), 0 0 0 8px color-mix(in srgb, var(--success) 15%, transparent); }
 .m-live { position: absolute; bottom: -10px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; }
@@ -1087,7 +1087,14 @@ body:not([data-mode="practice"]) .sim-canvas {
 .c-flash[hidden] { display: none; }
 
 /* ── 정차 중 3D 차 모형(A06) — 스스로 움직이지 않는다. 색은 토큰만 ── */
-.c3 { position: relative; height: 150px; margin: 4px auto 10px; width: min(360px, 100%); perspective: 720px; cursor: grab; touch-action: pan-y; outline: none; border-radius: 16px; }
+.c3 { position: relative; height: 210px; margin: 4px auto 10px; width: min(480px, 100%); perspective: 720px; cursor: grab; touch-action: pan-y; outline: none; border-radius: 16px; }
+.c3-fb { position: absolute; inset: 0; perspective: 720px; }
+.c3.mini .c3-fb { display: grid; place-items: center; }
+.c3.gl .c3-fb { display: none; }
+.c3 canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; border-radius: inherit; }
+/* 워밍업 그림 칸: WebGL이 되면 둥근 사각형 3D 창, 안 되면 예전 원 + 아이콘 */
+.m-ill .c3 { position: absolute; inset: 0; width: auto; height: auto; margin: 0; border-radius: inherit; overflow: hidden; perspective: none; }
+.m-ill.has3d { width: 260px; height: 210px; border-radius: 26px; }
 .c3:active { cursor: grabbing; }
 .c3:focus-visible { box-shadow: 0 0 0 3px var(--primary); }
 .c3-car { --ry: -32deg; position: absolute; left: 50%; top: 58%; transform-style: preserve-3d; transform: rotateX(-22deg) rotateY(var(--ry)); }
@@ -1104,4 +1111,4 @@ body:not([data-mode="practice"]) .sim-canvas {
 .c3-shadow { position: absolute; left: -100px; top: -50px; width: 200px; height: 100px; border-radius: 50%; background: var(--text); opacity: .12; transform: rotateX(90deg) translateZ(-26px); }
 .c3-p { position: absolute; left: -14px; top: -14px; width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; font-size: 18px; background: var(--surface); color: var(--muted); }
 .c3[data-p="on"] .c3-p { background: var(--primary); color: var(--on-primary); }
-@media (max-width: 640px) { .c3 { height: 130px; } }
+@media (max-width: 640px) { .c3 { height: 170px; } .m-ill.has3d { width: min(100%, 300px); height: 190px; } }
