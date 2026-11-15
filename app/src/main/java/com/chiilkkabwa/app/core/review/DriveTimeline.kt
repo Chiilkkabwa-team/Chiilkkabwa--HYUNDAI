@@ -1,5 +1,6 @@
 package com.chiilkkabwa.app.core.review
 
+import com.chiilkkabwa.app.core.event.SpeedChangeEvent
 import com.chiilkkabwa.app.core.event.SpeedDetectionResult
 import com.chiilkkabwa.app.core.event.SpeedEventBridge
 import com.chiilkkabwa.app.core.event.SpeedEventType
@@ -38,23 +39,25 @@ class DriveTimelineRecorder(private val stepNanos: Long = 1_000_000_000L, privat
         points.clear(); marks.clear(); sources.clear()
     }
 
-    fun accept(o: VehicleSpeedObservation, nowNanos: Long) {
-        val kmh = o.kilometersPerHour ?: return
-        val ts = o.timestampNanos ?: return
+    /** 새로 판정된 A02 사건이 있으면 돌려준다(mock 음성 길잡이가 같은 사건을 쓴다). */
+    fun accept(o: VehicleSpeedObservation, nowNanos: Long): SpeedChangeEvent? {
+        val kmh = o.kilometersPerHour ?: return null
+        val ts = o.timestampNanos ?: return null
         // 스냅샷은 속도와 무관한 값이 바뀔 때도 다시 온다. 같은 표본을 다시 넣으면 A02 엔진이 기준을 초기화해 사건을 놓친다
-        if (o.sessionId == sessionId && ts == lastSampleNanos) return
+        if (o.sessionId == sessionId && ts == lastSampleNanos) return null
         if (o.sessionId != sessionId) { sessionId = o.sessionId; bridge.start(o.sessionId) }   // 새 구독 = 새 기준(A02 규칙)
         lastSampleNanos = ts
         val t0 = firstNanos ?: ts.also { firstNanos = it }
         val sec = { n: Long -> (n - t0) / 1e9f }
 
-        (bridge.accept(o, nowNanos) as? SpeedDetectionResult.Evaluated)?.event?.let { e ->
+        val event = (bridge.accept(o, nowNanos) as? SpeedDetectionResult.Evaluated)?.event?.also { e ->
             marks += TimelineMark(sec(ts), (e.evidence.previousMps * 3.6).toFloat(), (e.evidence.currentMps * 3.6).toFloat(), e.type, e.eventId)
         }
         val last = lastPointNanos
         if (points.size < maxPoints && (last == null || ts - last >= stepNanos)) {
             points += TimelinePoint(sec(ts), kmh.toFloat()); lastPointNanos = ts; sources += o.source
         }
+        return event
     }
 
     fun snapshot() = DriveTimeline(points.toList(), marks.toList(), sources.toSet())

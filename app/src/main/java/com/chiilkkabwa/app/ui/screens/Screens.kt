@@ -26,6 +26,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,11 +58,13 @@ import com.chiilkkabwa.app.ui.PrepStep
 import com.chiilkkabwa.app.ui.UiState
 import com.chiilkkabwa.app.ui.theme.Tokens
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlin.math.PI
 
 /**
  * 화면 라우터. 규칙: 한 화면 한 행동, 큰 버튼, 텍스트 최소.
- * 주행 잠금(DRIVING_LOCK)은 어떤 화면보다 우선한다(정적 화면, 애니메이션·소리 없음).
+ * 주행 잠금(DRIVING_LOCK)은 어떤 화면보다 우선한다(정적 화면, 애니메이션 없음).
+ * 소리는 mock 플레이버의 모의 음성 길잡이만(MainActivity) — 화면은 그대로다.
  */
 @Composable
 fun AppRoot(
@@ -390,6 +393,7 @@ fun BadgeToast(ui: UiState, onDismiss: () -> Unit) {
 @Composable
 fun DebugPanel(vm: ChiilViewModel, ui: UiState, modifier: Modifier) {
     var open by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
     val m = vm.mock; val s = ui.snapshot
     Column(modifier.width(if (open) 420.dp else 120.dp).clip(RoundedCornerShape(12.dp)).background(Color(0xCC000000)).padding(8.dp)) {
         Text(if (open) "모의 차량 ▼" else "모의 ▲", color = Color.Yellow, modifier = Modifier.clickable { open = !open })
@@ -405,6 +409,8 @@ fun DebugPanel(vm: ChiilViewModel, ui: UiState, modifier: Modifier) {
             Dbg("주행 +3.2km/14분") { m.addTrip(3.2f, 840) }
             // C01 시간표 시험용(mock 전용): 0→50→20처럼 눌러 급가속·급감속 표본을 만든다
             listOf(0, 20, 50).forEach { k -> Dbg("속도 $k") { m.setSpeedMps(k / 3.6f) } }
+            // 모의 음성 길잡이 시연용: A02 판정 구간(0.05~2초) 안에서 0→50km/h를 만든다
+            Dbg("급가속(모의)") { m.setSpeedMps(0f); scope.launch { delay(1_200); m.setSpeedMps(50 / 3.6f) } }
             Dbg("브레이크 미지원") { m.breakSignal(SignalStatus.UNSUPPORTED) }
         }
     }
