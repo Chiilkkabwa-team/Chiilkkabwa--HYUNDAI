@@ -1,7 +1,7 @@
 # A02 차량 속도 변화 이벤트 엔진
 
 작업: `feature/a02-speed-events`, A02 worktree. 착수 기반 `origin/dev e3958dad1bf159479d75e3fc1821969e942b8e59`, 최종 검증 기반 `b47e96d9f28437e6ac218ec1140a66e14de480c6` (A01 PR #18 통합 후 fast-forward).
-범위: 독립 Kotlin 코어 + JVM 테스트. SDK/차량 신호·UI·음성·저장소 연결 없음. A01의 금지된 7개 파일과 기존 `VehicleSnapshot`/공유 모델은 수정하지 않는다.
+범위: 이 문서는 독립 Kotlin 코어와 JVM 테스트를 설명한다. 별도 AAOS 속도 입력 브리지와 에뮬레이터 재현 절차는 [A02 속도 브리지](A02_SPEED_BRIDGE.md)에 있다.
 
 ## 구조와 입력/출력 계약
 
@@ -23,7 +23,7 @@
 
 이벤트에는 `eventId`, `sessionId`, `type`, `occurredAtMs`, `source`, 부호를 가진 `triggerThresholdMps2`, 근거가 있다. 근거는 **두 원본 표본(원단위·상태·출처·시각 포함)**, 정규화 m/s 값, intervalMs, deltaSpeedMps, accelerationMps2와 roundingToleranceMps2를 담는다. `eventId = <sessionId>:speed:<증가번호>`이며 발생 시각은 현재 표본 시각이다. 세션 상대 시간은 통합 계층이 같은 시계의 세션 시작값을 빼서 만든다.
 
-현재 Android 공통 `DriveEvent`는 미정이다. 이 모델은 A02의 로컬 제안 계약이며 B/C의 이벤트/음성/복기 모델로 자동 편입되지 않는다. B/C가 연결할 때 eventId·sessionId·유형·시각·근거·source를 그대로 매핑하되, 급감속을 HARSH_BRAKE/충돌/앞차 위험으로 이름만 바꾸지 않는다.
+이 모델은 A02의 출력 계약이다. 실제 속도 입력 브리지의 이벤트를 B/C 화면·음성·복기에 전달하는 앱 경로는 아직 미연결이다. B/C가 연결할 때 eventId·sessionId·유형·시각·근거·source를 그대로 매핑하되, 급감속을 HARSH_BRAKE/충돌/앞차 위험으로 이름만 바꾸지 않는다.
 
 ## 판정식과 초기 설정
 
@@ -67,6 +67,44 @@ val result = engine.update(
 // 이 예제는 명시적인 Mock. 첫 값은 Baseline이며 이벤트가 아니다.
 ```
 
-A01 완료 후 별도 어댑터에서 **실제로 확인한** 속도 신호·단위·획득 시각·지원/권한·상태·출처를 공급한다. 현재 VehicleSnapshot에 speed 필드를 추가하거나 SDK/권한을 연결하지 않았다. 실제 샘플의 시계 기준을 합의하고, 누락·권한 거부·background/재연결/세션 종료에서 단절을 알려야 한다. 이 엔진은 기어 P/주행 UX 정책을 판정하거나 화면/음성을 열지 않는다. 주행 중 수집 허용·생명주기·TTS/기록 연동은 별도 규정·에뮬레이터 검증 전 비활성 상태를 유지한다.
+현재 AAOS 입력은 `SpeedEventBridge`가 연결한다. `VehicleSpeedObservation`의 원본 단위·출처·상태를 유지하고, `elapsedRealtimeNanos()` 기반 시각과 처리 시각을 같은 밀리초 기준으로 엔진에 전달한다. 입력이 끊기면 브리지가 세션을 정리하고 재연결 시 새 기준부터 시작한다. 활성화 조건과 재현 명령은 [A02 속도 브리지](A02_SPEED_BRIDGE.md)를 참고한다.
 
-판정은 두 표본 사이의 평균 속도 변화다. 브레이크/가속 페달을 밟았는지, 급출발 의도, 주변 차량·차선·충돌 위험, 운전 실력은 확정하지 않는다. 측정 노이즈/지연·주기별 보정, 지속 시간 검증·필터, 실제 차량/에뮬레이터 재현은 남은 과제다. 이번 코드는 차량 안전 경로와 연결되어 있지 않다.
+판정은 두 표본 사이의 평균 속도 변화다. 브레이크/가속 페달을 밟았는지, 급출발 의도, 주변 차량·차선·충돌 위험, 운전 실력은 확정하지 않는다. Pleos 에뮬레이터에서 속도 수신과 증가·감소 이벤트를 확인했다. 속도 단계와 짧은 표본 간격이 임계값을 넘기는 경우도 관측했다. 센서·임계값 보정, 실차 검증과 B/C 실사용 연결은 남아 있다.
+
+## 유지보수와 디버깅
+
+`dev`에는 Android 속도 판정 코어와 [AAOS 속도 입력 브리지](A02_SPEED_BRIDGE.md)가 있다. 기본 설정에서는 속도 수집이 꺼져 있으며, 에뮬레이터에서는 명시적으로 활성화한 `vehicleDebug`로 검증했다.
+
+### 코드 읽는 순서
+
+1. [SpeedEvents.kt](../app/src/main/java/com/chiilkkabwa/app/core/event/SpeedEvents.kt)에서 표본의 단위·출처·상태와 반환 타입을 확인한다.
+2. [SpeedEventEngine.kt](../app/src/main/java/com/chiilkkabwa/app/core/event/SpeedEventEngine.kt)의 `update()`는 입력 상태와 시각을 검사하고, 같은 출처의 유효한 표본 두 개를 m/s로 바꿔 평균 속도 변화율을 계산한다. 임계값을 넘으면 회복 조건과 쿨다운을 검사한 뒤 사건을 발행한다.
+3. [SpeedEventEngineTest.kt](../app/src/test/java/com/chiilkkabwa/app/core/event/SpeedEventEngineTest.kt)에서 수정하려는 동작의 기존 테스트를 찾는다. 예를 들어 정확히 임계값에 걸치는 감속은 `default_decrease_threshold_is_inclusive_after_kmh_conversion`, 입력 단절은 `every_non_ok_status_breaks_continuity_even_with_a_numeric_value`에서 확인한다.
+
+### 무엇을 고칠 때 어디를 볼까
+
+| 변경 또는 증상 | 확인할 위치와 순서 |
+|---|---|
+| 임계값·최소 표본 간격·쿨다운 조정 | `SpeedEvents.kt`의 `SpeedEventConfig`부터 본다. 정확히 경계, 경계 바로 안팎, 회복 후 재발행을 테스트한다. 운영 값은 에뮬레이터나 차량 계측 근거로 정한다. |
+| 속도를 바꿨는데 첫 사건이 안 나옴 | 첫 표본은 `Baseline`이어야 한다. 다음 표본의 `status`, `source`, 속도 단위, 시각 기준과 간격을 확인한다. |
+| 표본은 유효한데 사건이 빠지거나 반복됨 | `Evaluated`의 `event`와 `suppression`을 확인한다. `ONGOING_EPISODE`면 같은 구간이 이어진 상태이고, `COOLDOWN`이면 같은 출처·유형의 발행 간격이 짧은 상태다. |
+| Pleos 에뮬레이터 속도 입력 수정 | 센서 단위·시각·권한·미지원 동작은 신호 어댑터에서 확인한다. 세션당 엔진 한 개에 순서대로 전달하고, 신호 중단·재연결 시 기준 표본을 초기화한다. Android Mock과 Pleos 입력은 출처를 유지한다. |
+| 코칭이나 복기에 사건 연결 | `eventId`, `sessionId`, 발생 시각, 출처와 원본 근거를 유지한다. 음성 재생 정책과 주차 후 복기 잠금은 각 소비자에서 적용한다. 감속 문구는 확인한 속도 변화에 근거한다. |
+
+### Android Studio에서 재검증
+
+저장소 루트를 열고 Gradle Sync를 완료한다. `mockDebug`에서 `SpeedEventEngineTest.kt`를 실행하거나, 저장소 루트의 PowerShell에서 아래 명령을 실행한다.
+
+```powershell
+.\gradlew.bat :app:testMockDebugUnitTest --tests 'com.chiilkkabwa.app.core.event.SpeedEventEngineTest'
+.\gradlew.bat :app:testMockDebugUnitTest :app:assembleMockDebug :app:assembleVehicleDebug
+```
+
+Pleos 어댑터까지 수정한 PR에서는 속도 콜백 수신 값과 단위 → 사건에 기록된 원본 근거 → 신호 끊김 뒤 새 기준값을 순서대로 확인한다. 빌드와 단위 테스트, Pleos 에뮬레이터 수신, 실차 결과는 [검증 기록](VERIFICATION_LOG.md)에 각각 기재한다. 주행 경로의 제한과 출처 표시 기준은 [안전 원칙](SAFETY_RULES.md)의 S05·S07·S10을 따른다.
+
+## 후속 Android 기능 PR에 함께 기록할 내용
+
+- 변경한 파일과 바꾼 이유, 입력부터 화면·이벤트까지의 코드 흐름
+- 다음 담당자가 설정값을 바꾸거나 오류를 추적할 때 볼 위치와 명령
+- A·B·C가 공유하는 데이터의 필드·단위·출처와 호환성에 미치는 영향
+- 실행한 시험과 결과, 미검증 경로 및 재현에 쓰는 빌드 변형·기기
