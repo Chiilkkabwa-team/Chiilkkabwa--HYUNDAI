@@ -277,6 +277,8 @@ function chipGroup(name, options, selected, { multi = false } = {}) {
 // ── 화면들 ───────────────────────────────────────────────────
 const Screens = {};
 
+const el3d = () => $('#appBody') || document;
+
 // A-1 안전 게이트
 Screens.gate = () => ({
   mount(el) {
@@ -303,7 +305,7 @@ Screens.gate = () => ({
   },
   update() {
     const s = snapshot();
-    CAR3D.show(document, { parkingBrake: s.parkingBrakeOn.status === 'OK' && s.parkingBrakeOn.value === true, gearP: s.gear.status === 'OK' && s.gear.value === 'P' });
+    CAR3D.show(document, CAR3D.carState(s));
     const st = (sig, okFn) => (sig.status !== 'OK' ? (sig.status === 'UNKNOWN' ? 'checking' : 'blocked') : okFn(sig.value) ? 'ok' : 'wait');
     const rows = { gear: st(s.gear, (v) => v === 'P'), pb: st(s.parkingBrakeOn, (v) => v === true), ux: st(s.uxRestricted, (v) => v === false) };
     const text = { ok: '확인', wait: '대기', checking: '확인 중', blocked: '읽을 수 없음' };
@@ -425,7 +427,7 @@ Screens.mission = () => ({
         ${meta.optional ? '<span class="tag soft">선택</span>' : ''}${srcChip('MOCK')}
         ${LEARN.HELP[j.id] ? `<button type="button" class="icon-btn m-info" id="mInfo" aria-label="${j.title} 도움말 — 단계와 O/X 예시">${infoIco}도움말</button>` : ''}</div>
       <div class="m-card">
-        <div class="m-ill" id="mIll">${icon(meta.icon, 84)}<div class="m-live" id="mLive"></div></div>
+        <div class="m-ill" id="mIll">${CAR3D.html({ view: CAR3D.MISSION_VIEW[j.id] || 'gate', fallback: icon(meta.icon, 84), mini: true })}<div class="m-live" id="mLive"></div></div>
         <div class="m-text">
           <h1>${j.title}</h1>
           <p class="know"><span>필기</span>${meta.know}</p>
@@ -437,12 +439,14 @@ Screens.mission = () => ({
     </div>`;
     this.key = null;
     $('#mInfo')?.addEventListener('click', () => openOverlay('help'));
+    CAR3D.bind(el);   // 이 미션의 조작이 보이는 쪽에서 본 3D 차(WebGL이 없으면 아이콘 그대로)
   },
   update() {
     const p = judgeState.progress; if (!p) return;
     const j = judgeState.judge; const meta = C.MISSION_META[j.id];
     // 차가 읽은 값
     const s = snapshot(); const sig = s[meta.signal];
+    CAR3D.show(el3d(), CAR3D.carState(s));
     const live = liveReadout(j.id, sig, s); const ml = $('#mLive');
     if (ml.dataset.h !== live) { ml.innerHTML = live; ml.dataset.h = live; }
     const key = p.kind + (p.kind === 'progress' ? p.step + p.hint + (p.retry || '') + Math.round((p.holdRatio || 0) * 10) : '');
@@ -491,7 +495,7 @@ function liveReadout(id, sig, s) {
 Screens.pedal = () => ({
   mount(el) {
     const j = judgeState.judge;
-    el.innerHTML = `<div class="screen pedal">
+    el.innerHTML = `<div class="screen pedal-screen">
       <div class="m-head"><span class="m-count">페달 감각 · 살살 밟기</span><span class="tag soft">선택</span>${srcChip('MOCK')}</div>
       <div class="pedal-wrap">
         <div class="gauge" aria-label="브레이크 페달 압력">
@@ -1129,6 +1133,9 @@ function render() {
     body.dataset.screen = key.split(':')[0];
     scr.mount(body);
     body.scrollTop = 0;
+    // 좁은 화면은 앱 칸이 아니라 페이지 전체가 스크롤된다: 새 화면 머리가 화면 위로 밀려 있으면 바로 보이게(애니메이션 없이)
+    const top = body.getBoundingClientRect().top;
+    if (top < 0) window.scrollBy({ top: top - 12, behavior: 'instant' });
     mounted = { key, screen: scr };
     if (!reduceMotion && session.phase !== C.Phase.DRIVING_LOCK) { body.classList.remove('enter'); void body.offsetWidth; body.classList.add('enter'); }
     else body.classList.remove('enter');
