@@ -32,6 +32,18 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon :app:testMockDebugUnitTest --tests '*PerfBudgetTest' :app:assembleMockRelease :app:assembleVehicleRelease
+      - name: Screenshots at car-window sizes (Robolectric + Roborazzi)
+        id: shots
+        continue-on-error: true
+        run: ./gradlew --no-daemon :app:testMockDebugUnitTest --tests '*Screenshot*'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: screenshots
+          path: |
+            app/build/outputs/roborazzi/*.png
+            app/build/reports/tests/testMockDebugUnitTest/
+          retention-days: 14
       - name: Android lint (결과만 모은다 — 오류가 있어도 다음 단계로)
         run: ./gradlew --no-daemon :app:lintMockDebug :app:lintVehicleDebug || true
       - name: Report

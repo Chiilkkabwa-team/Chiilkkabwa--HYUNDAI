@@ -19,8 +19,21 @@ object Tokens {
     val Lock = Color(0xFF6E2A2A)
     val TextMain = Color(0xFFE9EEF5)
     val TextSub = Color(0xFFB8C4D2)
+    // 웹 styles.css 다크 테마와 같은 값(docs/04 §0-2)
+    val Surface3 = Color(0xFF2A3544)
+    val Line = Color(0xFF2A3544)
+    val Muted = Color(0xFF93A1B3)
+    val PrimaryText = Color(0xFFA9CBFA)
+    val Yellow = Color(0xFFFFD66B)
+    val OnAccent = Color(0xFF1B2430)
+    val Danger = Color(0xFFD9483F)
+    val DangerText = Color(0xFFFFD3D3)
+    val SuccessBg = Color(0xFF173A28)
+    val WarnBg = Color(0xFF3A2F12)
     val TouchMin = 76.dp        // 큰 터치 영역(차량 화면)
+    val Display = 40.sp
     val Title = 30.sp
+    val Heading = 25.sp
     val Body = 22.sp
     val Caption = 17.sp
 }

@@ -73,6 +73,13 @@ android {
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget = "17" }
     buildFeatures { compose = true; buildConfig = true }
+    // 화면 스크린샷(Robolectric+Roborazzi): 에뮬레이터 없이 차량 화면 크기로 그려 build/outputs/roborazzi에 PNG로 남긴다
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+            all { it.systemProperty("roborazzi.test.record", "true") }
+        }
+    }
 }
 
 dependencies {
@@ -96,4 +103,12 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-tooling")
 
     testImplementation("junit:junit:4.13.2")
+    // 화면 스크린샷 테스트 전용(앱에는 들어가지 않음)
+    testImplementation(composeBom)
+    testImplementation("androidx.compose.ui:ui-test-junit4")
+    testImplementation("androidx.test.ext:junit:1.2.1")
+    testImplementation("org.robolectric:robolectric:4.13")
+    testImplementation("io.github.takahirom.roborazzi:roborazzi:1.29.0")
+    testImplementation("io.github.takahirom.roborazzi:roborazzi-compose:1.29.0")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 }

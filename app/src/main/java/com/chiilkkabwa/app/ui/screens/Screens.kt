@@ -2,6 +2,7 @@ package com.chiilkkabwa.app.ui.screens
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,12 +17,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -40,14 +40,17 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.chiilkkabwa.app.core.event.SpeedEventType
 import com.chiilkkabwa.app.core.mission.CarPose
-import com.chiilkkabwa.app.data.store.PracticeStore
+import com.chiilkkabwa.app.core.mission.MissionCatalog
+import com.chiilkkabwa.app.core.mission.MissionId
 import com.chiilkkabwa.app.core.mission.ParkingSim
 import com.chiilkkabwa.app.core.mission.ParkingSlot
 import com.chiilkkabwa.app.core.mission.Progress
-import com.chiilkkabwa.app.core.mission.MissionCatalog
+import com.chiilkkabwa.app.core.review.DriveTimeline
 import com.chiilkkabwa.app.core.review.Goals
 import com.chiilkkabwa.app.core.review.PactOptions
 import com.chiilkkabwa.app.core.review.ReviewChips
@@ -55,9 +58,11 @@ import com.chiilkkabwa.app.core.safety.GateState
 import com.chiilkkabwa.app.core.session.Phase
 import com.chiilkkabwa.app.core.signal.CarDimensions
 import com.chiilkkabwa.app.core.signal.Gear
+import com.chiilkkabwa.app.core.signal.Signal
 import com.chiilkkabwa.app.core.signal.SignalSource
 import com.chiilkkabwa.app.core.signal.SignalStatus
 import com.chiilkkabwa.app.core.signal.TurnSignalState
+import com.chiilkkabwa.app.data.store.PracticeStore
 import com.chiilkkabwa.app.ui.ChiilViewModel
 import com.chiilkkabwa.app.ui.PrepStep
 import com.chiilkkabwa.app.ui.UiState
@@ -67,9 +72,10 @@ import kotlinx.coroutines.launch
 import kotlin.math.PI
 
 /**
- * 화면 라우터. 규칙: 한 화면 한 행동, 큰 버튼, 텍스트 최소.
- * 주행 잠금(DRIVING_LOCK)은 어떤 화면보다 우선한다(정적 화면, 애니메이션 없음).
+ * 화면 라우터. 규칙: 한 화면 한 행동, 큰 버튼(76dp), 넓은 화면은 왼쪽 그림·오른쪽 조작(TwoPane).
+ * 주행 잠금(DRIVING_LOCK)은 어떤 화면보다 우선한다(정적 화면, 애니메이션·스크롤 없음).
  * 소리는 mock 플레이버의 모의 음성 길잡이만(MainActivity) — 화면은 그대로다.
+ * 모양은 웹 체험판(web/)과 맞춘다: 같은 마스코트·아이콘·색.
  */
 @Composable
 fun AppRoot(
@@ -84,25 +90,31 @@ fun AppRoot(
     LaunchedEffect(parkedMenu) { if (!parkedMenu) sheet = null }
     // 처음 실행이면 사용법을 한 번 보여 준다(닫으면 다시 안 뜸)
     val shown = if (!parkedMenu) null else sheet ?: if (!ui.onboardingSeen) Sheet.INTRO else null
-    Box(Modifier.fillMaxSize().background(Tokens.Bg).padding(24.dp)) {
-        // 차량 화면(Connect-S·W)은 가로로 아주 넓고 세로가 짧다. 버튼·글줄이 화면 끝까지 늘어나지 않게 가운데 최대 1000dp만 쓰고,
-        // 짧은 가로 화면에서 아래가 잘리지 않게 세로 스크롤. 주행 잠금은 정적 화면이라 스크롤하지 않는다(S04)
+    // 큰 차량 창에서는 전체를 키운다(CarScale). 그 안의 배치는 1100×680dp 기준
+    Box(Modifier.fillMaxSize().background(Tokens.Bg)) { CarScale {
+    Box(Modifier.fillMaxSize().padding(horizontal = 32.dp, vertical = 24.dp)) {
+        // 차량 화면(Connect-S·W)은 가로로 넓고 세로가 짧다: 가운데 최대 폭, 세로 스크롤(주행 잠금 제외)
         val scroll = rememberScrollState()
         Box(Modifier.align(Alignment.TopCenter).widthIn(max = MaxContentWidth).fillMaxWidth().fillMaxHeight()
             .then(if (ui.session.phase == Phase.DRIVING_LOCK) Modifier else Modifier.verticalScroll(scroll))) {
-        when (ui.session.phase) {
-            Phase.DRIVING_LOCK -> DrivingLockScreen()
-            Phase.CHECKING -> GateScreen(ui, onStart = {}, profiles = vm, onOpen = { sheet = it })
-            Phase.READY -> GateScreen(ui, vm::startPractice, onVoicePreview, voicePreviewStatus, profiles = vm, onOpen = { sheet = it })
-            Phase.PREPARING -> if (ui.gate is GateState.Locked) GateScreen(ui, onStart = {}) else PrepRouter(vm, ui)
-            // 복기 중 주차 확인이 깨지면(E3) 복기 대신 확인 화면을 보여 준다. 기록은 남아 있다
-            Phase.REVIEW -> if (ui.session.lockReason != null) GateScreen(ui, onStart = {}) else ReviewScreen(ui, vm::saveReview)
+            when (ui.session.phase) {
+                Phase.DRIVING_LOCK -> DrivingLockScreen()
+                Phase.CHECKING -> GateScreen(ui, onStart = {}, profiles = vm, onOpen = { sheet = it })
+                Phase.READY -> GateScreen(ui, vm::startPractice, onVoicePreview, voicePreviewStatus, profiles = vm, onOpen = { sheet = it })
+                Phase.PREPARING -> if (ui.gate is GateState.Locked) GateScreen(ui, onStart = {}) else PrepRouter(vm, ui)
+                // 복기 중 주차 확인이 깨지면(E3) 복기 대신 확인 화면을 보여 준다. 기록은 남아 있다
+                Phase.REVIEW -> if (ui.session.lockReason != null) GateScreen(ui, onStart = {}) else ReviewScreen(ui, vm::saveReview)
+            }
         }
+        shown?.let { s ->
+            SheetHost(s, ui, onVoiceOn = vm::setVoiceOn, onVoiceCap = vm::setVoiceCap) {
+                if (s == Sheet.INTRO) vm.markOnboardingSeen(); sheet = null
+            }
         }
-        shown?.let { s -> SheetHost(s, ui, vm) { if (s == Sheet.INTRO) vm.markOnboardingSeen(); sheet = null } }
         if (ui.newBadges.isNotEmpty() && ui.session.phase != Phase.DRIVING_LOCK) BadgeToast(ui) { vm.dismissBadges() }
         if (ui.mockMode) DebugPanel(vm, ui, Modifier.align(Alignment.BottomEnd))
     }
+    } }
 }
 
 @Composable
@@ -116,30 +128,45 @@ private fun PrepRouter(vm: ChiilViewModel, ui: UiState) = when (ui.step) {
 }
 
 /** 넓은 차량 화면에서 내용이 너무 넓게 퍼지지 않게 하는 최대 폭 */
-val MaxContentWidth = 1000.dp
+val MaxContentWidth = 1240.dp
 
 // ── 공통 컴포넌트 ─────────────────────────────────────────
-@Composable fun Title(t: String) = Text(t, color = Tokens.TextMain, fontSize = Tokens.Title, fontWeight = FontWeight.Bold)
-@Composable fun Body(t: String, c: Color = Tokens.TextSub) = Text(t, color = c, fontSize = Tokens.Body)
+@Composable fun Title(t: String) = Text(t, color = Tokens.TextMain, fontSize = Tokens.Title, fontWeight = FontWeight.Bold, lineHeight = Tokens.Title * 1.3f)
+@Composable fun Body(t: String, c: Color = Tokens.TextSub) = Text(t, color = c, fontSize = Tokens.Body, lineHeight = Tokens.Body * 1.45f)
 
 @Composable
 fun BigButton(text: String, enabled: Boolean = true, ghost: Boolean = false, onClick: () -> Unit) {
     Box(
-        Modifier.fillMaxWidth().heightIn(min = Tokens.TouchMin).clip(RoundedCornerShape(16.dp))
-            .background(if (!enabled) Tokens.Surface2 else if (ghost) Tokens.Surface2 else Tokens.Primary)
-            .clickable(enabled = enabled, onClick = onClick),
+        Modifier.fillMaxWidth().heightIn(min = Tokens.TouchMin).clip(RoundedCornerShape(18.dp))
+            .background(when { !enabled -> Tokens.Surface2; ghost -> Tokens.Surface3; else -> Tokens.Primary })
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center,
-    ) { Text(text, color = Tokens.TextMain, fontSize = Tokens.Body, fontWeight = FontWeight.Bold) }
+    ) { Text(text, color = if (enabled) Tokens.TextMain else Tokens.Muted, fontSize = Tokens.Body, fontWeight = FontWeight.Bold) }
 }
 
 @Composable
 fun SourceBadge(src: SignalSource?) {
     val (label, bg) = when (src) {
         SignalSource.VEHICLE -> "실차 신호" to Tokens.Success
-        SignalSource.EMULATOR -> "에뮬레이터 신호" to Color(0xFF3B4656)
+        SignalSource.EMULATOR -> "에뮬레이터 신호" to Tokens.Surface3
         SignalSource.MOCK, null -> "모의" to Tokens.Warn
     }
-    Text(label, color = Tokens.TextMain, fontSize = Tokens.Caption, modifier = Modifier.clip(RoundedCornerShape(99.dp)).background(bg).padding(horizontal = 12.dp, vertical = 4.dp))
+    Text(label, color = Tokens.TextMain, fontSize = Tokens.Caption, fontWeight = FontWeight.SemiBold,
+        modifier = Modifier.clip(RoundedCornerShape(99.dp)).background(bg).padding(horizontal = 12.dp, vertical = 5.dp))
+}
+
+@Composable
+fun Chip(text: String, selected: Boolean, onClick: () -> Unit) =
+    Text(text, color = if (selected) Tokens.TextMain else Tokens.TextSub, fontSize = Tokens.Body, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+        modifier = Modifier.clip(RoundedCornerShape(14.dp)).background(if (selected) Tokens.Primary else Tokens.Surface)
+            .clickable(role = Role.Button, onClick = onClick).padding(horizontal = 20.dp, vertical = 14.dp))
+
+/** 신호 → 확인 상태 알약 */
+private fun <T> Signal<T>.pill(ok: (T) -> Boolean): Pair<Pill, String> = when {
+    status == SignalStatus.UNKNOWN -> Pill.CHECKING to "확인 중"
+    status != SignalStatus.OK || value == null -> Pill.BLOCKED to "읽을 수 없음"
+    ok(value) -> Pill.OK to "확인"
+    else -> Pill.WAIT to "대기"
 }
 
 // ── A-1 안전 게이트 ───────────────────────────────────────
@@ -153,20 +180,33 @@ fun GateScreen(
     onOpen: ((Sheet) -> Unit)? = null,
 ) {
     val s = ui.snapshot
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        profiles?.let { ProfileRow(ui, it) }
-        onOpen?.let { MenuRow(it) }
-        Title("연습 준비를 확인할게요")
-        CheckRow("기어 P", s.gear.isUsable && s.gear.value == Gear.PARK)
-        CheckRow("주차 브레이크", s.parkingBrakeOn.isUsable && s.parkingBrakeOn.value == true)
-        CheckRow("주행 제한 없음", s.uxRestricted.isUsable && s.uxRestricted.value == false)
-        (ui.gate as? GateState.Locked)?.let { Body(it.reason.message) }
-        BigButton("연습 시작", enabled = ui.gate is GateState.Ready && ui.session.phase == Phase.READY, onClick = onStart)
-        if (onVoicePreview != null && ui.gate is GateState.Ready) {
-            BigButton("음성 안내 듣기 (모의)", ghost = true, onClick = onVoicePreview)
-            voicePreviewStatus?.let { Body(it) }
+    val ready = ui.gate is GateState.Ready && ui.session.phase == Phase.READY
+    Column(verticalArrangement = Arrangement.spacedBy(22.dp)) {
+        TwoPane(
+            left = {
+                Hero(if (ready) Mood.HAPPY else Mood.WORRIED, "연습 준비를 확인할게요", "차가 직접 확인해요. 셋 다 ‘확인’이면 시작할 수 있어요.")
+                ui.profile.nextGoal?.let { Banner("지난번 목표: $it — 이어서 해 볼까요?", Pill.INFO) }
+            },
+            right = {
+                val (g, gt) = s.gear.pill { it == Gear.PARK }
+                val (b, bt) = s.parkingBrakeOn.pill { it }
+                val (u, ut) = s.uxRestricted.pill { !it }
+                CheckCard(Ico.GEAR, "기어 P", g, gt)
+                CheckCard(Ico.PBRAKE, "주차 브레이크", b, bt)
+                CheckCard(Ico.ROAD, "주행 제한 없음", u, ut)
+                Body(if (ready) "준비됐어요. 시작해 볼까요?" else (ui.gate as? GateState.Locked)?.reason?.message ?: "", if (ready) Tokens.SuccessText else Tokens.TextSub)
+                BigButton("연습 시작", enabled = ready, onClick = onStart)
+                if (onVoicePreview != null && ui.gate is GateState.Ready) {
+                    BigButton("음성 안내 듣기 (모의)", ghost = true, onClick = onVoicePreview)
+                    voicePreviewStatus?.let { Caption(it) }
+                }
+                Caption("속도가 0이어도 기어가 P가 아니면 주차로 보지 않아요")
+            },
+        )
+        if (profiles != null || onOpen != null) Card {
+            onOpen?.let { MenuRow(it) }
+            profiles?.let { ProfileRow(ui, it) }
         }
-        ui.profile.nextGoal?.let { Body("지난번 목표: $it — 이어서 해 볼까요?") }
     }
 }
 
@@ -175,6 +215,7 @@ fun GateScreen(
 @Composable
 private fun ProfileRow(ui: UiState, vm: ChiilViewModel) {
     var confirm by remember(ui.profile.id) { mutableStateOf(false) }
+    Row(verticalAlignment = Alignment.CenterVertically) { LineIcon(Ico.USER, 26.dp, Tokens.TextSub); Spacer(Modifier.width(10.dp)); Heading("누구의 연습인가요") }
     FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         (ui.profiles.ifEmpty { listOf(ui.profile) }).forEach { p -> Chip(p.displayName, p.id == ui.profile.id) { vm.switchProfile(p.id) } }
         if (ui.profiles.size < PracticeStore.ALIASES.size) Chip("+ 추가", false) { vm.addProfile() }
@@ -182,81 +223,111 @@ private fun ProfileRow(ui: UiState, vm: ChiilViewModel) {
             if (confirm) vm.deleteCurrentProfile() else confirm = true
         }
     }
-    Body("기록은 이 기기에만, 사람마다 따로 저장돼요")
+    Caption("기록은 이 기기에만, 사람마다 따로 저장돼요")
 }
 
 /** 정차 화면 전용 메뉴(웹 머리말의 내 기록·설정·소개·사용법) */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun MenuRow(onOpen: (Sheet) -> Unit) =
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Chip("내 기록", false) { onOpen(Sheet.HISTORY) }
-        Chip("설정", false) { onOpen(Sheet.SETTINGS) }
-        Chip("소개", false) { onOpen(Sheet.ABOUT) }
-        Chip("사용법", false) { onOpen(Sheet.INTRO) }
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        listOf(Triple("내 기록", Ico.STAR, Sheet.HISTORY), Triple("설정", Ico.SOUND, Sheet.SETTINGS),
+            Triple("소개", Ico.INFO, Sheet.ABOUT), Triple("사용법", Ico.NOTE, Sheet.INTRO)).forEach { (t, i, s) ->
+            ChoiceCard(t, false, i) { onOpen(s) }
+        }
     }
 
-@Composable
-private fun CheckRow(label: String, ok: Boolean) = Row(verticalAlignment = Alignment.CenterVertically) {
-    Box(Modifier.size(22.dp).clip(RoundedCornerShape(99.dp)).background(if (ok) Tokens.Success else Tokens.Surface2))
-    Spacer(Modifier.width(12.dp)); Body(label, Tokens.TextMain); Spacer(Modifier.width(12.dp)); Body(if (ok) "확인" else "대기")
-}
-
 // ── A-2 목표 고르기 ────────────────────────────────────────
+private val goalIcons = mapOf("출발·정지" to Ico.BRAKE, "주차" to Ico.PARKING, "차선 바꾸기" to Ico.TURN, "좌회전" to Ico.WHEEL, "그냥 몸풀기" to Ico.FLAG)
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun GoalScreen(ui: UiState, onChoose: (String, Boolean) -> Unit) {
     var goal by remember { mutableStateOf<String?>(null) }
     val passenger = ui.snapshot.passengerSeated.isUsable && ui.snapshot.passengerSeated.value == true
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Title("오늘 뭐가 제일 걱정돼요?")
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Goals.all.forEach { g -> Chip(g, g == goal) { goal = g } }
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Box(Modifier.weight(1f)) { BigButton("혼자 연습", enabled = goal != null, ghost = passenger) { onChoose(goal!!, false) } }
-            Box(Modifier.weight(1f)) { BigButton("멘토와 함께", enabled = goal != null, ghost = !passenger) { onChoose(goal!!, true) } }
-        }
-        if (passenger) Body("조수석에 누가 앉아 있네요. 함께 연습해요")
-    }
+    TwoPane(
+        left = { Hero(Mood.CALM, "오늘 뭐가 제일 걱정돼요?", "하나만 골라요. 음성 길잡이도 이 목표에 대해서만 말해요.") },
+        right = {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Goals.all.forEach { g -> ChoiceCard(g, g == goal, goalIcons[g] ?: Ico.FLAG) { goal = g } }
+            }
+            Spacer(Modifier.height(6.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Box(Modifier.weight(1f)) { BigButton("혼자 연습", enabled = goal != null, ghost = passenger) { onChoose(goal!!, false) } }
+                Box(Modifier.weight(1f)) { BigButton("멘토와 함께", enabled = goal != null, ghost = !passenger) { onChoose(goal!!, true) } }
+            }
+            if (passenger) Banner("조수석에 누가 앉아 있네요. 함께 연습해요", Pill.INFO)
+        },
+    )
 }
 
-@Composable
-fun Chip(text: String, selected: Boolean, onClick: () -> Unit) =
-    Text(text, color = Tokens.TextMain, fontSize = Tokens.Body,
-        modifier = Modifier.clip(RoundedCornerShape(12.dp)).background(if (selected) Tokens.Primary else Tokens.Surface2)
-            .clickable(onClick = onClick).padding(horizontal = 18.dp, vertical = 14.dp))
-
 // ── A-3 워밍업 미션 ───────────────────────────────────────
+/** 미션별 그림과 두 줄 설명(웹 MISSION_META와 같은 내용): 필기에서 배운 것 / 내 차에서는 */
+private data class Meta(val icon: Ico, val know: String, val car: String)
+private val missionMeta = mapOf(
+    MissionId.SEAT_BELT to Meta(Ico.BELT, "출발 전 전 좌석 안전벨트", "‘딸깍’ 소리가 날 때까지"),
+    MissionId.BRAKE_PRESS_RELEASE to Meta(Ico.BRAKE, "브레이크는 오른발, 뒤꿈치는 바닥에", "끝까지 밟았다가 천천히"),
+    MissionId.TURN_SIGNAL to Meta(Ico.TURN, "진로를 바꾸기 30m 전에 신호", "레버 아래 = 왼쪽, 위 = 오른쪽"),
+    MissionId.WIPER to Meta(Ico.WIPER, "비 오는 날은 시야부터", "와이퍼 레버 위치 익히기"),
+    MissionId.LOW_BEAM to Meta(Ico.BEAM, "해 질 녘·터널에서는 전조등", "스위치를 돌려 켜기"),
+    MissionId.STEERING_CENTER to Meta(Ico.WHEEL, "출발 전 바퀴는 똑바로", "핸들 가운데 ±5°에서 2초"),
+    MissionId.PEDAL_FEEL to Meta(Ico.PEDAL, "페달은 살살, 발목으로", "초록 칸 안에서 2초"),
+)
+
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun WarmupScreen(ui: UiState, onSkip: () -> Unit, onNext: () -> Unit) {
     val r = ui.runner ?: return
-    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    val judges = remember { MissionCatalog.warmupRequired() + MissionCatalog.warmupOptional() }
+    // 사용자에게 영어 내부 이름(seat_belt)을 보이지 않는다
+    val titles = remember { judges.associate { it.id to it.title } }
+    val currentId = judges.firstOrNull { it.title == r.currentTitle }?.id
+    val meta = currentId?.let { missionMeta[it] }
+    Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Title("운전석 워밍업 ${minOf(r.index + 1, r.total)}/${r.total}"); Spacer(Modifier.width(16.dp))
+            Title("운전석 워밍업"); Spacer(Modifier.width(14.dp))
+            Heading("${minOf(r.index + 1, r.total)}/${r.total}", Tokens.TextSub); Spacer(Modifier.width(18.dp))
+            StepDots(r.total, if (r.finished) r.total else r.index)
+            Spacer(Modifier.weight(1f))
             SourceBadge(r.results.lastOrNull()?.source ?: ui.snapshot.brakePressed.source)
         }
-        // 사용자에게 영어 내부 이름(seat_belt)을 보이지 않는다
-        val titles = remember { (MissionCatalog.warmupRequired() + MissionCatalog.warmupOptional()).associate { it.id to it.title } }
-        r.results.forEach { Body("● ${titles[it.id] ?: "미션"} 완료", Tokens.SuccessText) }
-        if (!r.finished) {
-            Body(r.currentTitle ?: "", Tokens.TextMain)
-            when (val p = r.progress) {
-                is Progress.InProgress -> Body(p.hint)
-                is Progress.Done -> Body(p.praise, Tokens.SuccessText)
-                is Progress.Unavailable -> {
-                    Body(when (p.status) {
-                        SignalStatus.PERMISSION_DENIED -> "이 미션에 필요한 권한이 없어요. 건너뛰고 화면 연습으로 할게요"
-                        SignalStatus.DISCONNECTED -> "차량 상태를 확인할 수 없어요(연결 끊김)"
-                        else -> "이 차에서는 이 신호를 지원하지 않아요"
-                    })
-                    BigButton("건너뛰기", ghost = true, onClick = onSkip)
+        if (!r.finished) Card {
+            Row(horizontalArrangement = Arrangement.spacedBy(26.dp), verticalAlignment = Alignment.Top) {
+                IconTile(meta?.icon ?: Ico.CHECK, 132.dp, done = r.progress is Progress.Done)
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Title(r.currentTitle ?: "")
+                    meta?.let {
+                        Row(verticalAlignment = Alignment.CenterVertically) { StatusPill("필기", Pill.INFO); Spacer(Modifier.width(12.dp)); Body(it.know, Tokens.TextMain) }
+                        Row(verticalAlignment = Alignment.CenterVertically) { StatusPill("내 차에서는", Pill.WAIT); Spacer(Modifier.width(12.dp)); Body(it.car, Tokens.TextMain) }
+                    }
+                    when (val p = r.progress) {
+                        is Progress.InProgress -> {
+                            if (p.total > 1) Row(verticalAlignment = Alignment.CenterVertically) { StepDots(p.total, p.step - 1); Spacer(Modifier.width(12.dp)); Caption("${p.step}/${p.total} 단계") }
+                            Heading(p.hint, Tokens.PrimaryText)
+                        }
+                        is Progress.Done -> Row(verticalAlignment = Alignment.CenterVertically) {
+                            Mascot(Mood.HAPPY, 72.dp); Spacer(Modifier.width(12.dp)); Heading(p.praise, Tokens.SuccessText)
+                        }
+                        is Progress.Unavailable -> Banner(when (p.status) {
+                            SignalStatus.PERMISSION_DENIED -> "이 미션에 필요한 권한이 없어요. 건너뛰고 다음으로 갈게요"
+                            SignalStatus.DISCONNECTED -> "차량 상태를 확인할 수 없어요(연결 끊김)"
+                            else -> "이 차에서는 이 신호를 지원하지 않아요"
+                        })
+                        null -> Heading("조작해 보세요", Tokens.PrimaryText)
+                    }
                 }
-                null -> Body("조작해 보세요")
             }
-        } else {
-            Body("워밍업 완료. 출발 준비가 됐어요", Tokens.SuccessText)
-            BigButton("가상 주차 연습으로", onClick = onNext)
+        } else Card(color = Tokens.SuccessBg.copy(alpha = .5f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) { Mascot(Mood.HAPPY, 110.dp); Spacer(Modifier.width(18.dp)); Title("워밍업 완료. 출발 준비가 됐어요") }
+        }
+        if (r.results.isNotEmpty()) FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            r.results.forEach { StatusPill("${titles[it.id] ?: "미션"} 완료", Pill.OK) }
+        }
+        Box(Modifier.widthIn(max = 560.dp)) {
+            when {
+                r.finished -> BigButton("가상 주차 연습으로", onClick = onNext)
+                r.progress is Progress.Unavailable -> BigButton("건너뛰기", ghost = true, onClick = onSkip)
+            }
         }
     }
 }
@@ -270,29 +341,31 @@ fun ParkingSimScreen(ui: UiState, onDone: () -> Unit) {
     var pose by remember { mutableStateOf(CarPose(3.2, -5.5, PI / 2)) }   // 칸 오른쪽 위, 오른쪽을 향함
     var speed by remember { mutableFloatStateOf(0f) }
     var sliderDeg by remember { mutableFloatStateOf(0f) }
-    val realSteer = ui.snapshot.steeringDeg.takeIf { it.isUsable }?.value
+    // 차(실차·에뮬레이터)에서 온 핸들 값만 '실제 핸들'로 쓴다. 모의 값이면 화면 슬라이더로 연습
+    val realSteer = ui.snapshot.steeringDeg.takeIf { it.isUsable && it.source != SignalSource.MOCK }?.value
     val steer = realSteer ?: sliderDeg
     val parked = sim.isParked(pose, slot)
 
     LaunchedEffect(speed, steer) {
         while (speed != 0f) { delay(50); pose = sim.step(pose, steer.toDouble(), speed.toDouble(), 0.05) }
     }
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Title("내 차로 하는 가상 주차"); Spacer(Modifier.width(12.dp))
             SourceBadge(SignalSource.MOCK) // 화면 속 연습은 항상 '가상'
+            Spacer(Modifier.width(12.dp))
+            Caption("차 크기 ${dims.lengthMm / 1000.0}m × ${dims.widthMm / 1000.0}m" + if (dims.isDefault) " (기본값)" else "")
         }
-        Body("차 크기 ${dims.lengthMm / 1000.0}m × ${dims.widthMm / 1000.0}m" + if (dims.isDefault) " (기본값)" else "")
-        Row(Modifier.fillMaxWidth().height(280.dp)) {
-            Canvas(Modifier.weight(1f).fillMaxSize().background(Tokens.Surface2)) {
+        Row(Modifier.fillMaxWidth().height(380.dp), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+            Canvas(Modifier.weight(1f).fillMaxSize().clip(RoundedCornerShape(22.dp)).background(Tokens.Surface)) {
                 val ppm = size.minDimension / 14f // pixels per meter
                 val o = Offset(size.width / 2, size.height * 0.62f)
                 fun px(x: Double, y: Double) = Offset(o.x + (x * ppm).toFloat(), o.y + (y * ppm).toFloat())
                 // 주차 칸과 양옆 차
                 val sw = (slot.widthM * ppm).toFloat(); val sl = (slot.lengthM * ppm).toFloat()
-                drawRect(Color(0xFF7EE2A8), topLeft = px(-slot.widthM / 2, -slot.lengthM / 2), size = Size(sw, sl), style = Stroke(3f))
-                drawRect(Color(0xFF3B4656), topLeft = px(-slot.widthM * 1.5 + 0.1, -2.3), size = Size(sw - 8, (4.6 * ppm).toFloat()))
-                drawRect(Color(0xFF3B4656), topLeft = px(slot.widthM * 0.5 + 0.1, -2.3), size = Size(sw - 8, (4.6 * ppm).toFloat()))
+                drawRect(Tokens.SuccessText, topLeft = px(-slot.widthM / 2, -slot.lengthM / 2), size = Size(sw, sl), style = Stroke(4f))
+                drawRect(Tokens.Surface3, topLeft = px(-slot.widthM * 1.5 + 0.1, -2.3), size = Size(sw - 8, (4.6 * ppm).toFloat()))
+                drawRect(Tokens.Surface3, topLeft = px(slot.widthM * 0.5 + 0.1, -2.3), size = Size(sw - 8, (4.6 * ppm).toFloat()))
                 // 내 차
                 val c = px(pose.x, pose.y)
                 rotate(degrees = (pose.heading * 180 / PI).toFloat(), pivot = c) {
@@ -301,16 +374,19 @@ fun ParkingSimScreen(ui: UiState, onDone: () -> Unit) {
                         size = Size((sim.widthM * ppm).toFloat(), (sim.lengthM * ppm).toFloat()))
                 }
             }
-            Column(Modifier.width(220.dp).padding(start = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Body(if (realSteer != null) "실제 핸들 ${steer.toInt()}°" else "핸들(화면) ${steer.toInt()}°")
-                if (realSteer == null) Slider(value = sliderDeg, onValueChange = { sliderDeg = it }, valueRange = -540f..540f)
-                BigButton("후진", ghost = speed >= 0) { speed = if (speed < 0) 0f else -0.8f }
-                BigButton("전진", ghost = speed <= 0) { speed = if (speed > 0) 0f else 0.8f }
+            Column(Modifier.width(300.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Card(pad = 18.dp) {
+                    Row(verticalAlignment = Alignment.CenterVertically) { LineIcon(Ico.WHEEL, 30.dp, Tokens.PrimaryText); Spacer(Modifier.width(10.dp))
+                        Heading(if (realSteer != null) "실제 핸들 ${steer.toInt()}°" else "핸들(화면) ${steer.toInt()}°") }
+                    if (realSteer == null) Slider(value = sliderDeg, onValueChange = { sliderDeg = it }, valueRange = -540f..540f)
+                }
+                BigButton(if (speed < 0) "멈춤" else "후진", ghost = speed >= 0) { speed = if (speed < 0) 0f else -0.8f }
+                BigButton(if (speed > 0) "멈춤" else "전진", ghost = speed <= 0) { speed = if (speed > 0) 0f else 0.8f }
             }
         }
-        Body(if (parked) "칸 안에 들어왔어요. 기준점을 기억해 둬요" else "뒷바퀴가 옆 차 범퍼를 지날 때 핸들을 끝까지 돌려 보세요",
-            if (parked) Tokens.SuccessText else Tokens.TextSub)
-        BigButton(if (parked) "다음" else "그만하고 다음", onClick = onDone)
+        Banner(if (parked) "칸 안에 들어왔어요. 기준점을 기억해 둬요" else "뒷바퀴가 옆 차 범퍼를 지날 때 핸들을 끝까지 돌려 보세요",
+            if (parked) Pill.OK else Pill.INFO)
+        Box(Modifier.widthIn(max = 560.dp)) { BigButton(if (parked) "다음" else "그만하고 다음", ghost = !parked, onClick = onDone) }
     }
 }
 
@@ -318,48 +394,55 @@ fun ParkingSimScreen(ui: UiState, onDone: () -> Unit) {
 @Composable
 fun PedalScreen(ui: UiState, onDone: () -> Unit) {
     val pct = ui.snapshot.brakePedalPct.value ?: 0f   // 브레이크 페달 압력(가속 페달은 실차에서 열지 않음)
-    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) { Title("살살 밟기"); Spacer(Modifier.width(12.dp)); SourceBadge(ui.snapshot.brakePedalPct.source) }
-        Body("초록 칸 안에서 2초 버티기 · 지금 ${pct.toInt()}%")
-        Canvas(Modifier.fillMaxWidth().height(36.dp)) {
-            drawRect(Tokens.Surface2, size = size)
-            drawRect(Tokens.Primary, size = Size(size.width * pct / 100f, size.height))
-            drawRect(Tokens.SuccessText, topLeft = Offset(size.width * 0.20f, 0f), size = Size(size.width * 0.15f, size.height), style = Stroke(4f))
-        }
-        when (val p = ui.pedal) {
-            is Progress.Done -> { Body(p.praise, Tokens.SuccessText); BigButton("다음", onClick = onDone) }
-            is Progress.Unavailable -> { Body("이 차에서는 페달 값을 받을 수 없어요"); BigButton("건너뛰기", ghost = true, onClick = onDone) }
-            else -> Body("브레이크 페달로 해요. 이 값은 연습용이며 실제 운전 기준이 아니에요")
-        }
-    }
+    TwoPane(
+        left = {
+            Row(verticalAlignment = Alignment.CenterVertically) { Title("살살 밟기"); Spacer(Modifier.width(12.dp)); SourceBadge(ui.snapshot.brakePedalPct.source) }
+            IconTile(Ico.PEDAL, 140.dp, done = ui.pedal is Progress.Done)
+            Body("브레이크 페달로 해요. 초록 칸 안에서 2초 버티면 돼요. 연습용 값이며 실제 운전 기준이 아니에요")
+        },
+        right = {
+            Card {
+                Row(verticalAlignment = Alignment.Bottom) { Display("${pct.toInt()}"); Spacer(Modifier.width(6.dp)); Heading("%", Tokens.TextSub) }
+                Canvas(Modifier.fillMaxWidth().height(56.dp).clip(RoundedCornerShape(14.dp))) {
+                    drawRect(Tokens.Surface3, size = size)
+                    drawRect(Tokens.SuccessBg, topLeft = Offset(size.width * 0.20f, 0f), size = Size(size.width * 0.15f, size.height))
+                    drawRect(Tokens.Primary, size = Size(size.width * pct / 100f, size.height))
+                    drawRect(Tokens.SuccessText, topLeft = Offset(size.width * 0.20f, 0f), size = Size(size.width * 0.15f, size.height), style = Stroke(5f))
+                }
+                Caption("초록 칸 = 살살 밟은 정도(20~35%)")
+            }
+            when (val p = ui.pedal) {
+                is Progress.Done -> { Banner(p.praise, Pill.OK); BigButton("다음", onClick = onDone) }
+                is Progress.Unavailable -> { Banner("이 차에서는 페달 값을 받을 수 없어요"); BigButton("건너뛰기", ghost = true, onClick = onDone) }
+                is Progress.InProgress -> Heading(p.hint, Tokens.PrimaryText)
+                null -> Heading("페달을 살살 밟아 보세요", Tokens.PrimaryText)
+            }
+        },
+    )
 }
 
 // ── A-6 멘토 약속 ─────────────────────────────────────────
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun PactScreen(ui: UiState, onToggle: (String) -> Unit, onConfirm: () -> Unit) = Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-    Title("오늘의 약속 (최대 ${PactOptions.MAX}개)")
-    Body("오늘 목표: ${ui.goal ?: "-"}")
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        PactOptions.all.forEach { Chip(it, it in ui.pact) { onToggle(it) } }
-    }
-    BigButton("둘 다 약속했어요", enabled = ui.pact.isNotEmpty(), onClick = onConfirm)
-}
+fun PactScreen(ui: UiState, onToggle: (String) -> Unit, onConfirm: () -> Unit) = TwoPane(
+    left = { Hero(Mood.CALM, "오늘의 약속", "운전하는 사람과 옆자리 사람이 같이 골라요. 최대 ${PactOptions.MAX}개") ; Banner("오늘 목표: ${ui.goal ?: "-"}", Pill.INFO) },
+    right = {
+        PactOptions.all.forEach { ChoiceCard(it, it in ui.pact, Ico.PACT, Modifier.fillMaxWidth()) { onToggle(it) } }
+        BigButton("둘 다 약속했어요", enabled = ui.pact.isNotEmpty(), onClick = onConfirm)
+    },
+)
 
 @Composable
-fun ReadyToGoScreen(ui: UiState) = Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-    Title("출발 준비 완료")
-    Body("기어를 D로 옮기면 화면은 쉬어요. 연습은 함께 탄 사람과 하세요.")
-    if (!ui.mentorMode) Body("혼자라면 주차장 안 연습만 이어 가도 좋아요. 실제 도로 연습은 동승자와 함께 하세요.")
-}
+fun ReadyToGoScreen(ui: UiState) = CenterMessage(
+    Mood.CALM, "출발 준비 완료", "기어를 D로 옮기면 화면은 쉬어요. 연습은 함께 탄 사람과 하세요.",
+    if (!ui.mentorMode) "혼자라면 주차장 안 연습만 이어 가도 좋아요. 실제 도로 연습은 동승자와 함께 하세요." else null,
+)
 
-// ── A-7 주행 중 잠금(정적) ─────────────────────────────────
+// ── A-7 주행 중 잠금(정적: 애니메이션·스크롤·버튼 없음) ─────────────
 @Composable
 fun DrivingLockScreen() = Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-    Title("연습 중")
-    Body("화면은 잠시 쉴게요. 도로만 보세요.")
-    Spacer(Modifier.height(8.dp))
-    Body("주차하면 오늘 연습을 함께 돌아봐요")
+    CenterMessage(Mood.REST, "화면은 잠시 쉴게요", "도로만 보세요. 주차하면 오늘 연습을 같이 돌아봐요.")
+    StatusPill("연습 중", Pill.BLOCKED)
 }
 
 // ── A-8 주차 후 복기 ─────────────────────────────────────
@@ -370,19 +453,30 @@ fun ReviewScreen(ui: UiState, onSave: (String?, String?, String?, Boolean) -> Un
     var mentor by remember { mutableStateOf<String?>(null) }
     var next by remember { mutableStateOf<String?>(null) }
     val sum = ui.summary
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Title("수고했어요")
-        sum?.let { Body("오늘 연습 ${it.durationMin}분" + (it.distanceKm?.let { d -> " · %.1fkm".format(d) } ?: "") + if (!it.durationFromVehicle) " (앱 기준 시간)" else "") }
-        TimelineSection(ui.timeline, ui.spokenEventIds)
-        Body("오늘 어땠어요?", Tokens.TextMain)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) { ReviewChips.learner.forEach { Chip(it, it == learner) { learner = it } } }
-        if (ui.mentorMode) {
-            Body("멘토 한마디", Tokens.TextMain)
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) { ReviewChips.mentor.forEach { Chip(it, it == mentor) { mentor = it } } }
+    Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Mascot(Mood.HAPPY, 110.dp); Spacer(Modifier.width(18.dp))
+            Column { Display("수고했어요"); Body("오늘 있었던 일을 같이 돌아봐요. 점수가 아니라 그 순간의 사실이에요.") }
         }
-        Body("다음 목표 하나", Tokens.TextMain)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) { ReviewChips.nextGoals.forEach { Chip(it, it == next) { next = it } } }
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        sum?.let {
+            Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                StatTile("${it.durationMin}분", if (it.durationFromVehicle) "연습 시간" else "연습 시간(앱 기준)", Modifier.weight(1f))
+                StatTile(it.distanceKm?.let { d -> "%.1fkm".format(d) } ?: "—", "거리", Modifier.weight(1f))
+                StatTile("${ui.timeline.marks.size}번", "급한 속도 변화", Modifier.weight(1f))
+            }
+        }
+        Card { TimelineSection(ui.timeline, ui.spokenEventIds) }
+        Card {
+            Heading("오늘 어땠어요?")
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) { ReviewChips.learner.forEach { Chip(it, it == learner) { learner = it } } }
+            if (ui.mentorMode) {
+                Heading("멘토 한마디")
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) { ReviewChips.mentor.forEach { Chip(it, it == mentor) { mentor = it } } }
+            }
+            Heading("다음 목표 하나")
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) { ReviewChips.nextGoals.forEach { Chip(it, it == next) { next = it } } }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             Box(Modifier.weight(1f)) { BigButton("저장하고 다음 연습") { onSave(learner, mentor, next, false) } }
             Box(Modifier.weight(1f)) { BigButton("혼자 운전 시작할래요", ghost = true) { onSave(learner, mentor, next, true) } }
         }
@@ -391,37 +485,51 @@ fun ReviewScreen(ui: UiState, onSave: (String?, String?, String?, Boolean) -> Un
 
 /** C01: 주차 후에만 보이는 정적 속도 시간표. 사건 점 + 글 목록(그래프를 못 보는 사람도 같은 내용을 읽는다) */
 @Composable
-private fun TimelineSection(tl: com.chiilkkabwa.app.core.review.DriveTimeline, spoken: Set<String> = emptySet()) {
+private fun TimelineSection(tl: DriveTimeline, spoken: Set<String> = emptySet()) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Heading("속도 시간표"); Spacer(Modifier.width(12.dp))
+        if (tl.hasData) tl.sources.forEach { SourceBadge(it); Spacer(Modifier.width(6.dp)) }
+    }
     if (!tl.hasData) {
-        Body("이번 주행의 속도 기록은 없어요. 속도 신호가 꺼져 있거나 받지 못했어요", Tokens.TextSub)
+        Body("이번 주행의 속도 기록은 없어요. 속도 신호가 꺼져 있거나 받지 못했어요")
         return
     }
     val maxT = tl.points.last().tSec.coerceAtLeast(1f)
     val maxK = (tl.points.maxOf { it.kmh }.coerceAtLeast(20f) / 10f).let { kotlin.math.ceil(it) * 10f }
-    Body("속도 시간표 · ${tl.sources.joinToString { it.label }}", Tokens.TextMain)
-    Canvas(Modifier.fillMaxWidth().height(140.dp).clip(RoundedCornerShape(12.dp)).background(Tokens.Surface)) {
-        val pad = 12.dp.toPx()
+    Canvas(Modifier.fillMaxWidth().height(170.dp).clip(RoundedCornerShape(14.dp)).background(Tokens.Bg)) {
+        val pad = 14.dp.toPx()
         fun at(t: Float, k: Float) = Offset(pad + (size.width - 2 * pad) * t / maxT, size.height - pad - (size.height - 2 * pad) * k / maxK)
+        listOf(0f, maxK / 2, maxK).forEach { k -> drawLine(Tokens.Surface3, at(0f, k), at(maxT, k), 1.dp.toPx()) }
         tl.points.zipWithNext { a, b -> drawLine(Tokens.Primary, at(a.tSec, a.kmh), at(b.tSec, b.kmh), strokeWidth = 3.dp.toPx()) }
-        tl.marks.forEach { drawCircle(if (it.type == com.chiilkkabwa.app.core.event.SpeedEventType.RAPID_SPEED_DECREASE) Tokens.Lock else Tokens.Warn, 7.dp.toPx(), at(it.tSec, it.toKmh)) }
+        tl.marks.forEach {
+            val c = at(it.tSec, it.toKmh)
+            drawCircle(if (it.type == SpeedEventType.RAPID_SPEED_DECREASE) Tokens.Danger else Tokens.Yellow, 8.dp.toPx(), c)
+            if (it.eventId in spoken) drawCircle(Tokens.TextMain, 12.dp.toPx(), c, style = Stroke(2.dp.toPx()))
+        }
     }
-    Text("최고 %.0fkm/h · 가로 %d분 %02d초".format(tl.points.maxOf { it.kmh }, maxT.toInt() / 60, maxT.toInt() % 60), color = Tokens.TextSub, fontSize = Tokens.Caption)
-    if (tl.marks.isEmpty()) Body("급하게 속도가 바뀐 순간은 없었어요")
+    Caption("최고 %.0fkm/h · %d분 %02d초 · ● 빨강 = 빠르게 줄어듦, 노랑 = 빠르게 늘어남, 고리 = 주행 중에 말함(모의)".format(tl.points.maxOf { it.kmh }, maxT.toInt() / 60, maxT.toInt() % 60))
+    if (tl.marks.isEmpty()) Body("급하게 속도가 바뀐 순간은 없었어요", Tokens.SuccessText)
     tl.marks.take(5).forEach { m ->
-        val what = if (m.type == com.chiilkkabwa.app.core.event.SpeedEventType.RAPID_SPEED_DECREASE) "속도가 빠르게 줄었어요" else "속도가 빠르게 늘었어요"
-        Body("%d:%02d  %s  %.0f → %.0fkm/h".format(m.tSec.toInt() / 60, m.tSec.toInt() % 60, what, m.fromKmh, m.toKmh) +
-            if (m.eventId in spoken) "  · 주행 중에 말했어요(모의)" else "")
+        val what = if (m.type == SpeedEventType.RAPID_SPEED_DECREASE) "속도가 빠르게 줄었어요" else "속도가 빠르게 늘었어요"
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("%d:%02d".format(m.tSec.toInt() / 60, m.tSec.toInt() % 60), color = Tokens.TextSub, fontSize = Tokens.Body, modifier = Modifier.width(80.dp))
+            Body("$what  %.0f → %.0fkm/h".format(m.fromKmh, m.toKmh), Tokens.TextMain)
+            if (m.eventId in spoken) { Spacer(Modifier.width(10.dp)); StatusPill("말했어요(모의)", Pill.INFO) }
+        }
     }
-    Text("속도 변화만 본 기록이에요. 페달 조작이나 주변 상황을 판단한 것이 아니에요", color = Tokens.TextSub, fontSize = Tokens.Caption)
+    Caption("속도 변화만 본 기록이에요. 페달 조작이나 주변 상황을 판단한 것이 아니에요")
 }
 
 @Composable
 fun BadgeToast(ui: UiState, onDismiss: () -> Unit) {
     LaunchedEffect(ui.newBadges) { delay(2000); onDismiss() }   // 정차 중 2초 이내로 짧게
     val b = ui.newBadges.first()
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
-        Text("배지 · ${b.badge.title}" + if (b.mockOnly) " (모의)" else "", color = Tokens.TextMain, fontSize = Tokens.Body,
-            modifier = Modifier.clip(RoundedCornerShape(99.dp)).background(Tokens.Surface2).padding(horizontal = 20.dp, vertical = 10.dp))
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopEnd) {   // 제목을 가리지 않게 오른쪽 위
+        Row(Modifier.clip(RoundedCornerShape(20.dp)).background(Tokens.Surface2).border(1.5.dp, Tokens.Yellow.copy(alpha = .5f), RoundedCornerShape(20.dp)).padding(horizontal = 22.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            LineIcon(Ico.STAR, 32.dp, Tokens.Yellow); Spacer(Modifier.width(12.dp))
+            Column { Caption("배지"); Heading(b.badge.title + if (b.mockOnly) " (모의)" else "") }
+        }
     }
 }
 
@@ -432,8 +540,9 @@ fun DebugPanel(vm: ChiilViewModel, ui: UiState, modifier: Modifier) {
     var open by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val m = vm.mock; val s = ui.snapshot
-    Column(modifier.width(if (open) 420.dp else 120.dp).clip(RoundedCornerShape(12.dp)).background(Color(0xCC000000)).padding(8.dp)) {
-        Text(if (open) "모의 차량 ▼" else "모의 ▲", color = Color.Yellow, modifier = Modifier.clickable { open = !open })
+    Column(modifier.width(if (open) 460.dp else 130.dp).clip(RoundedCornerShape(14.dp)).background(Color(0xE6000000)).padding(10.dp)) {
+        Text(if (open) "모의 차량 ▼" else "모의 ▲", color = Tokens.Yellow, fontSize = Tokens.Caption, fontWeight = FontWeight.Bold,
+            modifier = Modifier.clickable { open = !open }.padding(6.dp))
         if (open) FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Dbg("P") { m.setGear(Gear.PARK) }; Dbg("D") { m.setGear(Gear.DRIVE) }
             Dbg("주차브레이크 ${s.parkingBrakeOn.value}") { m.setParkingBrake(s.parkingBrakeOn.value != true) }
@@ -454,4 +563,4 @@ fun DebugPanel(vm: ChiilViewModel, ui: UiState, modifier: Modifier) {
 }
 
 @Composable private fun Dbg(t: String, f: () -> Unit) =
-    Text(t, color = Color.White, modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(Color(0xFF333333)).clickable(onClick = f).padding(8.dp))
+    Text(t, color = Color.White, fontSize = Tokens.Caption, modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Color(0xFF333333)).clickable(onClick = f).padding(horizontal = 10.dp, vertical = 8.dp))
