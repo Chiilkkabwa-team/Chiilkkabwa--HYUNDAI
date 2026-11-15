@@ -12,9 +12,9 @@
 | `dev` | 기능 동결(사용자 결정 11/15). GitHub CI 웹·Android 테스트·두 debug 빌드 통과 |
 | `main` | 11/13 릴리스 그대로 — **제출 전에 `dev → main` 필요** |
 | Android 주행 중 음성 | 🤖 **mock 앱에만** 모의 음성 길잡이 연결(PR #38). vehicle 앱은 말하지 않음(S05) |
-| release APK | ☐ 아직 없음 — 이 클라우드 환경은 Maven Central 429로 빌드 불가 → **PC에서 빌드** |
+| release APK | ✅ `apk/Chiilkkabwa_Chiilkkabwa_release.apk`(mock, 제출본) + `_vehicle_release.apk`(참고) — GitHub Actions 빌드 |
 | 공식 규칙의 APK 위치 | 저장소 `apk/` 폴더에 `팀명_앱이름_release.apk`(용량 초과 시 GitHub Releases). 🤖 `.gitignore`가 `apk/*_release.apk`는 올라가게 수정함 |
-| 팀명 | 미정 — 파일명·메일 제목에 필요 |
+| 팀명 | **치일까봐 (Chiilkkabwa)** — 메일 제목 `[차량용 앱 개발 공모전] 치일까봐_대표자명` |
 
 ## 1. PC 준비 (한 번만) ☐
 

@@ -59,7 +59,7 @@ adb install -r app/build/outputs/apk/mock/debug/app-mock-debug.apk
 | 네트워크 | `dl.google.com`(Google Maven), `repo.maven.apache.org`, `nexus-playground.pleos.ai`(Pleos SDK) |
 | SDK | compileSdk 35 / targetSdk 34 / **minSdk 28**(Pleos 요구: Android API 28 이상) |
 | 실행 대상 | **Pleos Connect Emulator v2.1.0 (Automotive, API 34)** 또는 Pleos Connect 탑재 차량 |
-| 화면 | 가로 기준, 세로 1창 / 가로 2창 모두 동작 |
+| 화면 | 가로 기준, 세로 1창 / 가로 2창 모두 동작. 에뮬레이터 앱 창은 dp로 약 1680×1200(녹화 화면 비율로 추정 — 정확한 `adb shell wm size` 값은 확인 중). 앱은 창 크기에 맞춰 1~2배 자동 확대 |
 
 **에뮬레이터 설치** (공식 문서 *Pleos Connect Emulator 설치 및 실행* 기준)
 
@@ -100,11 +100,22 @@ adb logcat -s AaosVehicleSource PleosVehicleSource
 | **전 흐름 시연용** (모의 신호) | `assembleMockRelease` | `app/build/outputs/apk/mock/release/app-mock-release.apk` | 화면 안 조작 패널로 신호를 바꿔 가며 **주차 확인 → 워밍업 → 주행 잠금 → 복기** 전체 흐름. 화면에 '모의' 표시 |
 | **차량 신호용** | `assembleVehicleRelease` | `app/build/outputs/apk/vehicle/release/app-vehicle-release.apk` | AAOS 공개 속성(기어·주차 브레이크·주행 제한)만 읽음. **Pleos 신호·속도·내비 연동은 release에서 꺼져 있음**(아래 §4) |
 
-제출용 APK는 공식 규칙대로 저장소 **`apk/` 폴더**에 `팀명_앱이름_release.apk` 이름으로 올립니다(그 밖의 APK는 `.gitignore`). 절차: [docs/SUBMISSION_RUNBOOK.md](docs/SUBMISSION_RUNBOOK.md).
+**제출용 APK (팀명 치일까봐 · 앱 이름 치일까봐, 공식 규칙 `팀명_앱이름_release.apk`)**
+
+| 파일 | 내용 |
+|---|---|
+| **[`apk/Chiilkkabwa_Chiilkkabwa_release.apk`](apk/Chiilkkabwa_Chiilkkabwa_release.apk)** | **제출본** — 위 '전 흐름 시연용'(mock release). 에뮬레이터에 설치하면 오른쪽 아래 '모의' 패널로 전체 흐름을 볼 수 있음 |
+| [`apk/Chiilkkabwa_Chiilkkabwa_vehicle_release.apk`](apk/Chiilkkabwa_Chiilkkabwa_vehicle_release.apk) | 참고용 — 차량 신호용(vehicle release). 에뮬레이터 콘솔로 주차 브레이크 ON을 만들 수 없어 안전 확인에서 잠김(의도된 안전 동작) |
+
+파일 이름은 한글 파일명 깨짐을 피하려고 영문 팀명(Chiilkkabwa)을 썼습니다. 두 파일 모두 GitHub Actions `Release APK build and perf budget`(커밋 bb116f1, 이후 Android 코드 변경 없음)에서 빌드, 약 23MB.
+
+```bash
+adb install -r apk/Chiilkkabwa_Chiilkkabwa_release.apk
+```
 
 | 배포 | 링크 |
 |---|---|
-| release APK 다운로드 | *(GitHub Releases — 제출 시 기재)* |
+| 웹 체험판(모의 신호) | https://chiilkkabwa-web.vercel.app |
 
 **서명**: 기본값은 디버그 키입니다(설치·실행 확인용). 자기 키로 서명하려면 저장소 루트에 `keystore.properties`를 만드세요 — `storeFile` / `storePassword` / `keyAlias` / `keyPassword`. 이 파일은 `.gitignore`에 있습니다.
 
