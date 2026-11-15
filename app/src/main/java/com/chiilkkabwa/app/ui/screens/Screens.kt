@@ -45,6 +45,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.chiilkkabwa.app.core.event.SpeedEventType
 import com.chiilkkabwa.app.core.mission.CarPose
@@ -95,13 +96,14 @@ fun AppRoot(
     val shown = if (!parkedMenu) null else sheet ?: if (!ui.onboardingSeen) Sheet.INTRO else null
     ScreenFrame(
         ui.session.phase, ui.snapshot.gear.source, onOpen = if (parkedMenu) { s -> sheet = s } else null, scrollKey = ui.session.phase to ui.step,
+        // 배지 알림은 머리줄 가운데 빈 곳에만(내용·버튼을 가리지 않게). 주행 잠금에는 머리줄이 없어 뜨지 않는다(S04)
+        notice = if (ui.newBadges.isNotEmpty()) { { BadgeToast(ui) { vm.dismissBadges() } } } else null,
         overlay = {
             shown?.let { s ->
                 SheetHost(s, ui, onVoiceOn = vm::setVoiceOn, onVoiceCap = vm::setVoiceCap) {
                     if (s == Sheet.INTRO) vm.markOnboardingSeen(); sheet = null
                 }
             }
-            if (ui.newBadges.isNotEmpty() && ui.session.phase != Phase.DRIVING_LOCK) BadgeToast(ui) { vm.dismissBadges() }
             if (ui.mockMode) DebugPanel(vm, ui, Modifier.align(Alignment.BottomEnd))
         },
     ) {
@@ -126,6 +128,7 @@ fun ScreenFrame(
     source: SignalSource?,
     onOpen: ((Sheet) -> Unit)?,
     scrollKey: Any? = phase,
+    notice: (@Composable () -> Unit)? = null,
     overlay: @Composable BoxScope.() -> Unit = {},
     content: @Composable () -> Unit,
 ) = Box(Modifier.fillMaxSize().background(Tokens.Bg)) {
@@ -135,7 +138,7 @@ fun ScreenFrame(
             // 화면이 바뀌면 맨 위부터 보이게(이전 화면의 스크롤 위치를 끌고 오지 않는다)
             val scroll = key(scrollKey) { rememberScrollState() }
             Column(Modifier.align(Alignment.TopCenter).widthIn(max = MaxContentWidth).fillMaxSize()) {
-                if (!lock) { TopBar(phase, source, onOpen); Spacer(Modifier.height(20.dp)) }
+                if (!lock) { TopBar(phase, source, onOpen, notice); Spacer(Modifier.height(20.dp)) }
                 Box(Modifier.weight(1f).fillMaxWidth().then(if (lock) Modifier else Modifier.verticalScroll(scroll))) { content() }
             }
             overlay()
@@ -145,12 +148,13 @@ fun ScreenFrame(
 
 /** 머리줄(웹 머리말과 같은 역할): 앱 이름·지금 단계·신호 출처(S10), 정차 확인 중에만 메뉴(S04) */
 @Composable
-private fun TopBar(phase: Phase, source: SignalSource?, onOpen: ((Sheet) -> Unit)?) = BoxWithConstraints(Modifier.fillMaxWidth()) {
+private fun TopBar(phase: Phase, source: SignalSource?, onOpen: ((Sheet) -> Unit)?, notice: (@Composable () -> Unit)?) = BoxWithConstraints(Modifier.fillMaxWidth()) {
+    val wide = maxWidth >= 860.dp
     val brand: @Composable () -> Unit = {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Mascot(Mood.CALM, 48.dp); Spacer(Modifier.width(10.dp))
-            Text("치일까봐", color = Tokens.TextMain, fontSize = Tokens.Heading, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.width(16.dp))
+            // 좁은 창에서는 이름을 빼고 한 줄로(마스코트가 앱 표시)
+            if (wide) { Text("치일까봐", color = Tokens.TextMain, fontSize = Tokens.Heading, fontWeight = FontWeight.Bold); Spacer(Modifier.width(16.dp)) }
             when (phase) {
                 Phase.CHECKING -> StatusPill("정차 확인 중", Pill.CHECKING)
                 Phase.READY -> StatusPill("정차 중", Pill.OK)
@@ -169,8 +173,11 @@ private fun TopBar(phase: Phase, source: SignalSource?, onOpen: ((Sheet) -> Unit
             }
         }
     }
-    if (maxWidth >= 860.dp) Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { brand(); Spacer(Modifier.weight(1f)); menu() }
-    else Column(verticalArrangement = Arrangement.spacedBy(12.dp)) { brand(); menu() }
+    Row(Modifier.fillMaxWidth().heightIn(min = 56.dp), verticalAlignment = Alignment.CenterVertically) {
+        brand()
+        Box(Modifier.weight(1f).padding(horizontal = 12.dp), contentAlignment = Alignment.Center) { notice?.invoke() }
+        menu()
+    }
 }
 
 /** 머리줄 메뉴 버튼: 아이콘 + 글자, 터치 80dp */
@@ -260,7 +267,6 @@ fun GateScreen(
                 val (g, gt) = s.gear.pill { it == Gear.PARK }
                 val (b, bt) = s.parkingBrakeOn.pill { it }
                 val (u, ut) = s.uxRestricted.pill { !it }
-                Row(verticalAlignment = Alignment.CenterVertically) { Caption("차 신호", Tokens.TextSub); Spacer(Modifier.width(10.dp)); SourceBadge(s.gear.source) }
                 CheckCard(Ico.GEAR, "기어 P", g, gt)
                 CheckCard(Ico.PBRAKE, "주차 브레이크", b, bt)
                 CheckCard(Ico.ROAD, "주행 제한 없음", u, ut)
@@ -501,9 +507,18 @@ fun PedalScreen(ui: UiState, onDone: () -> Unit) {
 fun PactScreen(ui: UiState, onToggle: (String) -> Unit, onConfirm: () -> Unit) = TwoPane(
     left = { Hero(Mood.CALM, "오늘의 약속", "운전하는 사람과 옆자리 사람이 같이 골라요. 최대 ${PactOptions.MAX}개") ; Banner("오늘 목표: ${ui.goal ?: "-"}", Pill.INFO) },
     right = {
-        Column(verticalArrangement = Arrangement.spacedBy(Tokens.TouchGap)) {
-            PactOptions.all.forEach { ChoiceCard(it, it in ui.pact, Ico.PACT, Modifier.fillMaxWidth()) { onToggle(it) } }
-            BigButton("둘 다 약속했어요", enabled = ui.pact.isNotEmpty(), onClick = onConfirm)
+        // 넓으면 두 줄씩(6개 + 버튼이 한 화면에 들어오게)
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val cols = if (maxWidth >= 560.dp) 2 else 1
+            Column(verticalArrangement = Arrangement.spacedBy(Tokens.TouchGap)) {
+                PactOptions.all.chunked(cols).forEach { row ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(Tokens.TouchGap)) {
+                        row.forEach { ChoiceCard(it, it in ui.pact, Ico.PACT, Modifier.weight(1f)) { onToggle(it) } }
+                        if (row.size < cols) Spacer(Modifier.weight(1f))
+                    }
+                }
+                BigButton("둘 다 약속했어요", enabled = ui.pact.isNotEmpty(), onClick = onConfirm)
+            }
         }
     },
 )
@@ -600,12 +615,12 @@ private fun TimelineSection(tl: DriveTimeline, spoken: Set<String> = emptySet())
 fun BadgeToast(ui: UiState, onDismiss: () -> Unit) {
     LaunchedEffect(ui.newBadges) { delay(2000); onDismiss() }   // 정차 중 2초 이내로 짧게
     val b = ui.newBadges.first()
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {   // 머리줄 가운데 빈 곳에 잠깐(내용·제목을 가리지 않게)
-        Row(Modifier.clip(RoundedCornerShape(20.dp)).background(Tokens.Surface2).border(1.5.dp, Tokens.Yellow.copy(alpha = .5f), RoundedCornerShape(20.dp)).padding(horizontal = 22.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically) {
-            LineIcon(Ico.STAR, 32.dp, Tokens.Yellow); Spacer(Modifier.width(12.dp))
-            Column { Caption("배지"); Heading(b.badge.title + if (b.mockOnly) " (모의)" else "") }
-        }
+    // 머리줄 가운데에 한 줄로(ScreenFrame notice). 누르는 것이 아니다
+    Row(Modifier.clip(RoundedCornerShape(99.dp)).background(Tokens.WarnBg).border(1.5.dp, Tokens.Yellow.copy(alpha = .6f), RoundedCornerShape(99.dp))
+        .padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+        LineIcon(Ico.STAR, 24.dp, Tokens.Yellow); Spacer(Modifier.width(8.dp))
+        Text("배지 · " + b.badge.title + if (b.mockOnly) " (모의)" else "", color = Tokens.TextMain, fontSize = Tokens.Caption,
+            fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 

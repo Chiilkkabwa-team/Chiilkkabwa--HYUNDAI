@@ -49,7 +49,7 @@ import org.robolectric.annotation.GraphicsMode
 /**
  * 에뮬레이터 없이 차량 화면 크기로 모든 화면을 그려 PNG로 남긴다(Roborazzi + Robolectric).
  * 사람이 눈으로 보는 확인용이다 — 픽셀 비교로 실패시키지 않는다.
- * 크기: Pleos 에뮬레이터 앱 창(2026-11-15 영상 추정 약 1680×1200dp)과 2창 분할(800×600dp).
+ * 크기: Pleos 에뮬레이터 앱 창(2026-11-15 영상 추정 약 1680×1200dp), 반쪽 창(840×1200dp 가정), 짧은 창(800×600dp).
  * 결과: app/build/outputs/roborazzi/{크기}_{화면}.png (release-apk 워크플로 artifact로 올라간다)
  */
 @RunWith(AndroidJUnit4::class)
@@ -61,10 +61,11 @@ abstract class ScreenshotBase(private val size: String) {
         name: String,
         phase: Phase = Phase.PREPARING,
         onOpen: ((Sheet) -> Unit)? = null,
+        notice: (@Composable () -> Unit)? = null,
         overlay: @Composable BoxScope.() -> Unit = {},
         content: @Composable () -> Unit = {},
     ) = captureRoboImage("build/outputs/roborazzi/${size}_$name.png") {
-        ChiilTheme { ScreenFrame(phase, SignalSource.MOCK, onOpen, overlay = overlay, content = content) }
+        ChiilTheme { ScreenFrame(phase, SignalSource.MOCK, onOpen, notice = notice, overlay = overlay, content = content) }
     }
 
     private fun <T> ok(v: T) = Signal.ok(v, SignalSource.MOCK, 1L)
@@ -126,7 +127,7 @@ abstract class ScreenshotBase(private val size: String) {
     @Test fun sheetSettings() = shot("15_sheet_settings", Phase.READY, onOpen = {}, overlay = { SheetHost(Sheet.SETTINGS, readyUi) {} })
     @Test fun sheetAbout() = shot("16_sheet_about", Phase.READY, onOpen = {}, overlay = { SheetHost(Sheet.ABOUT, readyUi) {} })
 
-    @Test fun badge() = shot("17_badge", Phase.READY, onOpen = {}, overlay = { BadgeToast(readyUi.copy(newBadges = listOf(EarnedBadge(Badge.FIRST_CLICK, 1, true)))) {} }) {
+    @Test fun badge() = shot("17_badge", Phase.READY, onOpen = {}, notice = { BadgeToast(readyUi.copy(newBadges = listOf(EarnedBadge(Badge.FIRST_CLICK, 1, true)))) {} }) {
         GateScreen(readyUi, onStart = {})
     }
 }
@@ -135,6 +136,10 @@ abstract class ScreenshotBase(private val size: String) {
 @Config(sdk = [34], qualifiers = "w1680dp-h1200dp-land-mdpi")
 class ScreenshotPleosTest : ScreenshotBase("pleos1680")
 
-/** 2창 분할 등 작은 창 */
+/** Pleos 2창 분할을 가정한 세로로 긴 반쪽 창(가정값 — wm size로 확인 필요) */
+@Config(sdk = [34], qualifiers = "w840dp-h1200dp-port-mdpi")
+class ScreenshotHalfTest : ScreenshotBase("half840")
+
+/** 짧고 좁은 창(최악의 경우 확인용) */
 @Config(sdk = [34], qualifiers = "w800dp-h600dp-land-mdpi")
 class ScreenshotSplitTest : ScreenshotBase("split800")
