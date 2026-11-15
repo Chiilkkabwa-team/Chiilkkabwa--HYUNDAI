@@ -634,3 +634,11 @@ A02 PR#35 최종 동기화: CI 대기 중 A01 PR#34 dev3c0c824ca35951891f72d9c8f
 - 성능(헤드리스 Chromium, CDP TaskDuration 8초): 연습 정차 2.2% · 연습 주행 잠금 3.0→**2.4%** · 평가 가상 주행 10.8% · 리포트 3.7% · 장면 재현 재생 9.4%, JS 힙 ≤4.7MB. 데스크톱 브라우저 측정이며 Pleos 차량 앱 기준(P10)과 직접 비교 불가 — Android 실측 **NOT_RUN**
 - Android 변경(Praise·Mock 헬퍼 삭제)은 이 환경에서 컴파일 **NOT_RUN**(Maven Central 429) → PR CI로 확인
 - 상세: [WORKLOG_CLAUDE_2026-11-12_15.md](WORKLOG_CLAUDE_2026-11-12_15.md)
+
+## 2026-11-15 — Android 성능 예산·release APK (GitHub Actions `Release APK build and perf budget` run 43664504111, 커밋 d65a6ea)
+
+- 환경: GitHub ubuntu-latest, JDK 17, Android SDK 35. 이 컨테이너는 Maven Central 429·KVM 없음이라 로컬 빌드·에뮬레이터 **BLOCKED**
+- `assembleMockRelease`·`assembleVehicleRelease` **BUILD SUCCESSFUL**(4분 15초)
+- 앱 판단 로직(JVM, `PerfBudgetTest`): 주행 잠금 1회 갱신 **1.3µs** → 10Hz에서 1코어의 **0.0013%**, 준비 단계 1회 **3.5µs** → 5Hz에서 **0.0017%**. P10 차량 앱 기준 3%의 1/1000 수준. **화면 그리기(Compose)·시스템 서비스·실기기 CPU는 포함하지 않음** → 에뮬레이터 프로파일러 실측은 **NOT_VERIFIED**
+- APK: 두 개 모두 약 **22.9MB**(dex 22.3MB — `isMinifyEnabled=false`라 줄이지 않은 Compose·라이브러리), targetSdk 34, 디버그 인증서 서명(설치·실행용). 권한: 읽기 권한만, `CONTROL_CAR_*`·`INTERNET` **없음**(aapt2 dump permissions)
+- 메모리(RAM 400MB 기준): 런타임 측정 **NOT_RUN**(기기·에뮬레이터 필요)
