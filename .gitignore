@@ -7,6 +7,8 @@ captures/
 .DS_Store
 apk/*.apk
 !apk/.gitkeep
+# 공식 제출 규칙: 저장소 apk/ 폴더에 "팀명_앱이름_release.apk"를 올린다
+!apk/*_release.apk
 
 # 팀 내부 자료(실명·회의 내용 포함) — 공개 금지
 docs/reference/

@@ -100,7 +100,7 @@ adb logcat -s AaosVehicleSource PleosVehicleSource
 | **전 흐름 시연용** (모의 신호) | `assembleMockRelease` | `app/build/outputs/apk/mock/release/app-mock-release.apk` | 화면 안 조작 패널로 신호를 바꿔 가며 **주차 확인 → 워밍업 → 주행 잠금 → 복기** 전체 흐름. 화면에 '모의' 표시 |
 | **차량 신호용** | `assembleVehicleRelease` | `app/build/outputs/apk/vehicle/release/app-vehicle-release.apk` | AAOS 공개 속성(기어·주차 브레이크·주행 제한)만 읽음. **Pleos 신호·속도·내비 연동은 release에서 꺼져 있음**(아래 §4) |
 
-APK 파일은 용량 때문에 저장소에 커밋하지 않습니다(`apk/*.apk`는 `.gitignore`). **GitHub Releases**에 올리고 아래에 링크합니다.
+제출용 APK는 공식 규칙대로 저장소 **`apk/` 폴더**에 `팀명_앱이름_release.apk` 이름으로 올립니다(그 밖의 APK는 `.gitignore`). 절차: [docs/SUBMISSION_RUNBOOK.md](docs/SUBMISSION_RUNBOOK.md).
 
 | 배포 | 링크 |
 |---|---|
@@ -116,11 +116,11 @@ APK 파일은 용량 때문에 저장소에 커밋하지 않습니다(`apk/*.apk
 | AAOS 속도 | `PERF_VEHICLE_SPEED`(권한 `CAR_SPEED`) → 주차 후 속도 시간표·급가속/급감속 사건 | **꺼짐** — debug에서 `-PenableAaosSpeed=true`로만 시험 |
 | Pleos Vehicle SDK 2.3.2 (조회만) | Seat(안전벨트·착석), Brake(브레이크 페달), TurnSignal, Wiper, Light, DrivingTime·DistanceDriven(트립) | **꺼짐** — debug + 에뮬레이터에서 `-PenablePleosSignals=true`로만 시험 |
 | Pleos NaviHelper 3.0.5 | 정차 중 연습 코스 경로 요청 | **꺼짐** — debug에서 `-PenablePleosNavi=true`로만 시험 |
-| 음성 | Android `TextToSpeech` + `AudioFocusRequest` — **정차 중 미리듣기(mock debug)만** | 주행 중 음성 없음 |
+| 음성 | Android `TextToSpeech` + `AudioFocusRequest` — 정차 중 미리듣기(mock debug), **mock 앱 주행 잠금 중 모의 음성 길잡이**(급가속·급감속, 주행당 최대 5회·45초 간격, 포커스 잃으면 버림) | vehicle 앱은 주행 중 말하지 않음 |
 
 **왜 release에서 꺼 두었나**: 에뮬레이터에서 일부 신호 수신은 확인했지만(§5), 전체 미션 완료·주차 게이트 해제·실차는 아직 확인하지 못했습니다. 팀 안전 원칙([docs/SAFETY_RULES.md](docs/SAFETY_RULES.md) S03·G5)에 따라 **확인되지 않은 실차 경로는 기본으로 잠급니다.** 그래서 vehicle release는 신호가 모자라면 연습을 열지 않고 이유를 보여 줍니다.
 
-**주행 중 음성에 대해**: 공식 가이드는 주행 중 **영상**을 금지하고 오디오는 오디오 포커스 정책 준수를 요구합니다. 다만 Distraction Optimization을 선언하지 않은 앱이 주행 중에 계속 소리를 낼 수 있는지는 **Pleos 에뮬레이터에서 아직 확인하지 못했습니다**([S05](docs/SAFETY_RULES.md)). 그래서 Android 앱은 지금 주행 중에 말하지 않고, 주행 중 음성 길잡이는 **웹 체험판(모의)에서만** 보여 줍니다.
+**주행 중 음성에 대해**: 공식 가이드는 주행 중 **영상**을 금지하고 오디오는 오디오 포커스 정책 준수를 요구합니다. 다만 Distraction Optimization을 선언하지 않은 앱이 주행 중에 계속 소리를 낼 수 있는지는 **Pleos 에뮬레이터에서 아직 확인하지 못했습니다**([S05](docs/SAFETY_RULES.md)). 그래서 차량 신호용(vehicle) 앱은 주행 중에 말하지 않고, 주행 중 음성 길잡이는 **모의 신호로만**(웹 체험판, Android mock 앱) 보여 줍니다.
 
 모든 신호는 사용 전에 지원 여부(capability)를 확인하고, 미지원·권한 거부·끊김은 각각 다른 문구로 안내하며 **성공으로 세지 않습니다**. 조회 권한만 선언하고 제어 권한(`CONTROL_CAR_*`)·`distractionOptimized`·`INTERNET`은 선언하지 않습니다.
 
@@ -133,7 +133,7 @@ APK 파일은 용량 때문에 저장소에 커밋하지 않습니다(`apk/*.apk
 | 웹 단위 테스트 | ✅ 126개 통과 | 같음 |
 | Pleos Connect Emulator v2.1.0(API 34) | 🟡 **일부 확인** — 벨트(초기값)·브레이크·방향지시등 수신, 속도 증가/감소 사건, NaviHelper SDK 연결·재연결(경로 요청은 미확인) | [구현 상태](docs/IMPLEMENTATION_STATUS.md), [docs/evidence](docs/evidence) |
 | 전체 미션 완료·주차 게이트 해제(에뮬레이터) | ❌ 미확인 — 콘솔로 주차 브레이크 ON·벨트 체결을 만들 수 없음 | 구현 상태 A01 절 |
-| 주행 중 음성(Android) | ❌ 미구현·미검증(S05) | 위 §4 |
+| 주행 중 음성(Android) | 🟡 mock 앱에만 연결(모의 신호, CI 테스트 통과). 에뮬레이터 실제 소리·실제 주행 허용은 미확인(S05) | 위 §4 |
 | 실차 | ❌ 미시험 | — |
 
 > 「빌드된다」, 「에뮬레이터에서 신호가 들어온다」, 「차에서 동작한다」는 각각 다릅니다. 위 표는 실제로 확인한 범위만 적었습니다.
