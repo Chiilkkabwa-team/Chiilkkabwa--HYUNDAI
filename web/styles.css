@@ -567,7 +567,7 @@ input[type="range"]:disabled { opacity: .35; }
 .ev-list li > div b { font-size: 1.02rem; }
 .ev-list li > div small { display: block; color: var(--sub); font-size: .88rem; margin-top: 2px; line-height: 1.4; }
 .pts { text-align: center; padding: 2px 0; border-radius: 8px; font-size: .9rem; }
-.pts.bad { background: color-mix(in srgb, var(--danger-2) 25%, transparent); color: var(--danger-text); }
+.pts.bad { background: color-mix(in srgb, var(--danger-2) 14%, transparent); color: var(--danger-text); }
 .pts.good { background: color-mix(in srgb, var(--success) 22%, transparent); color: var(--success-text); }
 .pts.info { background: var(--surface3); color: var(--sub); }
 .sens { font-style: normal; font-size: .72rem; color: var(--primary-text); background: color-mix(in srgb, var(--primary) 15%, transparent); padding: 1px 7px; border-radius: 999px; margin-left: 4px; vertical-align: 2px; }

@@ -148,3 +148,5 @@ adb logcat -s AaosVehicleSource PleosVehicleSource
 ---
 
 > 개발 문서: [`CLAUDE.md`](CLAUDE.md), [`docs/`](docs/) — PRD, 아키텍처, SDK 노트, UI 스펙, 미션 콘텐츠, 시험 계획, 시연 대본, 제출 체크리스트, 서비스 플로우, 제출 전략
+>
+> 처음이라면: [배경지식 노트](docs/KNOWLEDGE_BASE.md) → [제출 실행서](docs/SUBMISSION_RUNBOOK.md). 웹 브라우저 점검: `node tools/web-check.cjs demo|axe|perf`
