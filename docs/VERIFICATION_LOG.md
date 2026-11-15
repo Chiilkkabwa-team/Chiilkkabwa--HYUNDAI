@@ -649,3 +649,10 @@ A02 PR#35 최종 동기화: CI 대기 중 A01 PR#34 dev3c0c824ca35951891f72d9c8f
 - `node tools/web-check.cjs axe`: 처음 1건(라이트 테마 리포트 감점 칩 `.pts.bad` 대비) → 배경 25%→14%로 수정 후 8개 화면 **0**
 - `node tools/web-check.cjs perf`: 연습 정차 2.3%, 연습 주행 잠금 2.4%, 평가 가상 주행 11.4%(데스크톱 Chromium)
 - 웹 단위 126/126
+
+## 2026-11-15 밤 — Android 정차 메뉴 이식 (AI, PR #45)
+
+- 기준: `dev` e2f618f + 커밋 172fe0e
+- GitHub CI: Android 단위 테스트·mock/vehicle debug 빌드 **SUCCESS**, 웹 단위 **SUCCESS**(run 43712260638)
+- 새 단위 테스트: `MockDriveCoachTest` 설정 끄기·켜기 1개(총 5개)
+- 화면 표시·온보딩 흐름·설정 저장·실제 소리: **NOT_VERIFIED** — PC 에뮬레이터에서 [ANDROID_STUDIO_CHECK.md](ANDROID_STUDIO_CHECK.md) 순서로

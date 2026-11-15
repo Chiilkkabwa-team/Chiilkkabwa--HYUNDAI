@@ -46,6 +46,7 @@
 | **mock release APK**는 화면 안 '모의' 패널로 전체 흐름을 볼 수 있다 | `DebugPanel`은 `USE_MOCK`이면 release에서도 보임 |
 | Android 주행 중 음성은 **mock 앱에서만** 말한다 | `MockDriveCoach` → B02 `CoachingDecisionEngine`은 MOCK 출처만 허용. 주행 중 실제 음성 허용은 미검증(S05) |
 | 패널 '급가속(모의)' = 0→50km/h를 1.2초에 | A02 판정 구간(0.05~2초, ≤15m/s²) 안에 들어가게 만든 시연 버튼 |
+| Android 정차 메뉴(내 기록·설정·소개·사용법)는 11/15 웹에서 이식 | 화면은 [ANDROID_STUDIO_CHECK.md](ANDROID_STUDIO_CHECK.md)로 확인. 설정의 음성 횟수는 B02 상한 때문에 3·5만(웹은 3·5·10·20) |
 | 칭찬(STEADY)은 Android에 연결 안 함 | mock 속도가 주기적으로 오지 않아 '90초 조용함'을 정직하게 판정할 수 없음 |
 | 웹 음성 규칙(`web/voice.js`)과 Android B02는 같은 규칙의 두 구현 | 플랫폼이 달라 의도된 중복. 규칙을 바꾸면 둘 다·양쪽 테스트를 고친다 |
 | 저장소는 SharedPreferences JSON | 최종 DOCX의 암호화 Room은 미구현 — 그렇게 쓰지 않는다 |
@@ -102,6 +103,7 @@
 | 무엇을 알고 싶나 | 문서 |
 |---|---|
 | 제출하려면 지금 뭘 하나 | [SUBMISSION_RUNBOOK.md](SUBMISSION_RUNBOOK.md) |
+| Android Studio에서 무엇을 확인하나 | [ANDROID_STUDIO_CHECK.md](ANDROID_STUDIO_CHECK.md) |
 | 무엇이 구현·검증됐나 | [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md), [VERIFICATION_LOG.md](VERIFICATION_LOG.md) |
 | 안전 규칙 | [SAFETY_RULES.md](SAFETY_RULES.md) |
 | 공식 근거 | [COMPLIANCE_REGISTER.md](COMPLIANCE_REGISTER.md) |
