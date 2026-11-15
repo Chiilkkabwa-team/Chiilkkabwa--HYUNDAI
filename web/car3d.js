@@ -41,10 +41,10 @@ export const VIEWS = {
   gate: { az: -0.72, el: 0.34, d: 7.4, ty: 0.55, tx: 0, glass: 0.82 },
   rear: { az: Math.PI + 0.55, el: 0.3, d: 8.6, ty: 0.55, tx: -0.2, glass: 0.82 },
   front: { az: 0.55, el: 0.3, d: 8.8, ty: 0.55, tx: 0.3, glass: 0.82 },
-  turn: { az: 0.0, el: 0.7, d: 9.6, ty: 0.4, tx: 0.2, glass: 0.82 },
+  turn: { az: 0.0, el: 0.32, d: 8.6, ty: 0.55, tx: 0.4, glass: 0.82 },
   wiper: { az: 0.25, el: 0.72, d: 7.2, ty: 0.9, tx: 0.5, glass: 0.6 },
-  steer: { az: Math.PI, el: 1.2, d: 9.4, ty: 0, tx: 0.4, glass: 0.82 },
-  cabin: { az: -1.45, el: 1.0, d: 6.6, ty: 0.9, tx: -0.3, glass: 0.12 },
+  steer: { az: 0.5, el: 0.14, d: 8.2, ty: 0.45, tx: 0.8, glass: 0.82 },
+  cabin: { az: -Math.PI / 2 + 0.12, el: 0.3, d: 7.8, ty: 1.0, tx: -0.3, glass: 0.1 },
 };
 /** 워밍업 미션 → 그 조작이 보이는 쪽으로 카메라 */
 export const MISSION_VIEW = { SEAT_BELT: 'cabin', BRAKE_PRESS_RELEASE: 'rear', TURN_SIGNAL: 'turn', WIPER: 'wiper', LOW_BEAM: 'front', STEERING_CENTER: 'steer' };
@@ -186,6 +186,20 @@ function buildEngine(T) {
     RIGHT: [lamp(0.12, 0.1, 0.22, 2.2, 0.53, 0.78, M.amber), lamp(0.12, 0.1, 0.2, -2.22, 0.58, 0.8, M.amber)] };
   ambers.LEFT.push(mirrors.LEFT); ambers.RIGHT.push(mirrors.RIGHT);
   lamp(0.06, 0.16, 0.9, 2.26, 0.47, 0, M.dark);   // 앞 그릴
+  // 우리 엠블럼(치일까봐 마스코트 콩 모양) — 실제 자동차 회사 로고는 상표라 쓰지 않는다(O04·S11)
+  const emblemTex = (() => {
+    const c = document.createElement('canvas'); c.width = 128; c.height = 128; const x = c.getContext('2d');
+    x.fillStyle = '#c9d3df'; x.beginPath(); x.arc(64, 64, 62, 0, Math.PI * 2); x.fill();
+    x.fillStyle = '#1b2430'; x.beginPath(); x.arc(64, 64, 52, 0, Math.PI * 2); x.fill();
+    x.fillStyle = '#ffd66b'; x.beginPath(); x.ellipse(64, 68, 26, 32, 0, 0, Math.PI * 2); x.fill();
+    x.fillStyle = '#3e7b4f'; x.beginPath(); x.ellipse(74, 34, 9, 5, -0.5, 0, Math.PI * 2); x.fill();
+    x.fillStyle = '#1b2430'; x.beginPath(); x.arc(55, 64, 4, 0, Math.PI * 2); x.arc(73, 64, 4, 0, Math.PI * 2); x.fill();
+    const t = new T.CanvasTexture(c); t.colorSpace = T.SRGBColorSpace; return t;
+  })();
+  for (const [x, ry] of [[2.3, Math.PI / 2], [-2.31, -Math.PI / 2]]) {
+    const e = new T.Mesh(new T.CircleGeometry(0.11, 32), new T.MeshStandardMaterial({ map: emblemTex, roughness: 0.3, metalness: 0.3 }));
+    e.position.set(x, x > 0 ? 0.47 : 0.62, 0); e.rotation.y = ry; car.add(e);
+  }
   // 전조등 빛(켜졌을 때만 보이는 반투명 원뿔)
   const beamMat = new T.MeshBasicMaterial({ color: 0xfff3c4, transparent: true, opacity: 0.16, depthWrite: false });
   const beams = [-0.6, 0.6].map((z) => {
