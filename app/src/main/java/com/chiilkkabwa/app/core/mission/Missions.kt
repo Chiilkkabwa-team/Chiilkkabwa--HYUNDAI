@@ -200,7 +200,7 @@ class SteeringCenterJudge(private val toleranceDeg: Float = 5f, private val hold
         if (valid) {
             rangeSource = sig.source
             val since = inRangeSince ?: nowMs.also { inRangeSince = it }
-            if (nowMs - since >= holdMs) return Progress.Done(sig.source, "바퀴가 똑바로! 출발 전에 늘 확인해요")
+            if (nowMs - since >= holdMs) return Progress.Done(sig.source, "바퀴가 똑바로예요. 출발 전에 늘 확인해요")
         }
         return Progress.InProgress(1, 1, "핸들을 가운데로 맞추고 2초 기다려요")
     }
@@ -232,7 +232,7 @@ class PedalHoldJudge(
             if (v in low..high) {
                 val st = since ?: nowMs.also { since = it }
                 samples += v
-                if (nowMs - st >= holdMs) return Progress.Done(sig.source, "부드러웠어요!", stdDev(samples))
+                if (nowMs - st >= holdMs) return Progress.Done(sig.source, "부드러웠어요", stdDev(samples))
             } else { since = null; samples.clear() }
         }
         return Progress.InProgress(1, 1, "초록 칸(${low.toInt()}~${high.toInt()}%) 안에서 2초 버텨 보세요")
@@ -249,7 +249,7 @@ object MissionCatalog {
     fun warmupRequired(): List<MissionJudge> = listOf(SeatBeltJudge(), BrakePressReleaseJudge(), TurnSignalJudge())
     fun warmupOptional(): List<MissionJudge> = listOf(
         ToggleJudge(MissionId.WIPER, "와이퍼 켜고 끄기", { it.wiperOn }, "와이퍼 레버를 한 번 움직여 보세요", "비 오는 날 이 레버, 기억해 둬요"),
-        ToggleJudge(MissionId.LOW_BEAM, "전조등 켜기", { it.lowBeamOn }, "전조등 스위치를 돌려 보세요", "어두워지면 여기!"),
+        ToggleJudge(MissionId.LOW_BEAM, "전조등 켜기", { it.lowBeamOn }, "전조등 스위치를 돌려 보세요", "어두워지면 여기예요"),
         SteeringCenterJudge(),
     )
 }

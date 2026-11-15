@@ -43,6 +43,16 @@ class PracticeStore(context: Context) {
         prefs.edit().putString(KEY, JSONArray(list.map { toJson(it) }).toString()).apply()
     }
 
+    // ── 기기 설정(프로필과 무관) ──
+    /** 주행 중 모의 음성 길잡이. null = 정한 적 없음(혼자 연습이면 켜짐, 멘토와 함께면 꺼짐) */
+    fun voiceOn(): Boolean? = if (prefs.contains(VOICE_ON)) prefs.getBoolean(VOICE_ON, true) else null
+    fun setVoiceOn(on: Boolean) = prefs.edit().putBoolean(VOICE_ON, on).apply()
+    /** 주행당 최대 발화 수. B02 정책 상한이 5라서 3·5만 */
+    fun voiceCap(): Int = prefs.getInt(VOICE_CAP, 5).coerceIn(1, 5)
+    fun setVoiceCap(n: Int) = prefs.edit().putInt(VOICE_CAP, n.coerceIn(1, 5)).apply()
+    fun onboardingSeen(): Boolean = prefs.getBoolean(ONBOARDING, false)
+    fun setOnboardingSeen() = prefs.edit().putBoolean(ONBOARDING, true).apply()
+
     /** 마지막으로 쓴 프로필. 재실행해도 다른 가족의 기록이 뜨지 않게(C02) */
     fun activeId(): String? = prefs.getString(ACTIVE, null)
     fun setActive(id: String) = prefs.edit().putString(ACTIVE, id).apply()
@@ -87,6 +97,9 @@ class PracticeStore(context: Context) {
     companion object {
         private const val KEY = "profiles_v1"
         private const val ACTIVE = "active_profile_v1"
+        private const val VOICE_ON = "voice_on_v1"
+        private const val VOICE_CAP = "voice_cap_v1"
+        private const val ONBOARDING = "onboarding_seen_v1"
 
         /** 기기 안에서만 쓰는 별칭. 글자 입력 없이 고른다(UI 규칙: 텍스트 입력 없음) */
         val ALIASES = listOf("나", "가족 1", "가족 2", "가족 3")
