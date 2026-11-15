@@ -59,7 +59,7 @@ adb install -r app/build/outputs/apk/mock/debug/app-mock-debug.apk
 | 네트워크 | `dl.google.com`(Google Maven), `repo.maven.apache.org`, `nexus-playground.pleos.ai`(Pleos SDK) |
 | SDK | compileSdk 35 / targetSdk 34 / **minSdk 28**(Pleos 요구: Android API 28 이상) |
 | 실행 대상 | **Pleos Connect Emulator v2.1.0 (Automotive, API 34)** 또는 Pleos Connect 탑재 차량 |
-| 화면 | 가로 기준, 세로 1창 / 가로 2창 모두 동작. 에뮬레이터 앱 창은 dp로 약 1680×1200(녹화 화면 비율로 추정 — 정확한 `adb shell wm size` 값은 확인 중). 앱은 창 크기에 맞춰 1~2배 자동 확대 |
+| **에뮬레이터 화면 규격** | **2560×1440, 160dpi** — Pleos Connect v2.1.0 AVD(공식 device ID `Pleos_Connect_v2_0`, API 34). 앱은 왼쪽 시스템 Driving view를 뺀 오른쪽 창(약 1680×1200dp)에 그려지고, 창 크기에 맞춰 1~2배 자동 확대. 세로 1창·가로 2창 모두 동작 (근거: [docs/03](docs/03_PLEOS_SDK_NOTES.md) 11/13 AVD 기록·[캡처](docs/evidence)) |
 
 **에뮬레이터 설치** (공식 문서 *Pleos Connect Emulator 설치 및 실행* 기준)
 
