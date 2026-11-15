@@ -1,0 +1,30 @@
+INSTRUMENTATION_STATUS: atWallMs=1794670834973
+INSTRUMENTATION_STATUS: observation=state=IDLE reason=null initializationObserved=false callReturned=false searchStarted=false searchCompleted=false navigationStatus=null guidanceConfirmed=false permission=true signalSource=EMULATOR gear=PARK/OK/EMULATOR@1794670834857 parkingBrake=false/OK/EMULATOR@1794670834859 ux=false/OK/EMULATOR@1794670834552 cleanupFailed=false
+INSTRUMENTATION_STATUS: stage=CREATED_NO_AUTO_INITIALIZE
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: atWallMs=1794670835455
+INSTRUMENTATION_STATUS: observation=state=INITIALIZING reason=null initializationObserved=false callReturned=false searchStarted=false searchCompleted=false navigationStatus=null guidanceConfirmed=false permission=true signalSource=EMULATOR gear=PARK/OK/EMULATOR@1794670834857 parkingBrake=false/OK/EMULATOR@1794670834859 ux=false/OK/EMULATOR@1794670834552 cleanupFailed=false
+INSTRUMENTATION_STATUS: stage=EXPLICIT_START
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: atWallMs=1794670835590
+INSTRUMENTATION_STATUS: observation=state=CONNECTED reason=null initializationObserved=true callReturned=false searchStarted=false searchCompleted=false navigationStatus=null guidanceConfirmed=false permission=true signalSource=EMULATOR gear=PARK/OK/EMULATOR@1794670834857 parkingBrake=false/OK/EMULATOR@1794670834859 ux=false/OK/EMULATOR@1794670834552 cleanupFailed=false
+INSTRUMENTATION_STATUS: stage=INITIALIZATION_OBSERVATION
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: atWallMs=1794670835960
+INSTRUMENTATION_STATUS: observation=state=RELEASED reason=null initializationObserved=true callReturned=false searchStarted=false searchCompleted=false navigationStatus=null guidanceConfirmed=false permission=true signalSource=EMULATOR gear=null/DISCONNECTED/EMULATOR@1794670835796 parkingBrake=null/DISCONNECTED/EMULATOR@1794670835796 ux=null/DISCONNECTED/EMULATOR@1794670835796 cleanupFailed=false
+INSTRUMENTATION_STATUS: stage=FIRST_RELEASED
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: atWallMs=1794670836424
+INSTRUMENTATION_STATUS: observation=state=IDLE reason=null initializationObserved=false callReturned=false searchStarted=false searchCompleted=false navigationStatus=null guidanceConfirmed=false permission=true signalSource=EMULATOR gear=PARK/OK/EMULATOR@1794670836299 parkingBrake=false/OK/EMULATOR@1794670836309 ux=false/OK/EMULATOR@1794670836132 cleanupFailed=false
+INSTRUMENTATION_STATUS: stage=REENTRY_NO_AUTO_INITIALIZE
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: atWallMs=1794670836557
+INSTRUMENTATION_STATUS: observation=state=CONNECTED reason=null initializationObserved=true callReturned=false searchStarted=false searchCompleted=false navigationStatus=null guidanceConfirmed=false permission=true signalSource=EMULATOR gear=PARK/OK/EMULATOR@1794670836299 parkingBrake=false/OK/EMULATOR@1794670836309 ux=false/OK/EMULATOR@1794670836132 cleanupFailed=false
+INSTRUMENTATION_STATUS: stage=SECOND_INITIALIZATION
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: atWallMs=1794670836572
+INSTRUMENTATION_STATUS: observation=state=RELEASED reason=null initializationObserved=true callReturned=false searchStarted=false searchCompleted=false navigationStatus=null guidanceConfirmed=false permission=true signalSource=EMULATOR gear=null/DISCONNECTED/EMULATOR@1794670836572 parkingBrake=null/DISCONNECTED/EMULATOR@1794670836572 ux=null/DISCONNECTED/EMULATOR@1794670836572 cleanupFailed=false
+INSTRUMENTATION_STATUS: stage=RELEASED
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_RESULT: result=PROBE_COMPLETED; SDK/search/guidance outcomes require individual evidence
+INSTRUMENTATION_CODE: -1

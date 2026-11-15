@@ -1,0 +1,6 @@
+
+>   Permission [android.car.permission.CAR_SPEED] (18ab032):
+      sourcePackage=com.android.car.updatable
+      uid=10173 gids=[] type=0 prot=dangerous
+      perm=PermissionInfo{2687183 android.car.permission.CAR_SPEED}
+      flags=0x0

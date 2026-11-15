@@ -2,6 +2,8 @@
 
 기준: 2026-11-13 (개별 담당자의 dev 자체 병합 허용). 제품 요구사항은 **공식접수기획서 최종 DOCX**를 우선한다. 이 파일에는 팀원의 실명·이메일을 기록하지 않는다.
 
+**기능 분업안(현재 담당자 미정):** [THREE_PERSON_FEATURE_PLAN_V3.md](THREE_PERSON_FEATURE_PLAN_V3.md) — 최신 웹 구현·미구현 Android 과제·김태환 피드백의 15개 기능 연결. **A/B/C는 임시 파트이므로 팀원이 직접 배정한다.**
+
 **필독 규정:** [COMPLIANCE_REGISTER.md](COMPLIANCE_REGISTER.md)(공식 규정 근거 대장)와 [SAFETY_RULES.md](SAFETY_RULES.md)(S01~S12 제품 안전·G1~G5 검증 게이트). 공식 공모전·Pleos 문서가 최상위이며, 구현 증거가 없는 규정 적합성은 `NOT_VERIFIED`로 표시한다.
 
 ## 1. Git 브랜치 정책 (우선 적용)

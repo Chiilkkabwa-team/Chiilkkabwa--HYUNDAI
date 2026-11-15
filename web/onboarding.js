@@ -12,40 +12,41 @@
 //   - 글자 대비는 라이트·다크 모두 AA를 넘겨야 한다 → 색은 토큰만 쓴다.
 
 export const STEPS = [
+  // 문구 원칙(C04, 2026-11-13 팀 피드백): 해요체로 통일, 구호처럼 끊어 쓰지 않기, 실제로 하는 일만 말하기.
   {
     key: 'what',
     tag: '무엇인가요',
-    title: '면허는 있는데,<br>운전석이 아직 낯선 사람에게',
-    body: '도로 연수는 비싸고, 가족에게 배우면 다투기 쉬워요. 그 사이를 차가 채웁니다. <b>확인은 차가, 판단은 사람이.</b>',
-    note: '앱은 차를 조종하지 않아요. 차량 신호를 <b>읽기만</b> 합니다.',
+    title: '면허는 땄는데<br>운전석은 아직 낯선 분께',
+    body: '연수는 비싸고, 가족한테 배우다 보면 서로 언성이 높아지기 쉬워요. 치일까봐는 그 사이 연습을 도와요. 조작이 맞았는지는 <b>차가 확인</b>하고, 어떻게 운전할지는 <b>사람이 정해요</b>.',
+    note: '차를 움직이거나 멈추게 하지 않아요. 차량 신호를 <b>읽기만</b> 해요.',
   },
   {
     key: 'park',
-    tag: '연습 전 5분 · 주차 중',
-    title: '조작하면<br>차가 확인해 줘요',
-    body: '안전벨트를 매면 차가 "맸다"고 알려 줘요. 브레이크를 밟았다 떼면 "했다"고 확인해 줘요. 맞는지 틀린지 물어볼 사람이 없어도 돼요.',
-    note: '기어 P + 주차 브레이크 + 주행 제한 없음, 셋 다 맞을 때만 열려요.',
+    tag: '출발 전 · 주차된 상태에서',
+    title: '조작해 보면<br>차가 맞았는지 알려 줘요',
+    body: '안전벨트를 매면 매졌다고, 브레이크를 밟았다 떼면 됐다고 차 신호로 확인해요. 옆에 물어볼 사람이 없어도 괜찮아요.',
+    note: '기어 P, 주차 브레이크, 주행 제한 없음. 이 세 가지가 확인될 때만 연습 화면이 열려요.',
   },
   {
     key: 'drive',
-    tag: '주행 중 · 0터치',
-    title: '화면은 쉬고,<br>목소리만 남아요',
-    body: '달릴 땐 화면이 잠겨요. 대신 <b>꼭 필요할 때만 한마디</b> 합니다. “방금 출발이 조금 급했어요.”',
-    note: '주행당 최대 5회 · 최소 간격 45초. 내비·통화·경고음이 나오면 바로 양보해요.',
+    tag: '달리는 동안',
+    title: '화면은 잠그고<br>필요할 때만 말로 알려요',
+    body: '움직이는 동안에는 화면을 보지 않게 잠가요. 대신 꼭 필요한 순간에만 짧게 말해 줘요. 예를 들면 “방금 출발이 조금 급했어요” 같은 말이에요.',
+    note: '자주 말하지 않게 횟수와 간격을 정해 뒀어요. 내비 안내나 전화가 오면 바로 멈춰요.',
   },
   {
     key: 'review',
-    tag: '연습 후 3분 · 다시 주차',
-    title: '오늘 있었던 일을<br>같이 돌아봐요',
-    body: '언제 무슨 일이 있었는지 시간순으로 보여 줘요. 혼자 봐도 되고, 옆에 앉았던 사람과 같이 봐도 돼요.',
-    note: '점수가 아니라 그 순간의 사실이에요. 기록은 기기 안에만 남아요.',
+    tag: '다시 주차한 뒤',
+    title: '오늘 연습을<br>시간 순서대로 돌아봐요',
+    body: '속도가 어떻게 바뀌었는지, 언제 어떤 일이 있었는지 그래프로 보여 줘요. 혼자 봐도 되고 옆에 탔던 분과 같이 봐도 돼요.',
+    note: '점수를 매기지 않아요. 기록은 이 기기에만 저장돼요. 신호 대기처럼 잠깐 멈춘 건 주차가 아니라서 이 화면이 열리지 않아요.',
   },
   {
     key: 'howto',
     tag: '이 체험판 쓰는 법',
-    title: '왼쪽은 차량 화면,<br>오른쪽은 가상 콘솔',
-    body: '오른쪽(휴대폰은 아래 버튼) 콘솔에서 기어·브레이크·벨트를 움직이면, 왼쪽 앱이 그 신호를 읽어서 반응해요. 콘솔 맨 위 <b>‘다음 조작’</b>만 따라가면 돼요.',
-    note: '맨 위에서 <b>연습 · 평가 · 강습</b> 모드를 고를 수 있어요. 평가·강습은 <b>가상 시뮬레이션</b>이에요.',
+    title: '왼쪽은 차 화면,<br>오른쪽은 가상 조작판이에요',
+    body: '오른쪽 조작판(휴대폰에서는 아래 버튼)으로 기어나 브레이크를 움직이면 왼쪽 앱이 그 신호를 읽고 반응해요. 뭘 해야 할지 모르겠으면 조작판 맨 위 <b>‘다음 조작’</b>만 따라가면 돼요.',
+    note: '맨 위에서 <b>연습 · 평가 · 강습</b>을 고를 수 있어요. 평가와 강습은 가상으로 만든 도로에서만 동작해요. 하단 바의 내비·미디어 같은 버튼은 실제 차 모양을 보여 주는 장식이라 눌러도 열리지 않아요.',
   },
 ];
 
@@ -128,10 +129,14 @@ function art(key) {
  * 온보딩 전체 HTML. 모달 안에 넣는다.
  * @param {number} i 현재 단계
  */
-export function html(i = 0) {
+/**
+ * @param {number} i 현재 단계
+ * @param {'next'|'prev'|''} dir 어느 쪽에서 넘어왔는지(글이 그쪽에서 들어온다)
+ */
+export function html(i = 0, dir = '') {
   const s = STEPS[i];
   const last = i === STEPS.length - 1;
-  return `<div class="ob" data-step="${s.key}">
+  return `<div class="ob" data-step="${s.key}" data-dir="${dir}">
     <div class="ob-art">${art(s.key)}</div>
     <div class="ob-text">
       <span class="ob-tag">${s.tag}</span>
@@ -140,6 +145,7 @@ export function html(i = 0) {
       <p class="ob-note">${s.note}</p>
     </div>
     <div class="ob-foot">
+      <span class="ob-count" aria-hidden="true"><b>${i + 1}</b> / ${STEPS.length}</span>
       <ol class="ob-dots" aria-label="${STEPS.length}단계 중 ${i + 1}단계">
         ${STEPS.map((x, k) => `<li><button type="button" class="ob-dot${k === i ? ' on' : ''}" data-go="${k}" aria-label="${k + 1}. ${x.tag}"${k === i ? ' aria-current="step"' : ''}></button></li>`).join('')}
       </ol>
@@ -147,7 +153,7 @@ export function html(i = 0) {
         ${i > 0 ? '<button type="button" class="btn secondary" data-ob="prev">이전</button>' : '<button type="button" class="btn ghost-btn" data-ob="skip">건너뛰기</button>'}
         ${last
           ? '<button type="button" class="btn secondary" data-ob="demo">자동 시연 보기</button><button type="button" class="btn primary" data-ob="done">직접 해 보기</button>'
-          : '<button type="button" class="btn primary" data-ob="next">다음</button>'}
+          : `<button type="button" class="btn primary" data-ob="next">다음 <span class="ob-next-hint">${STEPS[i + 1].tag}</span></button>`}
       </div>
     </div>
   </div>`;

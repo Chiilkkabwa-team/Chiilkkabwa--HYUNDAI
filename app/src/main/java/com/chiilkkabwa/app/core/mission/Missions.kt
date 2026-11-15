@@ -57,25 +57,39 @@ class EdgeTracker<T> {
     }
 }
 
-/** 안전벨트: '미체결 → 체결' 변화를 시작 이후 관측. 이미 매고 있으면 풀었다 다시 매도록 안내 */
+/** 안전벨트는 체결 상태 확인 미션(S08).
+ * 이미 착용한 경우에도 그대로 완료하며, 다시 풀어 매게 하지 않는다.
+ * 다른 조작 미션의 '시작 이후 값 변화' 판정은 유지한다.
+ */
 class SeatBeltJudge : MissionJudge {
     override val id = MissionId.SEAT_BELT
     override val title = "안전벨트 매기"
-    private val edge = EdgeTracker<Boolean>()
-    private var sawUnbuckled = false
+    private var minimumObservedAt = Long.MAX_VALUE
+    private var initialBuckled: Signal<Boolean>? = null
     override fun start(s: VehicleSnapshot, nowMs: Long) {
-        edge.reset(s.driverBeltBuckled, nowMs)
-        sawUnbuckled = s.driverBeltBuckled.isUsable && s.driverBeltBuckled.value == false
+        minimumObservedAt = nowMs
+        // 이미 체결된 유효 초기 상태만 예외. 미체결/불명 시작은 새 관측이 필요하다.
+        initialBuckled = s.driverBeltBuckled.takeIf {
+            it.isUsable && it.value == true && it.receivedAtMs <= nowMs
+        }
     }
     override fun update(s: VehicleSnapshot, nowMs: Long): Progress {
-        s.driverBeltBuckled.blockingStatus()?.let { return Progress.Unavailable(it) }
-        when (edge.newValue(s.driverBeltBuckled)) {
-            false -> sawUnbuckled = true
-            true -> if (sawUnbuckled) return Progress.Done(s.driverBeltBuckled.source, "딸깍, 좋아요! 출발 준비 1단계 완료")
-            null -> Unit
+        val belt = s.driverBeltBuckled
+        if (!belt.isUsable || belt.value != true) {
+            initialBuckled = null
+            minimumObservedAt = maxOf(minimumObservedAt, nowMs)
         }
-        return if (sawUnbuckled) Progress.InProgress(1, 1, "안전벨트를 ‘딸깍’ 소리 나게 매 주세요")
-        else Progress.InProgress(1, 1, "이미 매고 있네요. 한 번 풀었다가 다시 매 볼까요?")
+        belt.blockingStatus()?.let { return Progress.Unavailable(it) }
+        if (!belt.isUsable) {
+            return Progress.InProgress(1, 1, "안전벨트 상태를 확인 중이에요. 이미 맸다면 그대로 유지해 주세요.")
+        }
+        val newObservation = belt.receivedAtMs in minimumObservedAt..nowMs
+        val retainedInitial = belt == initialBuckled && belt.receivedAtMs <= nowMs
+        return if (belt.value == true && (newObservation || retainedInitial)) {
+            Progress.Done(belt.source, "안전벨트가 체결되어 있어요. 그대로 유지해 주세요.")
+        } else {
+            Progress.InProgress(1, 1, "안전벨트를 매 주세요. 이미 맸다면 풀지 말고 그대로 두세요.")
+        }
     }
 }
 
@@ -88,6 +102,9 @@ class BrakePressReleaseJudge : MissionJudge {
     private var maxPct: Float? = null
     override fun start(s: VehicleSnapshot, nowMs: Long) { edge.reset(s.brakePressed, nowMs); pressed = false; maxPct = null }
     override fun update(s: VehicleSnapshot, nowMs: Long): Progress {
+        if (!s.brakePressed.isUsable) {
+            edge.reset(s.brakePressed, nowMs); pressed = false; maxPct = null
+        }
         s.brakePressed.blockingStatus()?.let { return Progress.Unavailable(it) }
         if (pressed && s.brakePedalPct.isUsable) maxPct = maxOf(maxPct ?: 0f, s.brakePedalPct.value!!)
         when (edge.newValue(s.brakePressed)) {
@@ -108,6 +125,9 @@ class TurnSignalJudge : MissionJudge {
     private var step = 0 // 0: 왼쪽 대기, 1: 오른쪽 대기, 2: 끄기 대기
     override fun start(s: VehicleSnapshot, nowMs: Long) { edge.reset(s.turnSignal, nowMs); step = 0 }
     override fun update(s: VehicleSnapshot, nowMs: Long): Progress {
+        if (!s.turnSignal.isUsable) {
+            edge.reset(s.turnSignal, nowMs); step = 0
+        }
         s.turnSignal.blockingStatus()?.let { return Progress.Unavailable(it) }
         val v = edge.newValue(s.turnSignal)
         when {
@@ -129,11 +149,33 @@ class ToggleJudge(
     private val praise: String,
 ) : MissionJudge {
     private val edge = EdgeTracker<Boolean>()
-    override fun start(s: VehicleSnapshot, nowMs: Long) = edge.reset(pick(s), nowMs)
+    private var minimumObservedAt = Long.MAX_VALUE
+    private var needsBaseline = true
+    private var baselineSource: SignalSource? = null
+    override fun start(s: VehicleSnapshot, nowMs: Long) {
+        val sig = pick(s)
+        edge.reset(sig, nowMs)
+        minimumObservedAt = nowMs
+        needsBaseline = !sig.isUsable || sig.receivedAtMs > nowMs
+        baselineSource = sig.source.takeUnless { needsBaseline }
+    }
     override fun update(s: VehicleSnapshot, nowMs: Long): Progress {
         val sig = pick(s)
+        if (!sig.isUsable) {
+            needsBaseline = true
+            baselineSource = null
+            minimumObservedAt = maxOf(minimumObservedAt, nowMs)
+        }
         sig.blockingStatus()?.let { return Progress.Unavailable(it) }
-        return if (edge.newValue(sig) != null) Progress.Done(sig.source, praise) else Progress.InProgress(1, 1, hint)
+        if (sig.isUsable && sig.receivedAtMs in minimumObservedAt..nowMs) {
+            // First recovered observation is a baseline, not proof of a new operation.
+            if (needsBaseline || baselineSource != sig.source) {
+                edge.reset(sig, nowMs)
+                needsBaseline = false
+                baselineSource = sig.source
+            } else if (edge.newValue(sig) != null) return Progress.Done(sig.source, praise)
+        }
+        return Progress.InProgress(1, 1, hint)
     }
 }
 
@@ -143,14 +185,23 @@ class SteeringCenterJudge(private val toleranceDeg: Float = 5f, private val hold
     override val title = "핸들 똑바로 맞추기"
     private var startedAt = 0L
     private var inRangeSince: Long? = null
-    override fun start(s: VehicleSnapshot, nowMs: Long) { startedAt = nowMs; inRangeSince = null }
+    private var rangeSource: SignalSource? = null
+    override fun start(s: VehicleSnapshot, nowMs: Long) { startedAt = nowMs; inRangeSince = null; rangeSource = null }
     override fun update(s: VehicleSnapshot, nowMs: Long): Progress {
         val sig = s.steeringDeg
+        val valid = sig.isUsable && sig.receivedAtMs in startedAt..nowMs &&
+            sig.value!!.isFinite() && abs(sig.value) <= toleranceDeg
+        if (!valid || (rangeSource != null && rangeSource != sig.source)) {
+            inRangeSince = null
+            rangeSource = null
+            startedAt = maxOf(startedAt, nowMs)
+        }
         sig.blockingStatus()?.let { return Progress.Unavailable(it) }
-        if (sig.isUsable && sig.receivedAtMs >= startedAt && abs(sig.value!!) <= toleranceDeg) {
+        if (valid) {
+            rangeSource = sig.source
             val since = inRangeSince ?: nowMs.also { inRangeSince = it }
-            if (nowMs - since >= holdMs) return Progress.Done(sig.source, "바퀴가 똑바로! 출발 전에 늘 확인해요")
-        } else if (sig.isUsable && abs(sig.value!!) > toleranceDeg) inRangeSince = null
+            if (nowMs - since >= holdMs) return Progress.Done(sig.source, "바퀴가 똑바로예요. 출발 전에 늘 확인해요")
+        }
         return Progress.InProgress(1, 1, "핸들을 가운데로 맞추고 2초 기다려요")
     }
 }
@@ -181,7 +232,7 @@ class PedalHoldJudge(
             if (v in low..high) {
                 val st = since ?: nowMs.also { since = it }
                 samples += v
-                if (nowMs - st >= holdMs) return Progress.Done(sig.source, "부드러웠어요!", stdDev(samples))
+                if (nowMs - st >= holdMs) return Progress.Done(sig.source, "부드러웠어요", stdDev(samples))
             } else { since = null; samples.clear() }
         }
         return Progress.InProgress(1, 1, "초록 칸(${low.toInt()}~${high.toInt()}%) 안에서 2초 버텨 보세요")
@@ -198,7 +249,7 @@ object MissionCatalog {
     fun warmupRequired(): List<MissionJudge> = listOf(SeatBeltJudge(), BrakePressReleaseJudge(), TurnSignalJudge())
     fun warmupOptional(): List<MissionJudge> = listOf(
         ToggleJudge(MissionId.WIPER, "와이퍼 켜고 끄기", { it.wiperOn }, "와이퍼 레버를 한 번 움직여 보세요", "비 오는 날 이 레버, 기억해 둬요"),
-        ToggleJudge(MissionId.LOW_BEAM, "전조등 켜기", { it.lowBeamOn }, "전조등 스위치를 돌려 보세요", "어두워지면 여기!"),
+        ToggleJudge(MissionId.LOW_BEAM, "전조등 켜기", { it.lowBeamOn }, "전조등 스위치를 돌려 보세요", "어두워지면 여기예요"),
         SteeringCenterJudge(),
     )
 }

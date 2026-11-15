@@ -47,11 +47,30 @@ test('unsupported_signal_gives_unavailable', () => {
   const j = C.seatBeltJudge(); j.start(parked(0), 0);
   assert.deepEqual(j.update(parked(0, { driverBeltBuckled: st('UNSUPPORTED') }), 1), { kind: 'unavailable', status: 'UNSUPPORTED' });
 });
-test('belt_already_buckled_requires_rebuckle', () => {
-  const j = C.seatBeltJudge(); j.start(parked(0), 0);
-  assert.equal(j.update(parked(0, { driverBeltBuckled: ok(true, 5) }), 5).kind, 'progress');
-  j.update(parked(0, { driverBeltBuckled: ok(false, 6) }), 6);
-  assert.equal(j.update(parked(0, { driverBeltBuckled: ok(true, 7) }), 7).kind, 'done');
+test('belt_already_buckled_completes_without_rebuckle', () => {
+  const j = C.seatBeltJudge(); j.start(parked(0), 10);
+  const p = j.update(parked(0, { driverBeltBuckled: ok(true, 0) }), 11);
+  assert.equal(p.kind, 'done');
+  assert.equal(p.source, 'EMULATOR');
+  assert.match(p.praise, /그대로 유지/);
+});
+test('belt_unbuckled_waits_until_fastened', () => {
+  const j = C.seatBeltJudge();
+  j.start(parked(0, { driverBeltBuckled: ok(false, 0) }), 10);
+  const p = j.update(parked(0, { driverBeltBuckled: ok(false, 11) }), 11);
+  assert.equal(p.kind, 'progress'); assert.match(p.hint, /매 주세요/);
+  assert.equal(j.update(parked(0, { driverBeltBuckled: ok(true, 20) }), 20).kind, 'done');
+});
+test('belt_unknown_waits_for_confirmed_true', () => {
+  const j = C.seatBeltJudge(); j.start(parked(0, { driverBeltBuckled: st('UNKNOWN') }), 10);
+  const p = j.update(parked(0, { driverBeltBuckled: st('UNKNOWN', 11) }), 11);
+  assert.equal(p.kind, 'progress'); assert.match(p.hint, /확인 중/);
+  assert.equal(j.update(parked(0, { driverBeltBuckled: ok(true, 20) }), 20).kind, 'done');
+});
+test('belt_permission_denied_is_unavailable', () => {
+  const j = C.seatBeltJudge(); j.start(parked(0), 10);
+  assert.deepEqual(j.update(parked(0, { driverBeltBuckled: st('PERMISSION_DENIED') }), 11),
+    { kind: 'unavailable', status: 'PERMISSION_DENIED' });
 });
 test('turn_signal_left_right_off', () => {
   const j = C.turnSignalJudge(); j.start(parked(0), 0);
@@ -77,6 +96,35 @@ test('session_flow_parked_drive_review_and_trip_summary', () => {
   s = C.onGate(s, C.evaluateGate(B), B, 900_000); assert.equal(s.phase, 'REVIEW');
   const sum = C.summarize(s.tripStart, s.tripEnd);
   assert.equal(sum.durationMin, 14); assert.ok(Math.abs(sum.distanceKm - 3.2) < 1e-9); assert.equal(sum.durationFromVehicle, true);
+});
+// E3(C01): 복기 중 주차 확인이 깨지면 잠그고, 다시 주차하면 같은 복기를 이어서 연다
+const reviewState = () => ({ ...C.initialSession(), phase: 'REVIEW', lockReason: null, tripStart: { wallClockMs: 0 }, tripEnd: { wallClockMs: 60_000 } });
+test('review_locks_when_parking_brake_released', () => {
+  const R = parked(5, { parkingBrakeOn: ok(false, 5) });
+  const s = C.onGate(reviewState(), C.evaluateGate(R), R, 1000);
+  assert.equal(s.phase, 'REVIEW', '작성 중인 복기를 지키려고 단계는 유지');
+  assert.equal(s.lockReason, 'PARKING_BRAKE_OFF', '그러나 잠긴다');
+  assert.deepEqual(s.tripEnd, { wallClockMs: 60_000 }, '트립 기록은 그대로');
+});
+test('review_locks_when_signal_unknown_or_disconnected', () => {
+  for (const status of ['UNKNOWN', 'DISCONNECTED', 'STALE', 'UNSUPPORTED']) {
+    const R = parked(5, { gear: st(status, 5) });
+    const s = C.onGate(reviewState(), C.evaluateGate(R), R, 1000);
+    assert.equal(s.lockReason, 'UNKNOWN_STATE', `${status}이면 잠금`);
+  }
+});
+test('review_drive_restriction_starts_new_drive', () => {
+  const R = parked(5, { uxRestricted: ok(true, 5) });
+  const s = C.onGate(reviewState(), C.evaluateGate(R), R, 1000);
+  assert.equal(s.phase, 'DRIVING_LOCK');
+});
+test('review_resumes_when_parked_again', () => {
+  const R = parked(5, { parkingBrakeOn: ok(false, 5) });
+  let s = C.onGate(reviewState(), C.evaluateGate(R), R, 1000);
+  const P = parked(6);
+  s = C.onGate(s, C.evaluateGate(P), P, 2000);
+  assert.equal(s.phase, 'REVIEW'); assert.equal(s.lockReason, null);
+  assert.deepEqual(s.tripEnd, { wallClockMs: 60_000 }, '다시 주차해도 같은 복기');
 });
 test('preparing_pause_resumes_when_brake_reapplied', () => {
   let s = { ...C.initialSession(), phase: 'PREPARING', lockReason: null };
@@ -150,14 +198,14 @@ test('sim_junction_ahead_is_announced_once', () => {
 });
 test('sim_slow_right_turn_from_right_lane_is_good', () => {
   const s = new Sim.DriveSim(); s.npcs = []; s.cutIn.done = true;
-  toJunction(s, 0); s.ego.x = Sim.LANE_W; s.ego.v = 5; s.input.signal = 'RIGHT';
+  toJunction(s, 0); s.ego.x = Sim.LANE_W; s.ego.v = 5; s.input.signal = 'RIGHT'; s.input.maneuver = 'RIGHT';
   run(s, 20, (x) => { x.input.accel = 0.05; });
   assert.ok(s.events.some((e) => e.code === 'TURN_GOOD'));
   assert.ok(!s.events.some((e) => e.code === 'TURN_FAST'));
 });
 test('sim_fast_turn_from_wrong_lane_is_noted', () => {
   const s = new Sim.DriveSim(); s.npcs = []; s.cutIn.done = true;
-  toJunction(s, 1); s.ego.x = Sim.LANE_W; s.ego.v = 14; s.input.signal = 'LEFT'; // 좌회전인데 오른쪽 차로·50km/h
+  toJunction(s, 1); s.ego.x = Sim.LANE_W; s.ego.v = 14; s.input.signal = 'LEFT'; s.input.maneuver = 'LEFT'; // 좌회전인데 오른쪽 차로·50km/h
   run(s, 8, (x) => { x.input.accel = 0.2; });
   const codes = s.events.map((e) => e.code);
   assert.ok(codes.includes('TURN_FAST')); assert.ok(codes.includes('TURN_WRONG_LANE'));

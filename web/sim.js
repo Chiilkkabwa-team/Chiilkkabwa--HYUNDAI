@@ -28,6 +28,10 @@ export const EVENTS = {
   COACH_STOP: { title: '강습자 정지 요청', pts: 0, sensor: null, cat: 'coach', info: true, advice: '조수석 강습자가 정지를 요청해 차가 천천히 멈췄어요(제조사 협업 가정).' },
   // 가상 교차로(11/12 회의 A04). 화면 속 도로는 곧게 이어지고, 교차로에서 '돌았다'는 판정만 한다.
   JUNCTION_AHEAD: { title: '교차로 접근(가상)', pts: 0, sensor: null, cat: 'turn', info: true, advice: '교차로 앞에서는 속도를 줄이고 횡단보도부터 봐요.' },
+  JUNCTION_STRAIGHT: { title: '교차로 직진(가상)', pts: 0, sensor: null, cat: 'turn', info: true, advice: '가상 진행 방향을 직진으로 선택해 통과했어요.' },
+  JUNCTION_UNAVAILABLE: { title: '교차로 판정 보류(가상)', pts: 0, sensor: null, cat: 'turn', info: true, advice: '가상 진행 방향을 확인할 수 없어 회전 성공으로 판정하지 않았어요.' },
+  TURN_WRONG_SIGNAL: { title: '가상 진행과 방향지시등 불일치', pts: 2, sensor: null, cat: 'turn', advice: '가상 진행 방향과 깜빡이를 따로 확인해요. 직진은 깜빡이 끔, 회전은 같은 방향이에요.' },
+  TURN_WRONG_DIRECTION: { title: '가상 회전 구간 불일치', pts: 2, sensor: null, cat: 'turn', advice: '이 가상 교차로는 표시된 방향의 회전 또는 직진을 연습하는 구간이에요.' },
   TURN_GOOD: { title: '교차로 회전 잘함', pts: 0, sensor: null, cat: 'turn', good: true, advice: '깜빡이를 켜고, 알맞은 차로에서, 천천히 돌았어요.' },
   TURN_FAST: { title: '회전 속도 빠름', pts: 3, sensor: null, cat: 'turn', advice: '교차로에서는 충분히 줄인 뒤 돌아요(이 가상 도로는 25km/h 넘으면 빠르다고 봐요). 횡단보도 앞에서 한 번 줄여요.' },
   TURN_WRONG_LANE: { title: '회전 차로 아님', pts: 2, sensor: null, cat: 'turn', advice: '좌회전은 맨 왼쪽, 우회전은 맨 오른쪽 차로에서 해요. 교차로에 닿기 전에 미리 옮겨 두면 편해요.' },
@@ -55,6 +59,7 @@ export const JUNCTION_W = 12;          // 가로지르는 도로 폭(m)
 export const TURN_OK_KMH = 25;         // 이 속도 이하로 들어가면 '천천히' 돈 것으로 본다(가상 기준)
 export function junctionAt(k) { return { k, s: 300 + k * 280, dir: k % 2 === 0 ? 'RIGHT' : 'LEFT' }; }
 export function nextJunction(s) {
+  if (!Number.isFinite(s)) throw new TypeError('junction position must be finite');
   const k = Math.max(0, Math.ceil((s - 300 - JUNCTION_W) / 280));
   return junctionAt(k);
 }
@@ -65,7 +70,7 @@ export class DriveSim {
   constructor(settings = {}, seed = 7) {
     this.rand = rng(seed);
     this.settings = { lka: 'off', acc: false, accSet: 50, cap: null, ...settings };
-    this.input = { accel: 0, brake: 0, steer: 0, signal: 'NONE', gear: 'D' };
+    this.input = { accel: 0, brake: 0, steer: 0, signal: 'NONE', gear: 'D', maneuver: 'STRAIGHT' };
     this.t = 0; this.ego = { s: 0, x: 0, v: 0, a: 0 };
     this.stopReq = false;
     this.events = []; this.penalty = 0; this.cool = {};
@@ -83,7 +88,7 @@ export class DriveSim {
       { id: 6, s: -35, x: LANE_W, v: 14, vd: 14 },
     ];
     this.nextId = 7;
-    this.junction = { k: -1, warned: -1, turns: 0 }; // 처리한 교차로 번호
+    this.junction = { k: -1, warned: -1, turns: 0, sample: null }; // 처리한 교차로 번호
   }
 
   laneOf(x) { return clamp(Math.round(x / LANE_W), -1, 1); }
@@ -116,6 +121,7 @@ export class DriveSim {
 
   step(dt) {
     const e = this.ego, I = this.input, S = this.settings;
+    const before = { ...e, t: this.t };
     this.t += dt;
     const drive = I.gear === 'D';
     const lead = this.leadOf(e.x, e.s);
@@ -188,7 +194,7 @@ export class DriveSim {
     }
     if (lane !== this.prevLane) { this.onLaneChange(lane); this.prevLane = lane; }
 
-    this.stepJunction();
+    this.stepJunction(before);
 
     // 끼어들기 대응 관찰이 끝나면
     if (this.cutIn.watchUntil && this.t > this.cutIn.watchUntil) {
@@ -198,31 +204,83 @@ export class DriveSim {
   }
 
   /**
-   * 가상 교차로: 60m 전에 '접근'을 알리고(음성 주의가 여기서 열린다),
-   * 정지선을 넘는 순간 깜빡이가 그 방향이면 '회전'으로 보고 속도·차로를 본다.
-   * 깜빡이가 없으면 직진으로 본다(직진도 맞는 선택이다).
+   * 직선 2D Mock의 교차로 진입 판정. maneuver는 콘솔의 가상 진행 선택이고,
+   * signal/조향에서 실제 회전을 추론하지 않는다. 정차·저속도 접근 알림은 가능하나
+   * 회전/직진 기록은 차량 앞끝이 진입 경계를 앞으로 통과할 때만 남긴다.
    */
-  stepJunction() {
-    const e = this.ego; const J = nextJunction(e.s - 1);
-    const d = J.s - (e.s + CAR_L / 2);
-    if (d < 60 && d > 0 && this.junction.warned < J.k && e.v > 1.5) {
+  stepJunction(previous = this.junction.sample) {
+    const e = this.ego, current = { ...e, t: this.t };
+    const valid = (p) => p && ['s', 'x', 'v', 't'].every(k => Number.isFinite(p[k])) && p.v >= 0;
+    if (!valid(current)) { this.junction.sample = null; return; }
+    this.junction.sample = current;
+    const before = previous || current;
+    if (!valid(before)) return;
+    const front = e.s + CAR_L / 2, frontBefore = before.s + CAR_L / 2;
+    let J = junctionAt(Math.max(this.junction.k + 1, nextJunction(frontBefore).k));
+    const distanceM = J.s - front;
+    if (distanceM > 0 && distanceM <= 60 + 1e-9 && this.junction.warned < J.k) {
       this.junction.warned = J.k;
-      const rec = this.log('JUNCTION_AHEAD', { cooldown: 0 });
-      if (rec) { rec.dir = J.dir; rec.title = `교차로 ${J.dir === 'RIGHT' ? '우회전' : '좌회전'} 구간(가상)`; }
+      this.logJunction('JUNCTION_AHEAD', J, J.dir, current, 'APPROACH', { distanceM });
     }
-    if (d <= 0 && this.junction.k < J.k) {
+    if (front <= frontBefore) return;
+    while (J.s <= front) {
+      // 시작점이 이미 경계 뒤라면 새 통과·회전을 만들어 내지 않는다.
+      if (frontBefore <= J.s) {
+        const f = (J.s - frontBefore) / (front - frontBefore);
+        const mix = (key) => before[key] + (current[key] - before[key]) * f;
+        const entry = { s: J.s - CAR_L / 2, x: mix('x'), v: mix('v'), t: mix('t') };
+        this.judgeJunction(J, entry);
+      }
       this.junction.k = J.k;
-      if (this.input.signal !== J.dir) return; // 직진
-      const lane = this.laneOf(e.x); const kmh = e.v * 3.6;
-      const okLane = J.dir === 'RIGHT' ? lane === 1 : lane === -1;
-      this.junction.turns += 1;
-      this.lastTurn = { k: J.k, dir: J.dir, t: this.t };
-      let bad = false;
-      if (!okLane) { this.log('TURN_WRONG_LANE', { cooldown: 0 }); bad = true; }
-      if (kmh > TURN_OK_KMH) { this.log('TURN_FAST', { cooldown: 0 }); bad = true; }
-      if (!bad) this.log('TURN_GOOD', { cooldown: 0 });
-      const last = this.events[this.events.length - 1]; if (last) last.dir = J.dir;
+      J = junctionAt(J.k + 1);
     }
+  }
+
+  logJunction(code, J, dir, sample, phase, basis) {
+    const rec = this.log(code, { cooldown: 0 });
+    if (rec) Object.assign(rec, {
+      t: sample.t, kmh: Math.round(sample.v * 3.6), source: 'MOCK',
+      junctionK: J.k, dir, segmentDir: J.dir, phase, basis: { ...basis },
+    });
+    if (rec && phase === 'APPROACH') rec.title = `교차로 ${J.dir === 'RIGHT' ? '우회전' : '좌회전'} 구간 접근(가상)`;
+    else if (rec && (dir === 'LEFT' || dir === 'RIGHT')) rec.title = `${dir === 'RIGHT' ? '우회전' : '좌회전'} · ${rec.title}(가상)`;
+    return rec;
+  }
+
+  judgeJunction(J, entry) {
+    const dir = this.input.maneuver, signal = this.input.signal;
+    const isTurn = dir === 'LEFT' || dir === 'RIGHT';
+    const lane = this.laneOf(entry.x), speedKmh = entry.v * 3.6;
+    const requiredLane = dir === 'RIGHT' ? 1 : dir === 'LEFT' ? -1 : null;
+    const vehicleFitsLane = Math.abs(entry.x - lane * LANE_W) + CAR_W / 2 <= LANE_W / 2;
+    const basis = {
+      model: '2D_MOCK', sampling: 'LINEAR_ENTRY',
+      signal, lane, xM: entry.x, speedKmh, speedUnit: 'km/h',
+      turnLimitKmh: TURN_OK_KMH, requiredLane, vehicleFitsLane,
+      directionMatchesSegment: isTurn ? dir === J.dir : dir === 'STRAIGHT',
+      signalMatchesManeuver: signal === (isTurn ? dir : 'NONE'),
+      laneMatches: isTurn ? lane === requiredLane && vehicleFitsLane : null,
+      speedWithinLimit: isTurn ? speedKmh <= TURN_OK_KMH : null,
+    };
+    const record = (code) => this.logJunction(code, J, dir, entry, 'ENTRY', basis);
+    if (!isTurn && dir !== 'STRAIGHT') { record('JUNCTION_UNAVAILABLE'); return; }
+    if (!isTurn) {
+      record('JUNCTION_STRAIGHT');
+      if (!basis.signalMatchesManeuver) record('TURN_WRONG_SIGNAL');
+      return;
+    }
+    this.junction.turns += 1;
+    this.lastTurn = { k: J.k, dir, t: entry.t, x: entry.x };
+    let bad = false;
+    for (const [ok, code] of [
+      [basis.directionMatchesSegment, 'TURN_WRONG_DIRECTION'],
+      [basis.signalMatchesManeuver, 'TURN_WRONG_SIGNAL'],
+      [basis.laneMatches, 'TURN_WRONG_LANE'],
+      [basis.speedWithinLimit, 'TURN_FAST'],
+    ]) {
+      if (!ok) { record(code); bad = true; }
+    }
+    if (!bad) record('TURN_GOOD');
   }
 
   /** 차로가 바뀐 순간: 가상 전후방 센서로 새 차로의 앞뒤 간격을 본다 */

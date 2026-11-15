@@ -10,7 +10,7 @@ export function mascot(mood = 'calm', size = 96) {
     happy: `<path d="M41 57q6-8 12 0M67 57q6-8 12 0" stroke="#1B2430" stroke-width="4" fill="none" stroke-linecap="round"/>`,
     worried: `<ellipse cx="47" cy="58" rx="4.4" ry="5.6" fill="#1B2430"/><ellipse cx="73" cy="58" rx="4.4" ry="5.6" fill="#1B2430"/>
               <circle cx="48.4" cy="55.8" r="1.5" fill="#fff"/><circle cx="74.4" cy="55.8" r="1.5" fill="#fff"/>
-              <path d="M39 47l12 3M81 47l-12 3" stroke="#1B2430" stroke-width="3" stroke-linecap="round"/>`,
+              <path d="M39 50l12-4M81 50l-12-4" stroke="#1B2430" stroke-width="3" stroke-linecap="round"/>`,
     rest: `<path d="M41 58h12M67 58h12" stroke="#1B2430" stroke-width="4" stroke-linecap="round"/>`,
   }[mood];
   const mouth = {

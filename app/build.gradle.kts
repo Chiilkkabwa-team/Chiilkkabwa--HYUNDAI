@@ -24,7 +24,7 @@ android {
         // 모의 차량 + 디버그 패널: SDK·에뮬레이터 없이 전체 흐름 시연·테스트
         create("mock") { dimension = "signals"; buildConfigField("boolean", "USE_MOCK", "true"); applicationIdSuffix = ".mock" }
         // 실제 신호: AAOS Car API + Pleos Vehicle SDK (에뮬레이터·실차)
-        create("vehicle") { dimension = "signals"; buildConfigField("boolean", "USE_MOCK", "false") }
+        create("vehicle") { testInstrumentationRunner = "com.chiilkkabwa.app.data.navigation.NaviProbeInstrumentation"; dimension = "signals"; buildConfigField("boolean", "USE_MOCK", "false") }
     }
 
     // AAOS Car API(CarUxRestrictionsManager, CarPropertyManager)
@@ -55,7 +55,16 @@ android {
     }
 
     buildTypes {
+        debug {
+            buildConfigField("boolean", "PLEOS_NAVI_ENABLED", "Boolean.parseBoolean(\"${providers.gradleProperty("enablePleosNavi").orNull == "true"}\")")
+            buildConfigField("boolean", "AAOS_SPEED_ENABLED", "Boolean.parseBoolean(\"${providers.gradleProperty("enableAaosSpeed").orNull == "true"}\")")
+            // A01 실수신 검증 전 기본 차단. opt-in도 에뮬레이터에서만 사용한다.
+            buildConfigField("boolean", "PLEOS_SIGNALS_ENABLED", (providers.gradleProperty("enablePleosSignals").orNull == "true").toString())
+        }
         release {
+            buildConfigField("boolean", "PLEOS_NAVI_ENABLED", "false")
+            buildConfigField("boolean", "AAOS_SPEED_ENABLED", "false")
+            buildConfigField("boolean", "PLEOS_SIGNALS_ENABLED", "false")
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
@@ -64,11 +73,19 @@ android {
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget = "17" }
     buildFeatures { compose = true; buildConfig = true }
+    // 화면 스크린샷(Robolectric+Roborazzi): 에뮬레이터 없이 차량 화면 크기로 그려 build/outputs/roborazzi에 PNG로 남긴다
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+            all { it.systemProperty("roborazzi.test.record", "true") }
+        }
+    }
 }
 
 dependencies {
     // ── Pleos Connect SDK (버전은 문서 기준. Sync 실패 시 docs/03의 저장소·버전 재확인)
     implementation("ai.pleos.playground:Vehicle:2.3.2")
+    implementation("ai.pleos.playground:NaviHelper:3.0.5")
     // 아래는 My Project에서 '사용 가능' 확인 후 주석 해제
     // implementation("ai.pleos.playground:TextToSpeech:3.3.1")
 
@@ -86,4 +103,12 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-tooling")
 
     testImplementation("junit:junit:4.13.2")
+    // 화면 스크린샷 테스트 전용(앱에는 들어가지 않음)
+    testImplementation(composeBom)
+    testImplementation("androidx.compose.ui:ui-test-junit4")
+    testImplementation("androidx.test.ext:junit:1.2.1")
+    testImplementation("org.robolectric:robolectric:4.13")
+    testImplementation("io.github.takahirom.roborazzi:roborazzi:1.29.0")
+    testImplementation("io.github.takahirom.roborazzi:roborazzi-compose:1.29.0")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 }

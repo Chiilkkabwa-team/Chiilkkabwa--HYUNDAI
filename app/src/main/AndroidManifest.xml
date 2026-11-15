@@ -6,6 +6,8 @@
 
     <!-- AAOS 표준 속성(읽기): 기어·주차 브레이크 -->
     <uses-permission android:name="android.car.permission.CAR_POWERTRAIN" />
+    <!-- A02 public signed speed read; runtime grant requested only in opt-in debug emulator. -->
+    <uses-permission android:name="android.car.permission.CAR_SPEED" />
     <!-- AAOS 페달 압력(위험 권한, 런타임 요청) — 페달 감각 미션(조건부). Pleos 심사 승인 범위 확인 필요 -->
     <uses-permission android:name="android.car.permission.READ_CAR_PEDALS" />
 
@@ -17,8 +19,20 @@
     <uses-permission android:name="pleos.car.permission.CAR_INFO" />    <!-- 차체 크기 -->
     <!-- TODO(day1): SteeringWheel 조회 권한 상수 확인 후 추가 -->
 
+    <!-- A03 explicit parked route request only; no nav info/map/control permission. -->
+    <uses-permission android:name="pleos.car.permission.NAVI_ROUTE_SEARCH" />
+
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE" />
+        </intent>
+    </queries>
+
     <application
         android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:icon="@drawable/ic_launcher"
+        android:roundIcon="@drawable/ic_launcher"
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.DeviceDefault.NoActionBar">

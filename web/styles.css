@@ -30,7 +30,7 @@
   /* 출처 라벨 */
   --emu: #3B4656; --emu-text: #DCE4EE;
   /* 부품 */
-  --knob: #FFFFFF; --tell-off: #4A5666;
+  --knob: #FFFFFF; --tell-off: #7D8999; /* 꺼진 경고등도 글자는 읽혀야 한다(AA 4.5:1, 11/15 axe) */
   --on-accent: #1B2430;   /* 노란 강조색 위의 글자 — --surface를 쓰면 테마에서 뒤집힌다 */
   --sign-bg: #FFFFFF; --sign-text: #111111;     /* 도로 표지는 두 테마에서 같다 */
   --scrim-strong: rgba(10,14,19,.88); --scrim: rgba(10,14,19,.72); --scrim-soft: rgba(15,20,27,.6);
@@ -66,7 +66,7 @@
   --danger-text: #A51F1F; --on-danger: #FFFFFF; --lock: #FBDADA;
   --purple: #7C3AED; --purple-text: #5B21B6;
   --emu: #D4DCE7; --emu-text: #27313C;
-  --knob: #FFFFFF; --tell-off: #A3AEBC;
+  --knob: #FFFFFF; --tell-off: #667282;
   --on-accent: #2B1D00;
   --scrim-strong: rgba(255,255,255,.94); --scrim: rgba(255,255,255,.86); --scrim-soft: rgba(255,255,255,.72);
   --shadow-1: rgba(16,22,30,.07); --shadow-2: rgba(16,22,30,.12); --shadow-3: rgba(16,22,30,.18);
@@ -551,7 +551,7 @@ input[type="range"]:disabled { opacity: .35; }
 .coach-head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .lock-tag.soft { background: color-mix(in srgb, var(--yellow) 15%, transparent); color: var(--accent-text); font-size: .95rem; }
 .stop-btn { display: flex; align-items: center; gap: 18px; width: 100%; min-height: 104px; padding: 16px 24px; border: 0; border-radius: 22px; background: linear-gradient(180deg, var(--danger), var(--danger-3)); color: var(--on-danger); text-align: left; box-shadow: 0 10px 30px color-mix(in srgb, var(--danger-2) 35%, transparent), inset 0 -4px 0 var(--shadow-1); }
-.stop-btn[data-k="on"] { background: var(--surface2); color: var(--text); box-shadow: inset 0 0 0 2px var(--danger); }
+.stop-btn[data-requested="true"] { background: var(--surface2); color: var(--text); box-shadow: inset 0 0 0 2px var(--danger); }
 .stop-btn b { display: block; font-size: 1.7rem; letter-spacing: -.02em; }
 .stop-btn small { display: block; font-size: .95rem; opacity: .85; }
 .stop-ico { flex: none; width: 52px; height: 52px; border-radius: 50%; background: var(--on-danger); position: relative; }
@@ -567,7 +567,7 @@ input[type="range"]:disabled { opacity: .35; }
 .ev-list li > div b { font-size: 1.02rem; }
 .ev-list li > div small { display: block; color: var(--sub); font-size: .88rem; margin-top: 2px; line-height: 1.4; }
 .pts { text-align: center; padding: 2px 0; border-radius: 8px; font-size: .9rem; }
-.pts.bad { background: color-mix(in srgb, var(--danger-2) 25%, transparent); color: var(--danger-text); }
+.pts.bad { background: color-mix(in srgb, var(--danger-2) 14%, transparent); color: var(--danger-text); }
 .pts.good { background: color-mix(in srgb, var(--success) 22%, transparent); color: var(--success-text); }
 .pts.info { background: var(--surface3); color: var(--sub); }
 .sens { font-style: normal; font-size: .72rem; color: var(--primary-text); background: color-mix(in srgb, var(--primary) 15%, transparent); padding: 1px 7px; border-radius: 999px; margin-left: 4px; vertical-align: 2px; }
@@ -757,7 +757,7 @@ body:not([data-mode="practice"]) .dv-cluster {
 }
 .dv-caption { max-width: 28rem; }
 /* 설명(연습) 또는 HUD(평가·강습) 아래 남는 공간을 먹어 계기를 바닥으로 민다 */
-body[data-mode="practice"] .dv-caption { margin-bottom: auto; }
+body[data-mode="practice"] .dv-caption { margin-top: auto; }   /* 설명은 맨 아래로 */
 body:not([data-mode="practice"]) .sim-hud { margin-bottom: auto; }
 .hud-top { padding: 0; }
 .hud-stop,
@@ -935,6 +935,12 @@ body:not([data-mode="practice"]) .sim-canvas {
 .wh-top { fill: var(--primary); }
 .c-hint { display: flex; align-items: center; gap: 10px; margin-top: 8px; padding: 10px 12px; border-radius: 12px; background: var(--surface3); font-size: .85rem; color: var(--text); }
 .c-hint[hidden] { display: none; }
+.control-help { margin-top: 8px; min-height: 44px; }
+.c-hint { align-items: flex-start; }
+.c-hint p { flex: 1; min-width: 0; margin: 0; line-height: 1.6; }
+.gear-state { display: block; margin: 6px 0 12px; padding: 10px 12px; border-radius: 12px; background: var(--surface3); color: var(--primary-text); font-size: 1rem; font-weight: 600; line-height: 1.5; }
+#c-gear { flex-wrap: wrap; }
+#c-gear button { min-width: 46px; min-height: 46px; font-size: 1.1rem; }
 .buckle { position: relative; display: inline-block; width: 22px; height: 12px; margin-right: 6px; vertical-align: -1px; }
 .buckle i { position: absolute; top: 2px; height: 8px; border-radius: 2px; background: var(--muted); }
 .bk-latch { right: 0; width: 10px; }
@@ -986,3 +992,116 @@ body:not([data-mode="practice"]) .sim-canvas {
   .about-table [role=row] { grid-template-columns: 1fr 1fr; }
 }
 .learn .caption { margin-top: 12px; }
+
+/* ════════ C04 (2026-11-13): 잠금 이유·하단 바 안내·체험판 안내 ════════ */
+/* 하단 바 말풍선 — 시스템 영역에 뜬다(앱 화면을 가리지 않게 하단 바 바로 위) */
+.display { position: relative; }
+.gnb-tip {
+  position: absolute; left: 50%; bottom: 84px; transform: translateX(-50%);
+  max-width: min(520px, calc(100% - 32px)); margin: 0; padding: 10px 16px;
+  border-radius: 12px; background: var(--text); color: var(--bg);
+  font-size: .95rem; line-height: 1.5; text-align: center; z-index: 5;
+  box-shadow: 0 8px 24px var(--shadow-2);
+  animation: gnbTipIn .16s ease-out both;
+}
+.gnb-tip.still { animation: none; }   /* 주행 중에는 움직이지 않는다 */
+@keyframes gnbTipIn { from { opacity: 0; transform: translate(-50%, 4px); } to { opacity: 1; transform: translate(-50%, 0); } }
+.pleos-gnb [role="button"] { cursor: pointer; }
+.pleos-gnb [role="button"]:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; border-radius: 10px; }
+/* 주행 중 잠긴 앱 버튼 — 흐리게 + 열쇠 대신 글로 이유(title) */
+.icon-btn.is-locked { opacity: .45; cursor: not-allowed; }
+/* 잠금 화면: 멈췄는데 왜 안 열리는지 */
+.lock-why { display: flex; gap: 10px; align-items: flex-start; max-width: 32rem; margin: 16px auto 0; padding: 12px 16px;
+  border-radius: 12px; background: var(--surface2); color: var(--sub); font-size: 1rem; line-height: 1.6; text-align: left; }
+.lock-why svg { flex: none; margin-top: 2px; color: var(--muted); }
+.lock-why b { color: var(--text); font-weight: 600; }
+/* 주행 중 열린 체험판 안내 창 맨 위 한 줄 */
+.site-note { margin: 0 48px 16px 0; padding: 10px 14px; border-radius: 12px; background: var(--warn); color: var(--warn-text); font-size: .95rem; line-height: 1.55; }
+@media (prefers-reduced-motion: reduce) { .gnb-tip { animation: none; } }
+
+
+/* ════════ C04 내비식 주행 정보 배치 (2026-11-14) ════════
+   실제 Pleos 주행 정보 화면: 큰 속도와 기어가 맨 위, 표시등이 그 아래, 차·도로가 가운데.
+   계기를 카드에서 '맨 위 띠'로 바꾸고 설명 글은 맨 아래로 작게 내린다.
+   1020px 이하 연습 모드는 계기가 한 줄 막대인 별도 레이아웃이라 건드리지 않는다. */
+@media (min-width: 1021px) {
+  body .driving-view > .dv-cluster {
+    margin: -10px -12px 0; padding: 14px 16px 12px;
+    border: 0; border-bottom: 1px solid var(--line); border-radius: 0;
+    background: var(--panel);
+    grid-template-columns: auto 1fr auto; align-items: center; column-gap: 12px;
+  }
+  body .driving-view > .dv-cluster .dv-speed b { font-size: 3rem; }
+  body .driving-view > .dv-cluster .dv-gear { order: 0; background: transparent; width: auto; height: auto; font-size: 2rem; color: var(--primary-text); justify-self: start; }
+  body .driving-view > .dv-cluster .dv-pb { grid-column: auto; justify-self: end; white-space: nowrap; font-size: .78rem; }
+  .dv-caption { font-size: .72rem; opacity: .9; }
+}
+
+/* ════════ C 파트 마무리 (2026-11-14): 온보딩·코치 마크·내 기록 ════════ */
+/* 온보딩 — 몇 번째인지 숫자로, 다음 버튼에 다음 장면 이름 */
+.ob-count { color: var(--muted); font-size: .9rem; font-variant-numeric: tabular-nums; margin-right: 4px; }
+.ob-count b { color: var(--text); font-weight: 600; }
+.ob-foot { justify-content: flex-start; }
+.ob-btns { margin-left: auto; }
+.ob-next-hint { font-size: .78rem; font-weight: 500; opacity: .85; margin-left: 6px; }
+@media (max-width: 560px) { .ob-next-hint { display: none; } }
+/* 넘긴 방향에서 글이 들어온다(그림은 자리를 지킨다) — 짧게, 몇 px만 */
+.ob[data-dir="next"] .ob-text { animation: obFromR .22s ease-out both; }
+.ob[data-dir="prev"] .ob-text { animation: obFromL .22s ease-out both; }
+@keyframes obFromR { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: none; } }
+@keyframes obFromL { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: none; } }
+.ob { touch-action: pan-y; }
+
+/* 코치 마크 — 온보딩을 마치면 첫 행동 하나를 짚는다. 화면을 막지 않는다 */
+.coach-mark { position: fixed; inset: 0; z-index: 60; pointer-events: none; }
+.cm-ring { position: fixed; border-radius: 16px; box-shadow: 0 0 0 3px var(--primary), 0 0 0 9999px color-mix(in srgb, var(--page) 55%, transparent);
+  animation: cmIn .2s ease-out both; }
+.cm-tip { position: fixed; max-width: 320px; margin: 0; padding: 12px 16px; border-radius: 12px; background: var(--text); color: var(--bg);
+  font-size: 1rem; line-height: 1.55; box-shadow: 0 8px 24px var(--shadow-2); animation: cmIn .2s .08s ease-out both; }
+.cm-tip.above { transform: translateY(-100%); }
+@keyframes cmIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* 내 기록 — 다음 목표, 최근 7일 */
+.hist-next { display: flex; gap: 12px; align-items: center; margin-top: 16px; padding: 14px 16px; border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--primary) 10%, var(--surface)); }
+.hist-next svg { color: var(--primary-text); flex: none; }
+.hist-next small { display: block; color: var(--muted); font-size: .85rem; }
+.hist-next b { font-size: 1.1rem; font-weight: 600; }
+.week { margin-top: 16px; padding: 14px 16px; border-radius: var(--r-md); background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
+.week-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.week-head b { font-weight: 600; }
+.week-head small { color: var(--muted); }
+.week-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; list-style: none; margin: 12px 0 0; padding: 0; }
+.week-days li { display: grid; justify-items: center; gap: 6px; color: var(--muted); font-size: .8rem; }
+.week-days i { width: 28px; height: 28px; border-radius: 50%; box-shadow: inset 0 0 0 2px var(--line-2); }
+.week-days li.on i { background: var(--success); box-shadow: none; }
+.week-days li.on i::after { content: ''; display: block; width: 12px; height: 7px; margin: 9px auto 0; border-left: 2px solid var(--on-success); border-bottom: 2px solid var(--on-success); transform: rotate(-45deg); }
+.week-days li.today span:first-of-type { color: var(--text); font-weight: 600; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ob[data-dir] .ob-text, .cm-ring, .cm-tip { animation: none; }
+}
+
+/* 주행 잠금 중 콘솔 쪽 짧은 알림(S04 — 앱 화면 대신 여기) */
+.c-flash { margin: 0 0 12px; padding: 10px 12px; border-radius: 12px; background: var(--surface3); color: var(--text); font-size: .88rem; font-weight: 600; }
+.c-flash[hidden] { display: none; }
+
+/* ── 정차 중 3D 차 모형(A06) — 스스로 움직이지 않는다. 색은 토큰만 ── */
+.c3 { position: relative; height: 150px; margin: 4px auto 10px; width: min(360px, 100%); perspective: 720px; cursor: grab; touch-action: pan-y; outline: none; border-radius: 16px; }
+.c3:active { cursor: grabbing; }
+.c3:focus-visible { box-shadow: 0 0 0 3px var(--primary); }
+.c3-car { --ry: -32deg; position: absolute; left: 50%; top: 58%; transform-style: preserve-3d; transform: rotateX(-22deg) rotateY(var(--ry)); }
+.c3-box { position: absolute; transform-style: preserve-3d; }
+.c3-box .f { position: absolute; left: 0; top: 0; backface-visibility: hidden; }
+.c3 .body .f { background: var(--primary); }
+.c3 .body .sd { filter: brightness(.82); }
+.c3 .body .fr, .c3 .body .bk { filter: brightness(.7); }
+.c3 .body .bt { background: var(--text); opacity: .4; }
+.c3 .cab .f { background: var(--car-glass); border: 2px solid var(--primary); box-sizing: border-box; }
+.c3 .cab .tp { background: var(--primary); filter: brightness(1.1); }
+.c3-wheel { position: absolute; left: -15px; top: -15px; width: 30px; height: 30px; border-radius: 50%; background: var(--text); border: 5px solid var(--surface3); box-sizing: border-box; }
+.c3[data-pb="on"] .c3-wheel.rear { border-color: var(--danger-2); }
+.c3-shadow { position: absolute; left: -100px; top: -50px; width: 200px; height: 100px; border-radius: 50%; background: var(--text); opacity: .12; transform: rotateX(90deg) translateZ(-26px); }
+.c3-p { position: absolute; left: -14px; top: -14px; width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; font-size: 18px; background: var(--surface); color: var(--muted); }
+.c3[data-p="on"] .c3-p { background: var(--primary); color: var(--on-primary); }
+@media (max-width: 640px) { .c3 { height: 130px; } }

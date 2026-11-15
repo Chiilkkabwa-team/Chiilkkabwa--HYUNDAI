@@ -6,8 +6,11 @@ import * as VOICE from './voice.js';
 import * as THEME from './theme.js';
 import * as OB from './onboarding.js';
 import * as RP from './replay.js';
+import * as CAR3D from './car3d.js';
 import * as LEARN from './learn.js';
 import { aboutHtml } from './about.js';
+import { holdPedal, bindBrakeSlider } from './pedal-control.js';
+import { KeyboardDrive, gearPresentation, stopRequestState } from './drive-controls.js';
 
 // 캔버스에서 쓰는 색은 리터럴을 적지 않고 CSS 토큰에서 읽는다(테마를 따라가도록).
 // styles.css 의 :root / :root[data-theme="light"] 가 유일한 색 정의 자리다.
@@ -41,6 +44,12 @@ let H = loadHistory();
 // 모드: practice(연습 — 공개 SDK 범위) / eval(평가 — 가상) / coach(강습 — 제조사 협업 가정 · 가상)
 let appMode = ['practice', 'eval', 'coach'].includes(H.mode) ? H.mode : 'practice';
 let sim = null; let simReport = null;
+let simManeuver = 'STRAIGHT';
+function setSimManeuver(dir) {
+  simManeuver = ['LEFT', 'RIGHT', 'STRAIGHT'].includes(dir) ? dir : 'STRAIGHT';
+  if (sim) sim.input.maneuver = simManeuver;
+  $$('#c-maneuver button').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.v === simManeuver)));
+}
 
 // ── F12 주행 중 음성 길잡이 · F13 리플레이 ─────────────────────
 // 화면은 건드리지 않는다. 음성이 나와도 잠금 화면은 그대로다(CLAUDE.md §5-4).
@@ -49,7 +58,8 @@ let voice = null;          // 주행 1회당 하나
 let watcher = null;        // 차량 신호에서 상황을 알아내는 감시기(연습 모드 = 실제 앱이 하는 일)
 let replayRows = [];       // 이번 주행의 리플레이 항목
 let replayShown = false;   // 복기 화면 앞에 리플레이를 한 번 보여 줬는지
-let speaking = false;      // 재생 중 겹치지 않게
+let nextVoiceEventId = 0;
+let mockNavUntil = 0;
 let seenSimEvents = 0;
 let track = new RP.Track(); // 이번 주행의 속도·페달·가상 위치 시간표(메모리에만 — 저장하지 않는다)     // 평가·강습 모드에서 이미 처리한 sim 기록 수
 // 시계가 둘이다. 섞으면 급출발이 '완만한 가속'으로 보인다.
@@ -60,19 +70,19 @@ let track = new RP.Track(); // 이번 주행의 속도·페달·가상 위치 �
 let voiceSec = 0;
 let voiceRealSec = 0;
 
-// 2026-11-09 팀 요청: 기본은 모드와 상관없이 켜짐. 끄면 끈 상태가 저장된다.
-function voicePrefOn() { return H.voiceOn == null ? true : !!H.voiceOn; }
-const voiceCap = () => H.voiceCap || VOICE.RULES.maxPerDrive;
+function voicePrefOn(mode = prep?.mode || 'solo') { return H.voiceOn == null ? mode !== 'mentor' : !!H.voiceOn; }
+const voiceCap = () => H.voiceCap === 3 ? 3 : VOICE.RULES.maxPerDrive;
 
 /** 주행에 들어갈 때 음성·리플레이를 새로 시작한다 */
 function startVoiceDrive(mode) {
-  voiceSec = 0; voiceRealSec = 0; seenSimEvents = 0; replayRows = []; replayShown = false; speaking = false;
+  voiceSec = 0; voiceRealSec = 0; seenSimEvents = 0; replayRows = []; replayShown = false; mockNavUntil = 0;
   track = new RP.Track(); RP.closePip();
   watcher = new VOICE.SignalWatcher();
   // 연습 모드에서는 정차 중에 프레임 루프를 멈춰 두므로(성능) 주행에 들어갈 때 다시 켠다
   startSimLoop();
   voice = new VOICE.VoiceGuide({
-    goal: prep?.goal || null,
+    // 평가·강습은 목표 선택 화면을 건너뛰고 가상 종합 연습을 한다.
+    goal: appMode === 'practice' ? prep?.goal || null : '그냥 몸풀기',
     mode,
     enabled: voicePrefOn(mode),
     speedLimitOn: !!H.speedLimitVoice,
@@ -83,8 +93,10 @@ function startVoiceDrive(mode) {
 
 /** 주행이 끝나면 남은 발화를 멈추고 리플레이를 만든다 */
 function endVoiceDrive() {
-  speaker.stop(); speaking = false;
-  if (voice) voice.window = null; // 주차한 뒤에 지난 상황을 뒤늦게 말하지 않는다
+  voice?.dropped('CANCELLED');
+  if (voice) voice.window = null;
+  speaker.stop();
+  mockNavUntil = 0;
   replayRows = VOICE.buildReplay(replayRows, voice, 'MOCK');
   if (replayRows.length) {
     H.replays = [{ at: Date.now(), mode: appMode, goal: prep?.goal || null, rows: replayRows.slice(0, 40) }, ...(H.replays || [])].slice(0, 10);
@@ -93,25 +105,31 @@ function endVoiceDrive() {
   renderVoiceMeter();
 }
 
-/**
- * 상황 하나를 음성 규칙에 넘긴다. 말할 수 있으면 실제로 소리를 낸다.
- * 재생이 실패하거나(자동 재생 정책·다른 소리 재생 중) 끼어들 상황이면 **그 발화는 버린다.**
- */
-function offerVoice(code, atSec, kmh) {
-  if (!voice) return;
-  voice.queue(code, atSec, kmh); // 바로 말하지 않고 0.8초 모아서 가장 급한 것 하나만
+/** 발화 문구와 사건 종류가 달라도 같은 ID로 복기에 연결한다. */
+function recordVoiceEvent(event) {
+  // 시뮬레이터 리포트도 원본 사건을 읽으므로 같은 ID를 사용한다.
+  event.eventId = ++nextVoiceEventId;
+  replayRows.push(event);
+  return event.eventId;
 }
-function flushVoice(atSec, opts) {
-  if (!voice) return;
-  const u = voice.flush(atSec, opts);
-  if (!u) return;
-  if (speaking) { voice.dropped('BUSY'); return; }
-  speaking = true;
-  speaker.speak(u.line).then((r) => {
-    speaking = false;
-    if (r === 'spoken') voice.committed(u); else voice.dropped(speaker.lastError || 'AUDIO_FOCUS');
-    renderVoiceMeter();
-  });
+
+async function playCoaching(guide, utterance) {
+  if (performance.now() < mockNavUntil) {
+    guide.dropped('AUDIO_FOCUS');
+  } else {
+    const result = await speaker.speak(utterance.line);
+    if (voice !== guide || guide.pending !== utterance) return;
+    if (result === 'spoken') {
+      guide.committed(utterance);
+      if (utterance.code === 'STEADY') {
+        replayRows.push({ eventId: utterance.eventId, t: utterance.atSec, code: 'STEADY',
+          title: VOICE.TITLES.STEADY, kmh: utterance.kmh, sensor: null, advice: '', good: true });
+      }
+    } else {
+      guide.dropped(speaker.lastError || 'ERROR');
+    }
+  }
+  renderVoiceMeter();
 }
 
 /** 왼쪽 콘솔의 음성 계기 — 앱 화면이 아니라 프로토타입 계측 영역이다 */
@@ -130,8 +148,9 @@ function renderVoiceMeter() {
 const SKIP_WHY = {
   OFF: '음성이 꺼져 있어요', NOT_THIS_GOAL: '오늘 목표가 아니에요', DRIVE_CAP: '이번 주행 횟수를 다 썼어요',
   TOO_SOON: '45초가 지나지 않았어요', SAME_CAP: '같은 지적을 이미 2번 했어요', ONCE_ONLY: '주행당 1번만 해요',
-  TOO_LONG: '문장이 너무 길어요', NO_LINE: '말할 문장이 없어요', LOWER_PRIORITY: '더 급한 상황을 먼저 말했어요',
+  TOO_LONG: '문장이 너무 길어요', NO_LINE: '말할 문장이 없어요', LOWER_PRIORITY: '더 급한 안내를 우선했어요',
   AUDIO_FOCUS: '내비·통화에 양보했어요(발화 버림)', BUSY: '다른 소리가 나는 중이었어요', UNAVAILABLE: '브라우저가 소리를 막았어요',
+  CANCELLED: '발화가 취소됐어요', TIMEOUT: '재생 완료를 확인하지 못했어요', ERROR: '음성을 재생하지 못했어요',
 };
 
 /** 브라우저 자동 재생 정책: 첫 조작 때 음성을 깨운다 */
@@ -196,7 +215,7 @@ let overlay = null; // 'history' | 'profile' | 'cert' | 'intro'
 let obStep = 0;     // 온보딩 단계
 let wikiPage = 0;   // 운전 노트 챕터
 // 온보딩 내용이 바뀌면 숫자를 올린다 → 예전에 닫은 사람에게도 한 번 더 뜬다(11/12 회의: '들어가자마자 안 뜨더라')
-const INTRO_V = 2;
+const INTRO_V = 3; // 3: C04 온보딩 문구 개편(2026-11-13) — 이전에 본 사람에게도 한 번 더 보여 준다
 let judgeState = null; // { judge, progress, doneAt }
 let lastGate = null;
 
@@ -264,6 +283,7 @@ Screens.gate = () => ({
     el.innerHTML = `<div class="screen center">
       <div class="hero"><div class="hero-m" id="gm">${mascot('worried', 104)}</div>
         <div><h1>연습 준비를 확인할게요</h1><p class="sub">차가 직접 확인해요. 셋 다 ‘확인’이면 시작할 수 있어요.</p></div></div>
+      ${CAR3D.html()}
       <ul class="checks">
         <li data-k="gear">${icon('gear', 30)}<span class="ck-l">기어 P</span><span class="ck-s"></span></li>
         <li data-k="pb">${icon('pbrake', 30)}<span class="ck-l">주차 브레이크</span><span class="ck-s"></span></li>
@@ -279,9 +299,11 @@ Screens.gate = () => ({
       render();
     };
     this.lastMood = 'worried';
+    CAR3D.bind(el);
   },
   update() {
     const s = snapshot();
+    CAR3D.show(document, { parkingBrake: s.parkingBrakeOn.status === 'OK' && s.parkingBrakeOn.value === true, gearP: s.gear.status === 'OK' && s.gear.value === 'P' });
     const st = (sig, okFn) => (sig.status !== 'OK' ? (sig.status === 'UNKNOWN' ? 'checking' : 'blocked') : okFn(sig.value) ? 'ok' : 'wait');
     const rows = { gear: st(s.gear, (v) => v === 'P'), pb: st(s.parkingBrakeOn, (v) => v === true), ux: st(s.uxRestricted, (v) => v === false) };
     const text = { ok: '확인', wait: '대기', checking: '확인 중', blocked: '읽을 수 없음' };
@@ -318,7 +340,7 @@ Screens.goal = () => ({
         </button>
         <button type="button" class="how" id="mentorBtn" disabled>
           ${icon('mentor', 26)}<b>함께 연습</b>
-          <small>출발 전에 <b>약속 카드</b>를 맞춰요. 음성 길잡이는 그대로 켜져 있고, 설정에서 끌 수 있어요.</small>
+          <small>출발 전에 <b>약속 카드</b>를 맞춰요. 음성 길잡이는 기본으로 꺼져 있고, 설정에서 켤 수 있어요.</small>
         </button>
       </div>
       <p class="caption" id="soloNote">어느 쪽이든 워밍업 3개 + 원하면 선택 미션 · 약 5분. 실제 도로 연습은 처음엔 동승자와 함께 하시면 더 안전해요.</p>
@@ -393,7 +415,6 @@ function recordMission(id, prog) {
 }
 
 // A-3 워밍업 미션
-const STATUS_HELP = { UNSUPPORTED: '이 차에서는 이 신호를 읽을 수 없어요.', PERMISSION_DENIED: '이 신호를 읽을 권한이 없어요.', DISCONNECTED: '차량 신호가 잠시 끊겼어요.' };
 Screens.mission = () => ({
   mount(el) {
     const j = judgeState.judge; const meta = C.MISSION_META[j.id];
@@ -439,7 +460,7 @@ Screens.mission = () => ({
       $('#mIll').classList.add('ok');
       setTimeout(() => $('#nextBtn')?.focus(), 50);
     } else {
-      st.innerHTML = `<div class="banner warn">${icon('info', 22)}<span>${STATUS_HELP[p.status] || '신호를 읽을 수 없어요.'} 이 미션은 건너뛸게요.</span></div>`;
+      st.innerHTML = `<div class="banner warn">${icon('info', 22)}<span>${C.StatusText[p.status] || '신호를 읽을 수 없어요.'} 이 미션은 건너뛸게요.</span></div>`;
       act.innerHTML = btn('skipBtn', '건너뛰기', 'secondary big');
     }
     const go = () => {
@@ -508,7 +529,7 @@ Screens.pedal = () => ({
       $('#pActions').innerHTML = btn('nextBtn', `다음: ${{ parking: '가상 주차', pact: '멘토 약속', go: '출발 준비' }[nx]}`, 'primary big');
       $('#nextBtn').onclick = () => nextPrepStep();
     } else if (p.kind === 'unavailable') {
-      $('#pState').innerHTML = `<div class="banner warn">${icon('info', 22)}<span>${STATUS_HELP[p.status]} 이 단계는 건너뛸게요.</span></div>`;
+      $('#pState').innerHTML = `<div class="banner warn">${icon('info', 22)}<span>${C.StatusText[p.status]} 이 단계는 건너뛸게요.</span></div>`;
       $('#pActions').innerHTML = btn('skipBtn', '건너뛰기', 'secondary big'); $('#skipBtn').onclick = () => nextPrepStep();
     } else {
       $('#pState').innerHTML = '';
@@ -758,7 +779,7 @@ Screens.go = () => ({
 Screens.paused = () => ({
   mount(el) {
     el.innerHTML = `<div class="screen center"><div class="hero"><div class="hero-m">${mascot('worried', 96)}</div>
-      <div><h1>연습을 잠시 멈췄어요</h1><p class="sub" id="pauseReason"></p><p class="caption">다시 준비되면 하던 곳에서 이어서 해요.</p></div></div></div>`;
+      <div><h1>${session.phase === C.Phase.REVIEW ? '복기를 잠시 닫았어요' : '연습을 잠시 멈췄어요'}</h1><p class="sub" id="pauseReason"></p><p class="caption">${session.phase === C.Phase.REVIEW ? '복기는 주차가 확인될 때만 열려요. 다시 주차하면 보던 곳에서 이어져요' : '다시 준비되면 하던 곳에서 이어서 해요'}</p></div></div></div>`;
   },
   update() { $('#pauseReason').textContent = C.LockReason[session.lockReason] || ''; },
 });
@@ -771,6 +792,7 @@ Screens.lock = () => ({
       <p class="lock-tag">${appMode === 'eval' ? '평가 중' : '연습 중'}</p>
       <h1>화면은 잠시 쉴게요.<br>도로만 보세요.</h1>
       <p class="sub">${appMode === 'eval' ? '센서(가상)가 상황을 기록하고 있어요. 주차하면 상황별 조언을 보여 줘요.' : '주차하면 오늘 연습을 함께 돌아봐요.'}</p>
+      <p class="lock-why">${icon('pbrake', 20)}<span>멈췄는데도 안 열리나요? 신호 대기처럼 잠깐 멈춘 건 주차가 아니에요. <b>기어 P</b>에 두고 <b>주차 브레이크</b>를 걸면 열려요. 내 기록·설정도 그때 열려요</span></p>
       ${voice?.enabled
         ? `<p class="lock-voice">${icon('sound', 22)} 필요할 때만 한마디 할게요 · 최대 ${voice.cap}회<br><small>내비·통화·경고음이 나오면 바로 양보해요</small></p>`
         : `<p class="lock-voice off">${icon('mentor', 22)} ${(prep?.mode || 'solo') === 'mentor' ? '함께 타신 분이 있어 음성은 꺼 뒀어요' : '음성 길잡이는 꺼져 있어요'}</p>`}
@@ -859,19 +881,47 @@ function finishReview(graduate) {
 // ── 오버레이(내 기록·설정·수료 카드·사용법) ──────────────────
 function openOverlay(name) { overlay = name; renderOverlay(); }
 function closeOverlay() { overlay = null; renderOverlay(); }
+// C04: 머리말의 '소개'·'사용법'은 차량 앱이 아니라 웹 체험판을 설명하는 창이다(차 화면 밖).
+// 그래서 가상 주행 중에도 연다. 대신 열려 있는 동안 가상 주행 시간을 멈춘다.
+// '내 기록'·'나'·도움말 같은 앱 안의 창은 주행 중에는 열지 않는다(S04).
+const SITE_OVERLAYS = ['intro', 'about'];
+const siteOverlayOpen = () => !!overlay && SITE_OVERLAYS.includes(overlay);
+const learningOverlayLocked = () => (overlay === 'help' || overlay === 'wiki') && !LEARN.learningAvailable(snapshot());
 function renderOverlay() {
   const root = $('#modalRoot');
-  if (!overlay || session.phase === C.Phase.DRIVING_LOCK) { root.innerHTML = ''; root.classList.remove('open'); return; }
+  if (learningOverlayLocked()) overlay = null;
+  const blocked = session.phase === C.Phase.DRIVING_LOCK && !siteOverlayOpen();
+  if (!overlay || blocked) { root.innerHTML = ''; root.classList.remove('open'); return; }
   root.classList.add('open');
   const body = { history: historyHtml, profile: profileHtml, cert: certHtml, intro: introHtml,
     help: () => LEARN.helpHtml(judgeState?.judge?.id, judgeState?.judge?.title || '도움말'), wiki: () => LEARN.wikiHtml(wikiPage), about: aboutHtml }[overlay]();
   root.innerHTML = `<div class="modal-scrim" data-close></div><div class="modal${overlay === 'intro' ? ' modal-ob' : ''}" role="dialog" aria-modal="true" aria-label="${{ history: '내 기록', profile: '설정', cert: '수료 카드', intro: '치일까봐 둘러보기', help: '미션 도움말', wiki: '운전 노트', about: '서비스 소개' }[overlay]}" tabindex="-1">
-    <button type="button" class="icon-btn modal-x" data-close aria-label="닫기">${icon('close', 22)}</button>${body}</div>`;
+    <button type="button" class="icon-btn modal-x" data-close aria-label="닫기">${icon('close', 22)}</button>${session.phase === C.Phase.DRIVING_LOCK ? '<p class="site-note">웹 체험판 안내예요. 이 창이 열려 있는 동안 가상 주행은 멈춰 있어요. 실제 차에서는 주행 중에 이런 창이 뜨지 않아요</p>' : ''}${body}</div>`;
   $$('[data-close]', root).forEach((b) => (b.onclick = () => { if (overlay === 'intro') { H.introSeen = true; H.introV = INTRO_V; saveHistory(); } closeOverlay(); }));
   bindOverlay(root);
   $$('[data-wiki]', root).forEach((b) => (b.onclick = () => { wikiPage = LEARN.wikiIndex(b.dataset.wiki); openOverlay('wiki'); }));
   $$('[data-page]', root).forEach((b) => (b.onclick = () => { wikiPage = +b.dataset.page; renderOverlay(); }));
   setTimeout(() => $('.modal', root)?.focus?.(), 0);
+}
+// ── C05 (2026-11-14): 내 기록 — '이어 간다'는 느낌을 주는 두 조각 ──
+// 점수·연속 기록(스트릭)은 쓰지 않는다. 끊기면 압박이 되고, 실력 평가처럼 읽히기 때문이다.
+/** 다음 목표: 지난 복기에서 고른 목표를 맨 위에 다시 보여 준다 */
+function historyNextHtml() {
+  if (!H.lastNextGoal) return '';
+  return `<div class="hist-next">${icon('flag', 22)}<div><small>다음 연습에서 이어서 해 볼 것</small><b>${esc(H.lastNextGoal)}</b></div></div>`;
+}
+/** 최근 7일 중 연습한 날. 오늘이 맨 오른쪽 */
+function weekStripHtml() {
+  const day = (t) => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
+  const done = new Set((H.reviews || []).map((r) => day(r.at)));
+  const today = day(Date.now());
+  const names = ['일', '월', '화', '수', '목', '금', '토'];
+  const days = Array.from({ length: 7 }, (_, k) => today - (6 - k) * 86400000);
+  const n = days.filter((d) => done.has(d)).length;
+  return `<div class="week" role="group" aria-label="최근 7일 중 ${n}일 연습">
+    <div class="week-head"><b>최근 7일</b><small>${n ? `${n}일 연습했어요` : '아직 연습한 날이 없어요. 주차된 차에서 5분이면 돼요'}</small></div>
+    <ol class="week-days">${days.map((d) => `<li class="${done.has(d) ? 'on' : ''}${d === today ? ' today' : ''}"><i aria-hidden="true"></i><span>${d === today ? '오늘' : names[new Date(d).getDay()]}</span><span class="sr-only">${done.has(d) ? '연습함' : '연습 안 함'}</span></li>`).join('')}</ol>
+  </div>`;
 }
 function historyHtml() {
   const lv = C.level(H); const steps = C.LEVEL_STEPS;
@@ -887,6 +937,8 @@ function historyHtml() {
         <div class="holdbar"><i style="width:${pct}%"></i></div>
         <small class="muted">레벨은 이어 간 연습 횟수예요. 실력 점수가 아니에요.</small></div>
     </div>
+    ${historyNextHtml()}
+    ${weekStripHtml()}
     <h3>배지 <small>${H.badges.length}/9</small></h3>
     <div class="badge-grid">${Object.entries(C.Badges).map(([k, b]) => {
       const e = have.get(k);
@@ -907,10 +959,10 @@ function profileHtml() {
     <h3>주행 중 음성 길잡이 <small>F12</small></h3>
     <div class="set-row">${icon('sound', 22)}<span>주행 중 음성 길잡이<small>${voicePrefOn() ? '켜짐' : '꺼짐'}</small></span><button type="button" class="switch" id="setVoice" role="switch" aria-label="주행 중 음성 길잡이" aria-checked="${voicePrefOn(prep?.mode || 'solo')}"><span></span></button></div>
     <div class="set-row">${icon('note', 22)}<span>주행당 최대 횟수<small>많을수록 잔소리가 될 수 있어요. 간격 45초는 그대로</small></span>
-      <div class="seg" role="radiogroup" aria-label="주행당 최대 횟수">${[3, 5, 10, 20].map((k) => `<button type="button" role="radio" data-cap="${k}" aria-checked="${voiceCap() === k}">${k}</button>`).join('')}</div></div>
+      <div class="seg" role="radiogroup" aria-label="주행당 최대 횟수">${[3, 5].map((k) => `<button type="button" role="radio" data-cap="${k}" aria-checked="${voiceCap() === k}">${k}</button>`).join('')}</div></div>
     <div class="set-row">${icon('gear', 22)}<span>제한 속도 음성<small>내비가 이미 안내하니 기본은 꺼짐</small></span><button type="button" class="switch" id="setSpeedVoice" role="switch" aria-label="제한 속도 음성" aria-checked="${!!H.speedLimitVoice}"><span></span></button></div>
     <div class="set-row vm-test"><span>소리가 나오는지 확인<small>${esc(speaker.state().why)}</small></span><button type="button" class="mini" id="setVoiceTest">들어 보기</button></div>
-    <p class="caption">주행 중 금지는 ‘영상’이고, 오디오는 오디오 포커스 정책을 지키면 허용돼요. 내비·통화·경고음이 나오면 바로 양보하고 그 말은 버려요.</p>
+    <p class="caption">웹 모의 시연이에요. 차량에서의 주행 중 음성 재생은 Pleos 주행 제한과 오디오 정책을 별도로 확인해야 해요.</p>
     <h3>화면</h3>
     <div class="set-row">${icon('sound', 22)}<span>정차 중 효과음</span><button type="button" class="switch" id="setSound" role="switch" aria-label="정차 중 효과음" aria-checked="${H.sound}"><span></span></button></div>
     <div class="set-row">${icon('text', 22)}<span>큰 글씨</span><button type="button" class="switch" id="setLarge" role="switch" aria-label="큰 글씨" aria-checked="${H.largeText}"><span></span></button></div>
@@ -929,7 +981,8 @@ function certHtml() {
     <p class="cert-note">운전 실력 인증이 아니라, 이어 온 연습의 기록이에요.<br>도로에서는 언제나 천천히, 안전하게.</p>
   </div>`;
 }
-function introHtml() { return OB.html(obStep); }
+let obDir = '';
+function introHtml() { return OB.html(obStep, obDir); }
 function bindOverlay(root) {
   if (overlay === 'profile') {
     const aliases = ['나', '연습생', '새내기 운전자', '주말 드라이버'];
@@ -938,7 +991,11 @@ function bindOverlay(root) {
       H.voiceOn = !voicePrefOn();
       saveHistory();
       if (voice) voice.enabled = voicePrefOn(prep?.mode || 'solo');
-      if (!voicePrefOn(prep?.mode || 'solo')) speaker.stop();
+      if (!voicePrefOn(prep?.mode || 'solo')) {
+        voice?.dropped('CANCELLED');
+        if (voice) voice.window = null;
+        speaker.stop();
+      }
       renderVoiceMeter(); renderOverlay();
     };
     $$('[data-cap]', root).forEach((b) => (b.onclick = () => { H.voiceCap = +b.dataset.cap; saveHistory(); if (voice) voice.cap = H.voiceCap; renderOverlay(); }));
@@ -961,7 +1018,10 @@ function bindOverlay(root) {
   if (overlay === 'intro') {
     const finish = (then) => { H.introSeen = true; H.introV = INTRO_V; saveHistory(); closeOverlay(); then?.(); };
     const go = (k) => {
-      obStep = Math.max(0, Math.min(OB.STEPS.length - 1, k));
+      const to = Math.max(0, Math.min(OB.STEPS.length - 1, k));
+      if (to === obStep) return;
+      obDir = to > obStep ? 'next' : 'prev';
+      obStep = to;
       renderOverlay();
       // 단계를 바꿔도 읽는 자리를 잃지 않게 제목으로 포커스를 옮긴다
       setTimeout(() => $('.ob-title', $('#modalRoot'))?.focus?.(), 0);
@@ -970,7 +1030,8 @@ function bindOverlay(root) {
       prev: () => go(obStep - 1),
       next: () => go(obStep + 1),
       skip: () => finish(),
-      done: () => finish(),
+      // 끝내면 '어디부터 하면 되는지'를 화면에서 짚어 준다(설명만 읽고 닫으면 다시 막막하다)
+      done: () => finish(coachMark),
       demo: () => finish(startDemo),
     }[b.dataset.ob]())));
     $$('[data-go]', root).forEach((b) => (b.onclick = () => go(+b.dataset.go)));
@@ -979,7 +1040,42 @@ function bindOverlay(root) {
       if (e.key === 'ArrowRight') { e.preventDefault(); go(obStep + 1); }
       if (e.key === 'ArrowLeft') { e.preventDefault(); go(obStep - 1); }
     });
+    // 터치: 좌우로 밀어서 넘긴다(휴대폰·차량 터치 화면). 세로 스크롤과 헷갈리지 않게 가로 이동이 더 클 때만
+    const ob = $('.ob', root); let sx = null, sy = 0;
+    ob?.addEventListener('pointerdown', (e) => { if (e.pointerType !== 'mouse') { sx = e.clientX; sy = e.clientY; } });
+    ob?.addEventListener('pointerup', (e) => {
+      if (sx == null) return; const dx = e.clientX - sx, dy = e.clientY - sy; sx = null;
+      if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.5) go(obStep + (dx < 0 ? 1 : -1));
+    });
   }
+}
+
+/**
+ * 온보딩을 끝낸 직후 '첫 행동'을 짚어 주는 안내(코치 마크).
+ * 지금 화면에서 가장 먼저 눌러야 할 곳 하나에 테두리를 두르고 한 줄로 말해 준다.
+ * 아무 곳이나 누르거나 7초가 지나면 사라진다. 화면을 막지 않는다(뒤를 바로 누를 수 있다).
+ */
+function coachMark() {
+  $('#coachMark')?.remove();
+  const visible = (el) => el && el.offsetParent !== null && el.getBoundingClientRect().width > 0;
+  const guideCard = $('#guide'), fab = $('#consoleFab'), start = $('#startBtn');
+  // 우선순위: 차 화면의 '연습 시작'(이미 열려 있으면) → 조작판의 '다음 조작' → (휴대폰) 조작판 버튼
+  const pick = visible(start) && !start.disabled ? [start, '여기를 누르면 연습이 시작돼요']
+    : visible(guideCard) ? [guideCard, '여기 적힌 대로 하나씩 해 보세요. 할 일이 바뀌면 이 글도 바뀌어요']
+    : visible(fab) ? [fab, '여기를 누르면 가상 조작판이 열려요'] : null;
+  if (!pick) return;
+  const [el, text] = pick;
+  el.scrollIntoView({ block: 'nearest', behavior: reduceMotion ? 'auto' : 'smooth' });
+  const r = el.getBoundingClientRect();
+  const m = document.createElement('div');
+  m.id = 'coachMark'; m.className = 'coach-mark'; m.setAttribute('role', 'status');
+  const below = r.bottom + 96 < innerHeight;
+  m.innerHTML = `<span class="cm-ring" style="left:${r.left - 6}px;top:${r.top - 6}px;width:${r.width + 12}px;height:${r.height + 12}px"></span>
+    <p class="cm-tip ${below ? 'below' : 'above'}" style="left:${Math.min(Math.max(16, r.left), innerWidth - 336)}px;${below ? `top:${r.bottom + 14}px` : `top:${r.top - 14}px`}">${text}</p>`;
+  document.body.appendChild(m);
+  const off = () => { m.remove(); removeEventListener('pointerdown', off, true); removeEventListener('keydown', off, true); };
+  setTimeout(() => { addEventListener('pointerdown', off, true); addEventListener('keydown', off, true); }, 50);
+  setTimeout(off, 7000);
 }
 function applyPrefs() { document.documentElement.classList.toggle('large', !!H.largeText); }
 
@@ -1010,6 +1106,8 @@ function screenKey() {
     case C.Phase.CHECKING: case C.Phase.READY: return 'gate';
     case C.Phase.DRIVING_LOCK: return appMode === 'coach' && sim ? 'coach' : 'lock';
     case C.Phase.REVIEW:
+      // E3(C01): 주차 확인이 깨지면 복기·리포트·장면 재현을 모두 닫고 멈춤 화면으로. 다시 주차하면 이어서
+      if (session.lockReason) return 'paused';
       // 연습 모드: 리플레이를 한 번 보여 준 뒤 복기 폼으로. 평가·강습 모드는 리포트 안에 들어 있다.
       if (appMode === 'practice' && !replayShown) return 'replay';
       return appMode !== 'practice' && simReport ? 'report' : 'review';
@@ -1036,12 +1134,14 @@ function render() {
     else body.classList.remove('enter');
   }
   mounted.screen.update?.();
+  if (learningOverlayLocked()) closeOverlay();
   renderChrome();
 }
 
 const STEPS = [['goal', '목표'], ['mission', '워밍업'], ['pedal', '페달'], ['parking', '가상 주차'], ['pact', '약속'], ['go', '출발']];
 let chromeKey = '';
 function renderChrome() {
+  syncAppButtons();
   const s = snapshot();
   const ph = session.phase;
   const modeName = { practice: '연습', eval: '평가', coach: '강습' }[appMode];
@@ -1080,17 +1180,48 @@ function renderChrome() {
   $('#dvSpeed').textContent = Math.round(V.speedKmh.value);
   $('#dvGear').textContent = s.gear.status === 'OK' ? s.gear.value : '–';
   $('#dvPb').classList.toggle('on', s.parkingBrakeOn.value === true);
+  syncConsoleGear(s);
   renderGuide(s);
 }
 
 // ── 콘솔 ─────────────────────────────────────────────────────
+const keyboardDrive = new KeyboardDrive();
+const consoleInput = { brake: () => false, accel: () => false, steer: () => false };
+const stopRequestsSeen = new WeakSet();
+function stopDisplay(vehicle) {
+  if (vehicle.stopReq) stopRequestsSeen.add(vehicle);
+  return stopRequestState(vehicle.stopReq, vehicle.ego.v, stopRequestsSeen.has(vehicle));
+}
+function applyKeyboard(values) {
+  if (values.accel != null && values.accel !== V.accelPedalPct.value) setAccel(values.accel);
+  if (values.brake != null && values.brake !== V.brakePedalPct.value) setBrake(values.brake);
+  if (values.steer != null && Math.round(values.steer / 5) * 5 !== V.steeringDeg.value) setSteer(values.steer);
+}
+function releaseConsoleInputs() {
+  applyKeyboard(keyboardDrive.releaseAll());
+  if (consoleInput.accel()) setAccel(0);
+  if (consoleInput.brake()) setBrake(0);
+  if (consoleInput.steer()) setSteer(0);
+}
+function manualSteer() { keyboardDrive.takeover('steer'); consoleInput.steer(); }
+function setControlHelp(open) {
+  $('#wasdHint').hidden = !open;
+  $('#controlHelp').setAttribute('aria-expanded', String(open));
+}
 function setSteer(v) { v = clamp(Math.round(v / 5) * 5, -540, 540); setV('steeringDeg', v); syncConsole(); }
 function setBrake(v) {
   v = clamp(v, 0, 100); setV('brakePedalPct', v); setV('brakePressed', v > 5, { onlyIfChanged: true }); syncConsole();
 }
 function setSwitch(id, on) { const b = $(id); b.setAttribute('aria-checked', String(on)); }
+function syncConsoleGear(s) {
+  const label = gearPresentation(s.gear.status === 'OK' ? s.gear.value : null,
+    s.parkingBrakeOn.status === 'OK' ? s.parkingBrakeOn.value : null);
+  const output = $('#c-gearState');
+  if (output.textContent !== label) output.textContent = label;
+}
 function syncConsole() {
   $$('#c-gear button').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.v === V.gear.value)));
+  syncConsoleGear(snapshot());
   $$('#c-turn button').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.v === V.turnSignal.value)));
   setSwitch('#c-pb', V.parkingBrakeOn.value); setSwitch('#c-belt', V.driverBeltBuckled.value); setSwitch('#c-wiper', V.wiperOn.value);
   setSwitch('#c-beam', V.lowBeamOn.value); setSwitch('#c-pass', V.passengerOccupied.value); setSwitch('#c-fast', timeScale > 1);
@@ -1108,51 +1239,34 @@ function syncConsole() {
   $('#c-brakeHold').style.setProperty('--press', String(V.brakePedalPct.value / 100));
   $('#c-accelHold').style.setProperty('--press', String(V.accelPedalPct.value / 100));
 }
-/** 누르고 있는 동안 upMs에 걸쳐 0→100, 떼면 downMs에 걸쳐 0으로 */
-function holdPedal(el, get, set, upMs, downMs) {
-  let raf = null; const stop = () => { if (raf) { cancelAnimationFrame(raf); raf = null; } };
-  el.addEventListener('pointerdown', (e) => {
-    e.preventDefault(); stop(); el.classList.add('down'); el.setPointerCapture?.(e.pointerId);
-    let last = performance.now();
-    const up = (t) => { const v = get() + ((t - last) / upMs) * 100; last = t; set(Math.min(100, v)); if (v < 100) raf = requestAnimationFrame(up); };
-    raf = requestAnimationFrame(up);
-  });
-  const release = () => {
-    if (!el.classList.contains('down')) return; el.classList.remove('down'); stop();
-    const t0 = performance.now(), v0 = get();
-    const down = (t) => { const k = Math.min(1, (t - t0) / downMs); set(v0 * (1 - k)); if (k < 1) raf = requestAnimationFrame(down); else raf = null; };
-    raf = requestAnimationFrame(down);
-  };
-  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((ev) => el.addEventListener(ev, release));
-}
-
 /** 핸들 그림: 잡고 돌린 각도만큼(1:1) 돌아간다. 한 바퀴 넘게도 돌릴 수 있다(±540°). */
 function bindWheel(el) {
   let drag = null;
   const ang = (e) => { const r = el.getBoundingClientRect(); return (Math.atan2(e.clientY - (r.top + r.height / 2), e.clientX - (r.left + r.width / 2)) * 180) / Math.PI; };
-  el.addEventListener('pointerdown', (e) => { e.preventDefault(); el.setPointerCapture?.(e.pointerId); drag = { a: ang(e), v: V.steeringDeg.value, acc: 0, t0: performance.now() }; el.classList.add('down'); });
+  const end = () => { const active = !!drag; drag = null; el.classList.remove('down'); return active; };
+  el.addEventListener('pointerdown', (e) => {
+    if (drag || (e.button != null && e.button !== 0) || e.isPrimary === false) return;
+    e.preventDefault(); keyboardDrive.takeover('steer');
+    el.setPointerCapture?.(e.pointerId); drag = { id: e.pointerId, a: ang(e), v: V.steeringDeg.value, acc: 0 }; el.classList.add('down');
+  });
   el.addEventListener('pointermove', (e) => {
-    if (!drag) return;
+    if (!drag || drag.id !== e.pointerId) return;
     const a = ang(e); let d = a - drag.a; if (d > 180) d -= 360; if (d < -180) d += 360;
     drag.a = a; drag.acc += d; setSteer(drag.v + drag.acc); tick();
   });
-  const end = () => { if (!drag) return; const long = performance.now() - drag.t0 > 250; drag = null; el.classList.remove('down'); if (long) maybeWasdHint(); };
-  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((ev) => el.addEventListener(ev, end));
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((ev) => el.addEventListener(ev, (e) => { if (drag?.id === e.pointerId) end(); }));
   el.addEventListener('keydown', (e) => {
     if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
-    e.preventDefault(); e.stopPropagation(); setSteer(V.steeringDeg.value + (e.key === 'ArrowLeft' ? -15 : 15)); tick();
+    e.preventDefault(); e.stopPropagation(); manualSteer(); setSteer(V.steeringDeg.value + (e.key === 'ArrowLeft' ? -15 : 15)); tick();
   });
-}
-
-/** 마우스로 핸들·페달을 한참 만지면, 가상 주행 중에 한 번만 키보드 안내(콘솔 안 — 앱 화면은 건드리지 않는다) */
-function maybeWasdHint() {
-  if (H.wasdHintSeen || appMode === 'practice' || demo.running) return;
-  $('#wasdHint').hidden = false;
+  return end;
 }
 
 function bindConsole() {
+  $$('#c-maneuver button').forEach((b) => (b.onclick = () => setSimManeuver(b.dataset.v)));
   $$('#c-gear button').forEach((b) => (b.onclick = () => {
     if (sim && simRunning() && sim.ego.v > 0.4 && (b.dataset.v === 'P' || b.dataset.v === 'R')) { flashNote('차가 완전히 멈춘 다음 옮길 수 있어요'); return; }
+    releaseConsoleInputs();
     setV('gear', b.dataset.v, { onlyIfChanged: true });
     if (b.dataset.v === 'P' || b.dataset.v === 'N') { setV('speedKmh', 0); setV('uxRestricted', false, { onlyIfChanged: true }); }
     syncConsole(); tick();
@@ -1163,17 +1277,21 @@ function bindConsole() {
   $('#c-belt').addEventListener('click', () => { if (V.driverBeltBuckled.value) chime('click'); });
   $('#c-fast').onclick = () => { timeScale = timeScale > 1 ? 1 : 30; syncConsole(); };
   $('#c-speed').oninput = (e) => { const v = +e.target.value; setV('speedKmh', v); setV('uxRestricted', v > 0, { onlyIfChanged: true }); syncConsole(); tick(); };
-  $('#c-brake').oninput = (e) => { stopRamp(); setBrake(+e.target.value); tick(); };
-  $('#c-steer').oninput = (e) => { setSteer(+e.target.value); tick(); };
-  $('#c-steer').addEventListener('pointerdown', () => { const t0 = performance.now(); addEventListener('pointerup', () => { if (performance.now() - t0 > 250) maybeWasdHint(); }, { once: true }); });
-  $('#c-steerCenter').onclick = () => { setSteer(0); tick(); };
+  $('#c-steer').oninput = (e) => { manualSteer(); setSteer(+e.target.value); tick(); };
+  $('#c-steerCenter').onclick = () => { manualSteer(); setSteer(0); tick(); };
   // 페달 그림(11/12 회의 A05): 마우스 클릭은 0/1뿐이라 세기를 못 준다 → **누르고 있는 시간만큼 깊게**.
   // 짧게 톡 = 살살, 길게 = 세게. 슬라이더는 그대로 두어 정확한 값도 넣을 수 있다.
-  holdPedal($('#c-brakeHold'), () => V.brakePedalPct.value, setBrake, 1600, 900);
-  holdPedal($('#c-accelHold'), () => V.accelPedalPct.value, setAccel, 2500, 250);
-  bindWheel($('#c-wheel'));
+  const cancelBrakeHold = holdPedal($('#c-brakeHold'), () => V.brakePedalPct.value, setBrake, 1600, 900, { onTakeover: () => keyboardDrive.takeover('brake') });
+  consoleInput.brake = cancelBrakeHold;
+  // 수동 슬라이더는 페달 그림의 누름/놓음 애니메이션보다 우선한다.
+  bindBrakeSlider($('#c-brake'), cancelBrakeHold, setBrake, tick);
+  consoleInput.accel = holdPedal($('#c-accelHold'), () => V.accelPedalPct.value, setAccel, 2500, 250, { onTakeover: () => keyboardDrive.takeover('accel') });
+  consoleInput.steer = bindWheel($('#c-wheel'));
+  $('#c-accel').oninput = (e) => { consoleInput.accel(); setAccel(+e.target.value); };
   $('#c-belt').addEventListener('click', () => { if (!V.driverBeltBuckled.value) return; const r = $('#r-belt'); r.classList.remove('clack'); void r.offsetWidth; r.classList.add('clack'); });
-  $('#wasdHintX').onclick = () => { $('#wasdHint').hidden = true; H.wasdHintSeen = true; saveHistory(); };
+  $('#controlHelp').onclick = () => setControlHelp($('#wasdHint').hidden);
+  $('#wasdHintX').onclick = () => { setControlHelp(false); $('#controlHelp').focus(); };
+  $('#wasdHint').addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.stopPropagation(); setControlHelp(false); $('#controlHelp').focus(); } });
   // 예외 재현
   $('#statusRows').innerHTML = STATUS_KEYS.map((k) => `<label class="st-row"><span>${SIGNALS[k].label}</span>
     <select data-k="${k}">${Object.entries(STATUS_LABEL).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select></label>`).join('');
@@ -1193,13 +1311,14 @@ function bindConsole() {
   $('#c-navDuck').onclick = (e) => {
     speaker.unlock();
     const b = e.currentTarget; b.disabled = true; b.textContent = '내비 안내 중…';
-    speaker.stop();
-    speaking = true;
-    speaker.api?.speak?.(Object.assign(new SpeechSynthesisUtterance('잠시 후 우회전입니다.'), { lang: 'ko-KR', rate: 1 }));
     const dropped = voice?.dropped('AUDIO_FOCUS');
+    if (voice) voice.window = null;
+    speaker.stop('AUDIO_FOCUS');
+    mockNavUntil = performance.now() + 2600;
+    void speaker.speak('잠시 후 우회전입니다.');
     flashNote(dropped ? `내비에 양보: “${dropped.line}” 는 버렸어요` : '내비 안내가 끼어들면 그 말은 버려요');
     renderVoiceMeter();
-    setTimeout(() => { speaking = false; b.disabled = false; b.textContent = '내비 안내 끼어들기'; renderVoiceMeter(); }, 2600);
+    setTimeout(() => { b.disabled = false; b.textContent = '내비 안내 끼어들기'; renderVoiceMeter(); }, 2600);
   };
 
   let armed = false;
@@ -1249,7 +1368,7 @@ function guide(s) {
         const id = judgeState?.judge.id; const p = judgeState?.progress;
         if (p?.kind === 'done') return ['잘했어요 앱에서 <b>[다음]</b>을 눌러요.', null];
         if (p?.kind === 'unavailable') return ['신호를 읽을 수 없어 앱이 건너뛰기를 안내해요.', null];
-        if (id === 'SEAT_BELT') return [V.driverBeltBuckled.value ? '<b>안전벨트</b>를 한 번 풀었다가 다시 매요.' : '이제 <b>안전벨트</b>를 매요.', 'r-belt'];
+        if (id === 'SEAT_BELT') return [V.driverBeltBuckled.value ? '이미 <b>안전벨트</b>를 매고 있다면 그대로 두세요.' : '이제 <b>안전벨트</b>를 매요.', 'r-belt'];
         if (id === 'BRAKE_PRESS_RELEASE') return [p?.step === 2 ? '이제 <b>페달 그림</b>에서 손을 떼요(천천히 떼짐).' : '<b>페달 그림</b>을 꾹 누르고 있거나(누른 만큼 깊게) 막대를 끝까지 밀어요.', 'r-brake'];
         if (id === 'TURN_SIGNAL') return [['방향지시등 <b>◀ 왼쪽</b>', '방향지시등 <b>오른쪽 ▶</b>', '방향지시등 <b>끔</b>'][(p?.step || 1) - 1], 'r-turn'];
         if (id === 'WIPER') return ['<b>와이퍼</b>를 켜 보세요.', 'r-wiper'];
@@ -1293,6 +1412,8 @@ function tick() {
   const before = session;
   session = C.onGate(session, gate, snap, simMs);
   if (before.phase !== session.phase) onPhaseChange(before.phase, session.phase);
+  // E3(C01): 복기 중 주차 확인이 깨지면 장면 재현(작은 창)부터 바로 닫는다
+  if (session.phase === C.Phase.REVIEW && session.lockReason && !before.lockReason) { RP.closePip(); overlay = null; }
   else if (before.phase === C.Phase.PREPARING && before.lockReason && !session.lockReason && judgeState) judgeState.judge.start(snapshot(), now()); // 재개: 새 관측부터
   if (session.phase === C.Phase.PREPARING && !session.lockReason && judgeState && (prep.step === 'mission' || prep.step === 'pedal')) {
     if (judgeState.progress?.kind !== 'done') {
@@ -1319,6 +1440,13 @@ function onPhaseChange(from, to) {
   if (from === C.Phase.DRIVING_LOCK) endVoiceDrive();
 }
 function flashNote(t) {
+  // 주행 잠금 중에는 앱 화면에 아무것도 띄우지 않는다(S04: 주행 중 화면은 정적).
+  // 이 알림들은 모두 콘솔·시연 조작에 대한 것이라 콘솔 쪽에 보여 준다.
+  if (session.phase === C.Phase.DRIVING_LOCK) {
+    const c = $('#consoleFlash'); c.textContent = t; c.hidden = false;
+    clearTimeout(flashNote.t); flashNote.t = setTimeout(() => { c.hidden = true; }, 2600);
+    return;
+  }
   const el = document.createElement('div'); el.className = 'toast note timed'; el.style.setProperty('--life', '1.6s'); el.textContent = t; $('#toasts').appendChild(el);
   setTimeout(() => el.remove(), 1600);
 }
@@ -1381,9 +1509,13 @@ async function startDemo() {
     }
     if (at <= 2) {
       if (mi <= 0) {
-        await step('이미 매고 있던 벨트는 인정하지 않아요 → 풀었다가', 1300); click('#c-belt');
-        await step('다시 ‘딸깍’', 800); click('#c-belt');
-        await step('차가 확인했어요', 1500); click('#nextBtn');
+        if (V.driverBeltBuckled.value) {
+          await step('안전벨트가 이미 체결되어 있어요. 풀지 말고 그대로 유지해요', 1300);
+        } else {
+          await step('미체결 상태라면 안전벨트를 매요', 1000); click('#c-belt');
+        }
+        await waitFor(() => judgeState?.progress?.kind === 'done');
+        await step('안전벨트 상태를 확인했어요', 1500); click('#nextBtn');
       }
       if (mi <= 1) {
         await step('브레이크를 끝까지 꾹', 600); await ramp(setBrake, 0, 100, 500);
@@ -1556,10 +1688,12 @@ Screens.coach = () => ({
   update(force) {
     if (!sim) return;
     const b = $('#stopBtn');
-    const k = sim.stopReq ? 'on' : 'off';
+    const stop = stopDisplay(sim);
+    const k = stop.key;
     if (force || b.dataset.k !== k) {
       b.dataset.k = k;
-      b.innerHTML = sim.stopReq ? `${icon('reset', 30)}<span><b>정지 해제</b><small>${sim.ego.v > 0.2 ? '멈추는 중…' : '멈췄어요. 해제하면 다시 달릴 수 있어요'}</small></span>` : `<i class="stop-ico"></i><span><b>정지 요청</b><small>누르면 차가 부드럽게 멈춰요(가상)</small></span>`;
+      b.dataset.requested = String(sim.stopReq);
+      b.innerHTML = `${sim.stopReq ? icon('reset', 30) : '<i class="stop-ico"></i>'}<span><b>${sim.stopReq ? '정지 요청 해제' : '정지 요청 (가상)'}</b><small>${stop.text}</small></span>`;
     }
     const sn = sim.sensors();
     $('#coachLive').innerHTML = `<div><b>${Math.round(sim.ego.v * 3.6)}</b><small>km/h${sim.settings.cap ? ` · 최고 ${sim.settings.cap}` : ''}</small></div>
@@ -1576,12 +1710,13 @@ Screens.coach = () => ({
 function evItem(e, i) {
   const sensor = e.sensor ? `<em class="sens">${SENSOR_LABEL[e.sensor]} 센서(가상)</em>` : '';
   const tag = e.pts > 0 ? `<b class="pts bad">−${e.pts}</b>` : e.good ? '<b class="pts good">잘함</b>' : '<b class="pts info">기록</b>';
-  const spoke = voice?.didSpeak(e.code, e.t) ? `<span class="rp-spoke" title="주행 중에 음성으로 말한 항목">${icon('sound', 16)} 말했어요</span>` : '';
-  return `<li class="${e.pts > 0 ? 'bad' : e.good ? 'good' : 'info'}"><span class="t">${fmtT(e.t)}</span>${tag}<div><b>${e.title}</b> ${sensor}${spoke}<small>${e.kmh}km/h · ${srcChip('MOCK')} · ${e.advice}</small>${sceneBtn(i, e.t)}</div></li>`;
+  const spoke = voice?.didSpeak(e.eventId) ? `<span class="rp-spoke" title="주행 중에 음성으로 말한 항목">${icon('sound', 16)} 말했어요</span>` : '';
+  const basis = e.phase === 'ENTRY' ? `<small>2D Mock · 가상 진행 ${{ LEFT: '좌회전', RIGHT: '우회전', STRAIGHT: '직진' }[e.dir] || '미확인'} · 깜빡이 ${{ LEFT: '왼쪽', RIGHT: '오른쪽', NONE: '끔' }[e.basis.signal] || '미확인'} · 진입 ${e.basis.speedKmh.toFixed(1)}km/h · 가상 ${['왼쪽', '가운데', '오른쪽'][e.basis.lane + 1]} 차로</small>` : '';
+  return `<li class="${e.pts > 0 ? 'bad' : e.good ? 'good' : 'info'}"><span class="t">${fmtT(e.t)}</span>${tag}<div><b>${e.title}</b> ${sensor}${spoke}<small>${e.kmh}km/h · ${srcChip('MOCK')} · ${e.advice}</small>${basis}${sceneBtn(i, e.t)}</div></li>`;
 }
 
 // 리포트 사건 → 리플레이 항목 모양(그래프·재현 창이 같은 모양을 쓴다). 순서는 r.events와 같다.
-const reportRows = (r) => r.events.map((e) => ({ atSec: e.t, title: e.title, kind: e.pts > 0 ? 'note' : e.good ? 'good' : 'info', spoken: !!voice?.didSpeak(e.code, e.t), source: 'MOCK' }));
+const reportRows = (r) => r.events.map((e) => ({ atSec: e.t, title: e.title, kind: e.pts > 0 ? 'note' : e.good ? 'good' : 'info', spoken: !!voice?.didSpeak(e.eventId), source: 'MOCK' }));
 
 // ── 주행 리포트 ──
 Screens.report = () => ({
@@ -1670,14 +1805,15 @@ function drawSimView() {
   const hud = $('#simHud');
   const last = sv.events[sv.events.length - 1];
   const recent = last && sv.t - last.t < 2.6 ? last : null;
-  const hk = [sv.settings.cap, sv.settings.lka, sv.settings.acc, sv.settings.accSet, sv.stopReq, recent?.t, appMode].join('|');
+  const stop = stopDisplay(sv);
+  const hk = [sv.settings.cap, sv.settings.lka, sv.settings.acc, sv.settings.accSet, stop.key, recent?.t, appMode].join('|');
   if (hud.dataset.k !== hk) {
     hud.dataset.k = hk;
     hud.innerHTML = `<div class="hud-top"><span class="limit">${SIM.ROAD_LIMIT_KMH}</span>
       ${appMode === 'coach' ? `${sv.settings.cap ? `<span class="hchip cap">최고 ${sv.settings.cap}</span>` : ''}
       <span class="hchip ${sv.settings.lka !== 'off' ? 'on' : ''}">차선 보조 ${{ off: '끔', normal: '보통', strong: '강' }[sv.settings.lka]}</span>
       <span class="hchip ${sv.settings.acc ? 'on' : ''}">크루즈 ${sv.settings.acc ? sv.settings.accSet : '끔'}</span>` : '<span class="hchip">평가 중 · 보조 끔</span>'}</div>
-      ${sv.stopReq ? '<div class="hud-stop">강습자 정지 요청 — 천천히 멈춰요</div>' : ''}
+      ${sv.stopReq ? `<div class="hud-stop">${stop.text}</div>` : ''}
       ${recent ? `<div class="hud-ev ${recent.pts > 0 ? 'bad' : recent.good ? 'good' : ''}">${recent.sensor ? `${{ front: '전방', rear: '후방', side: '측방' }[recent.sensor]} 센서 · ` : ''}${recent.title}${recent.pts ? ` −${recent.pts}` : ''}</div>` : ''}`;
   }
 }
@@ -1710,7 +1846,7 @@ function drawJunctions(ctx, sv, W, Hh, ppm, X, Y) {
   if (lt && sv.t - lt.t < 1.6) {
     const J = SIM.junctionAt(lt.k); const sgn = lt.dir === 'RIGHT' ? 1 : -1; const k = (sv.t - lt.t) / 1.6;
     ctx.strokeStyle = TA('--primary', 0.55 * (1 - k)); ctx.lineWidth = SIM.CAR_W * ppm * 0.6; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(X(e.x), Y(J.s)); ctx.quadraticCurveTo(X(e.x), Y(J.s + SIM.JUNCTION_W / 2), X(e.x + sgn * 7), Y(J.s + SIM.JUNCTION_W / 2)); ctx.stroke(); ctx.lineCap = 'butt';
+    ctx.beginPath(); ctx.moveTo(X(lt.x), Y(J.s)); ctx.quadraticCurveTo(X(lt.x), Y(J.s + SIM.JUNCTION_W / 2), X(lt.x + sgn * 7), Y(J.s + SIM.JUNCTION_W / 2)); ctx.stroke(); ctx.lineCap = 'butt';
   }
 }
 function carTop(ctx, cx, cy, ppm, color, ego, signal, t) {
@@ -1741,32 +1877,28 @@ function pumpVoice() {
       wiperOn: V.wiperOn.value, lowBeamOn: V.lowBeamOn.value, gear: V.gear.value,
     });
     for (const code of codes) {
-      replayRows.push({ t: voiceSec, code, title: VOICE.TITLES[code] || code, kmh: V.speedKmh.value, sensor: null, advice: '' });
-      offerVoice(code, voiceSec, V.speedKmh.value);
+      const eventId = recordVoiceEvent({ t: voiceSec, code, title: VOICE.TITLES[code] || code, kmh: V.speedKmh.value, sensor: null, advice: '' });
+      voice.queue(code, voiceSec, V.speedKmh.value, eventId);
     }
   } else if (sim) {
-    // 시뮬레이션이 새로 남긴 기록만 처리한다
     while (seenSimEvents < sim.events.length) {
       const e = sim.events[seenSimEvents++];
-      replayRows.push(e);
-      // 교차로 접근은 '정보' 기록이지만 음성은 회전 주의를 연다(길 안내가 아니라 주의만)
-      if (e.code === 'JUNCTION_AHEAD') offerVoice(e.dir === 'LEFT' ? 'TURN_LEFT_CAUTION' : 'TURN_RIGHT_CAUTION', e.t, e.kmh);
-      else if (!e.good && !e.info) offerVoice(e.code, e.t, e.kmh);
+      const eventId = recordVoiceEvent(e);
+      if (e.code === 'JUNCTION_AHEAD') {
+        if (e.dir === 'LEFT' || e.dir === 'RIGHT') {
+          voice.queue(e.dir === 'LEFT' ? 'TURN_LEFT_CAUTION' : 'TURN_RIGHT_CAUTION', e.t, e.kmh, eventId);
+        }
+      } else if (!e.good && !e.info) voice.queue(e.code, e.t, e.kmh, eventId);
     }
   }
-  flushVoice(appMode === 'practice' ? voiceSec : (sim ? sim.t : voiceSec));
-  // 달리는 동안 오래 조용했으면 칭찬 한 번
-  const s = voice.considerSteady(voiceSec, V.speedKmh.value);
-  if (s) {
-    if (speaking) voice.dropped('BUSY');
-    else {
-      speaking = true;
-      speaker.speak(s.line).then((r) => {
-        speaking = false;
-        if (r === 'spoken') { voice.committed(s); replayRows.push({ t: s.atSec, code: 'STEADY', title: VOICE.TITLES.STEADY, kmh: s.kmh, sensor: null, advice: '', good: true }); }
-        else voice.dropped(speaker.lastError || 'AUDIO_FOCUS');
-        renderVoiceMeter();
-      });
+  const nowSec = appMode === 'practice' ? voiceSec : (sim?.t ?? voiceSec);
+  const utterance = voice.flush(nowSec);
+  if (utterance) void playCoaching(voice, utterance);
+  else if (!voice.pending && performance.now() >= mockNavUntil) {
+    const praise = voice.considerSteady(nowSec, V.speedKmh.value, nextVoiceEventId + 1);
+    if (praise) {
+      nextVoiceEventId++;
+      void playCoaching(voice, praise);
     }
   }
 }
@@ -1801,19 +1933,24 @@ const sceneBtn = (i, atSec) => (track.hasScene(atSec) ? `<button type="button" c
 
 let simLast = performance.now();
 let simLoopOn = false; let lastIdleDraw = 0;
-const keysDown = new Set();
 function startSimLoop() { if (simLoopOn) return; simLoopOn = true; simLast = performance.now(); requestAnimationFrame(simLoop); }
 function simLoop(t) {
   const driving = session.phase === C.Phase.DRIVING_LOCK;
   // 연습 모드에서는 주행 중이 아닐 때 루프를 멈춘다(성능). 주행 중에는 음성 감시 때문에 돌려야 한다.
   if (appMode === 'practice' && !simRunning() && !driving) { simLoopOn = false; return; }
-  const dt = Math.min(0.06, (t - simLast) / 1000); simLast = t;
+  const slow = appMode === 'practice' && !simRunning();   // 연습 주행 잠금: 화면이 정적이라 초당 10번이면 음성 감시에 충분
+  const dt = siteOverlayOpen() ? 0 : Math.min(slow ? 0.25 : 0.06, (t - simLast) / 1000); simLast = t;   // 체험판 안내를 읽는 동안 가상 주행 정지
   if (driving) { voiceSec += dt * timeScale; voiceRealSec += dt; pumpVoice(); recordTrack(); }
+  if (!simRunning() || overlay) applyKeyboard(keyboardDrive.releaseAll());
+  else applyKeyboard(keyboardDrive.sample(dt));
   if (simRunning()) {
     sim.input.accel = V.accelPedalPct.value / 100; sim.input.brake = V.brakePedalPct.value / 100;
     sim.input.steer = V.steeringDeg.value; sim.input.signal = V.turnSignal.value; sim.input.gear = V.gear.value;
+    sim.input.maneuver = simManeuver;
+    const junctionBefore = sim.junction.k;
     if (V.gear.value === 'P') sim.ego.v = 0;
     const n = Math.max(1, Math.round(dt / 0.02)); for (let i = 0; i < n; i++) sim.step(dt / n);
+    if (sim.junction.k !== junctionBefore) setSimManeuver('STRAIGHT');
     const kmh = Math.round(sim.ego.v * 3.6);
     if (kmh !== V.speedKmh.value) setV('speedKmh', kmh);
     setV('uxRestricted', sim.ego.v > 0.3, { onlyIfChanged: true });
@@ -1822,29 +1959,32 @@ function simLoop(t) {
   }
   // 주행 중이 아니면 도로 미리보기는 0.4초에 한 번만 그린다(정차 중 CPU 절약)
   if (appMode !== 'practice' && (simRunning() || t - lastIdleDraw > 400)) { drawSimView(); lastIdleDraw = t; }
-  requestAnimationFrame(simLoop);
+  if (slow) setTimeout(() => requestAnimationFrame(simLoop), 90); else requestAnimationFrame(simLoop);
 }
 startSimLoop();
 
 // 키보드 운전(가상 주행 중): ↑/W 가속 · ↓/S 브레이크 · ←→/A D 핸들 · 스페이스 = 강습자 정지(강습 모드)
-const WASD = { KeyW: 'ArrowUp', KeyS: 'ArrowDown', KeyA: 'ArrowLeft', KeyD: 'ArrowRight' };
 function keyDrive(e) {
-  if (!simRunning() || overlay || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName || '')) return;
-  const down = e.type === 'keydown';
-  if (document.activeElement?.getAttribute?.('role') === 'slider') return; // 핸들 그림에 포커스면 그쪽이 받는다
-  // W A S D도 같은 뜻(11/12 회의). e.code로 봐서 한글 입력 상태(ㅈㅁㄴㅇ)에서도 된다
-  const key = WASD[e.code] || e.key;
-  const map = { ArrowUp: 1, ArrowDown: 1, ArrowLeft: 1, ArrowRight: 1 };
-  if (e.key === ' ' && down && appMode === 'coach') { e.preventDefault(); sim.requestStop(!sim.stopReq); return; }
-  if (!map[key]) return;
+  const code = e.code || e.key, down = e.type === 'keydown';
+  const channel = keyboardDrive.channel(code);
+  // 해제는 포커스·오버레이가 바뀌어도 먼저 처리한다.
+  if (!down) { if (channel) keyboardDrive.key(code, false); return; }
+  if (!simRunning() || overlay || e.repeat || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName || '') ||
+      (document.activeElement?.getAttribute?.('role') === 'slider' && !/^Key[WASD]$/.test(code))) return;
+  if (e.code === 'Space' && appMode === 'coach' && !e.target.closest?.('button')) {
+    e.preventDefault(); sim.requestStop(!sim.stopReq); return;
+  }
+  if (!channel) return;
   e.preventDefault();
-  if (down) keysDown.add(key); else keysDown.delete(key);
-  if (down && WASD[e.code] && !H.wasdHintSeen) { H.wasdHintSeen = true; saveHistory(); $('#wasdHint').hidden = true; }
-  setAccel(keysDown.has('ArrowUp') ? 45 : 0);
-  setBrake(keysDown.has('ArrowDown') ? 55 : 0);
-  setSteer(keysDown.has('ArrowLeft') ? -110 : keysDown.has('ArrowRight') ? 110 : 0);
+  if (!keyboardDrive.has(code)) consoleInput[channel]();
+  const initial = channel === 'steer' ? V.steeringDeg.value : channel === 'brake' ? V.brakePedalPct.value : V.accelPedalPct.value;
+  keyboardDrive.key(code, true, initial);
 }
 addEventListener('keydown', keyDrive); addEventListener('keyup', keyDrive);
+addEventListener('blur', releaseConsoleInputs);
+document.addEventListener('visibilitychange', () => { if (document.hidden) releaseConsoleInputs(); });
+document.addEventListener('focusin', (e) => { if (/INPUT|SELECT|TEXTAREA/.test(e.target.tagName || '')) applyKeyboard(keyboardDrive.releaseAll()); });
+
 function setAccel(v) { setV('accelPedalPct', clamp(v, 0, 100)); syncConsole(); }
 
 // ── 모드 전환 ──
@@ -1857,6 +1997,7 @@ function setMode(m) {
   applyMode(); render();
 }
 function applyMode() {
+  setSimManeuver('STRAIGHT');
   document.body.dataset.mode = appMode;
   $$('#modeSeg button').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.v === appMode)));
   $('#simGroup').hidden = appMode === 'practice';
@@ -1879,7 +2020,8 @@ async function startSimDemo() {
   const steerTo = async (lane, sig) => {
     if (sig) setV('turnSignal', sig); syncConsole();
     const target = lane * SIM.LANE_W;
-    await waitFor(() => { const dx = target - sim.ego.x; setSteer(clamp(dx * 140, -220, 220)); return Math.abs(dx) < 0.12; }, 9000);
+    // 차로 이동 속도는 차 속도에 비례한다(sim.js vy). A05 이후 시연 속 차가 느려져(약 24km/h) 9초로는 모자라 시연이 멈췄다 → 기본 30초
+    await waitFor(() => { const dx = target - sim.ego.x; setSteer(clamp(dx * 140, -220, 220)); return Math.abs(dx) < 0.12; });
     setSteer(0); setV('turnSignal', 'NONE'); syncConsole();
   };
   const coach = appMode === 'coach';
@@ -1909,14 +2051,15 @@ async function startSimDemo() {
     await step('후방 센서 감지: 무리한 끼어들기(−8) + 방향지시등 없음(−3)', 2200);
     // 가상 교차로 우회전(A04): 맨 오른쪽 차로 → 교차로 앞에서 속도 줄이고 깜빡이 → 천천히 돌기
     {
-      const J = SIM.nextJunction(sim.ego.s + 110); const R = J.dir === 'RIGHT';
+      // 차로 이동·감속 중에 목표 교차로를 지나치지 않도록 충분히 먼 구간을 고른다.
+      const J = SIM.nextJunction(sim.ego.s + 300); const R = J.dir === 'RIGHT';
       await step(`다음 교차로에서 ${R ? '우' : '좌'}회전 — ${R ? '맨 오른쪽' : '맨 왼쪽'} 차로로 미리 옮겨요`, 300); await steerTo(R ? 1 : -1, J.dir);
-      await waitFor(() => J.s - sim.ego.s < 75, 40000);
+      await waitFor(() => J.s - sim.ego.s < 150, 40000);
       await step(`${R ? '우' : '좌'}회전 구간 — 속도를 줄이고 깜빡이 켜기. 음성: “${VOICE.LINES[R ? 'TURN_RIGHT_CAUTION' : 'TURN_LEFT_CAUTION'].line}”`, 300);
       setAccel(0); await ramp(setBrake, 0, 25, 500);
-      await waitFor(() => sim.ego.v * 3.6 < 20, 9000); setBrake(0); setAccel(8);
-      setV('turnSignal', J.dir); syncConsole();
-      await waitFor(() => sim.junction.k >= J.k, 20000);
+      await waitFor(() => sim.ego.v * 3.6 < 20, 9000); setBrake(0); setAccel(4);
+      setSimManeuver(J.dir); setV('turnSignal', J.dir); syncConsole();
+      await waitFor(() => sim.junction.k >= J.k, 35000);
       setV('turnSignal', 'NONE'); syncConsole();
       const good = sim.lastTurn?.k === J.k && sim.events.some((x) => x.code === 'TURN_GOOD' && x.t >= sim.lastTurn.t);
       await step(good ? '천천히, 알맞은 차로에서 돌았어요 — 교차로 회전 잘함' : '회전 기록이 남았어요 — 주차 후 리포트에서 다시 봐요', 1600); setAccel(25);
@@ -1953,8 +2096,51 @@ tickClock(); setInterval(tickClock, 20000);
 $('#historyBtn .ib-ico').innerHTML = icon('star', 22);
 $('#profileBtn .ib-ico').innerHTML = icon('user', 22);
 $('#consoleFab .fab-ico').innerHTML = icon('console', 22);
-$('#historyBtn').onclick = () => openOverlay('history');
-$('#profileBtn').onclick = () => openOverlay('profile');
+// C04: 앱 안의 창(내 기록·설정)은 주행 중에 열지 않는다(S04). 전에는 누르면 아무 반응이 없다가
+// 주차하는 순간 갑자기 떴다(누른 기록이 남아서) → 주행 중에는 누른 것을 무시하고, 버튼에 이유를 적어 둔다.
+function appOverlayLocked() { return session.phase === C.Phase.DRIVING_LOCK; }   // 함수 선언: renderChrome이 먼저 불려도 안전
+function syncAppButtons() {
+  const locked = appOverlayLocked();
+  for (const id of ['historyBtn', 'profileBtn']) {
+    const b = $('#' + id); if (!b) continue;
+    b.setAttribute('aria-disabled', String(locked));
+    b.classList.toggle('is-locked', locked);
+    b.title = locked ? '주행 중에는 열지 않아요. 기어 P + 주차 브레이크를 걸면 열려요' : '';
+  }
+}
+$('#historyBtn').onclick = () => { if (!appOverlayLocked()) openOverlay('history'); };
+
+// ── C04: 하단 바(시스템 영역) — 데모에서 열리지 않는 버튼을 누르면 이유를 말해 준다 ──
+// 전에는 아무 반응이 없어 고장처럼 보였다. 말풍선은 앱 화면이 아니라 하단 바 위(시스템 영역)에 띄운다.
+// 주행 중에는 움직임 없이 글자만 바뀐다(S04 — 앱 화면은 그대로).
+const GNB_NAME = { road: '내비', music: '미디어', phone: '전화', grid: '앱 라이브러리', home: '홈', gear: '차량 설정', defrost: '서리 제거', seatHeat: '시트 열선' };
+let gnbTipTimer = 0;
+/** 받침에 맞는 조사: 내비는 / 홈은 / 공조 온도는 */
+const eunNeun = (w) => { const c = w.charCodeAt(w.length - 1); return c >= 0xAC00 && c <= 0xD7A3 && (c - 0xAC00) % 28 ? `${w}은` : `${w}는`; };
+function gnbNotice(text) {
+  const tip = $('#gnbTip'); if (!tip) return;
+  tip.textContent = text; tip.hidden = false;
+  tip.classList.toggle('still', session.phase === C.Phase.DRIVING_LOCK);
+  clearTimeout(gnbTipTimer); gnbTipTimer = setTimeout(() => { tip.hidden = true; }, 2600);
+}
+function bindGnb() {
+  const items = $$('.pleos-gnb .gnb-app, .pleos-gnb .gnb-ico, .pleos-gnb .gnb-climate');
+  for (const el of items) {
+    const key = el.dataset.ico;
+    const self = el.classList.contains('on');
+    const name = el.classList.contains('gnb-climate') ? '공조 온도' : (GNB_NAME[key] || el.textContent.trim() || el.title);
+    el.setAttribute('role', 'button'); el.tabIndex = 0;
+    el.setAttribute('aria-label', self ? '치일까봐 — 지금 열려 있는 앱' : `${name} — 데모에서는 열리지 않아요`);
+    const go = () => gnbNotice(self ? '지금 보고 있는 치일까봐예요'
+      : el.classList.contains('gnb-climate') || ['defrost', 'seatHeat', 'gear'].includes(key)
+        ? `${eunNeun(name)} 차가 직접 다루는 기능이라 데모에서는 바꿀 수 없어요. 치일까봐는 차를 조작하지 않아요`
+        : `${eunNeun(name)} 실제 차에서 열리는 앱이에요. 이 데모에서는 치일까봐만 열려요`);
+    el.addEventListener('click', go);
+    el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+  }
+}
+bindGnb();
+$('#profileBtn').onclick = () => { if (!appOverlayLocked()) openOverlay('profile'); };
 $('#helpBtn').onclick = () => { obStep = 0; openOverlay('intro'); };
 $('#aboutBtn').onclick = () => openOverlay('about');
 $('#demoSpeed').onchange = (e) => { demoSpeed = +e.target.value || 1; };
@@ -1967,7 +2153,6 @@ syncThemeBtn();
 $('#themeBtn').onclick = () => THEME.toggle();
 bindConsole(); syncConsole();
 $$('#modeSeg button').forEach((b) => (b.onclick = () => setMode(b.dataset.v)));
-$('#c-accel').oninput = (e) => { setAccel(+e.target.value); };
 applyMode();
 render();
 setInterval(tick, 100);

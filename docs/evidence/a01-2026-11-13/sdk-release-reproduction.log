@@ -1,0 +1,15 @@
+11-13 05:35:27.006 21878 21878 D [Pleos][SDK]a: [main]removeRequest() called with: propIdName = SEAT_BELT_BUCKLED, areaType = 3
+11-13 05:35:27.013 21878 21878 D [Pleos][SDK]a: [main]removeRequest() called with: propIdName = BRAKE_PEDAL_STATUS, areaType = 0
+11-13 05:35:27.017 21878 21878 D [Pleos][SDK]a: [main]removeRequest() called with: propIdName = TURN_SIGNAL_STATE, areaType = 0
+11-13 05:35:27.018 21878 21878 D [Pleos][SDK]Vehicle: [main]release
+11-13 05:35:27.019 21878 21878 D [Pleos][SDK]a: [main]clearAllListeners() called
+11-13 05:35:27.006 21878 21878 D [Pleos][SDK]a: [main]removeRequest() called with: propIdName = SEAT_BELT_BUCKLED, areaType = 3
+11-13 05:35:27.013 21878 21878 D [Pleos][SDK]a: [main]removeRequest() called with: propIdName = BRAKE_PEDAL_STATUS, areaType = 0
+11-13 05:35:27.017 21878 21878 D [Pleos][SDK]a: [main]removeRequest() called with: propIdName = TURN_SIGNAL_STATE, areaType = 0
+11-13 05:35:27.018 21878 21878 D [Pleos][SDK]Vehicle: [main]release
+11-13 05:35:27.019 21878 21878 D [Pleos][SDK]a: [main]clearAllListeners() called
+11-13 05:36:05.426 21878 21878 D [Pleos][SDK]a: [main]removeRequest() called with: propIdName = SEAT_BELT_BUCKLED, areaType = 3
+11-13 05:36:05.428 21878 21878 D [Pleos][SDK]a: [main]removeRequest() called with: propIdName = BRAKE_PEDAL_STATUS, areaType = 0
+11-13 05:36:05.444 21878 21878 D [Pleos][SDK]a: [main]removeRequest() called with: propIdName = TURN_SIGNAL_STATE, areaType = 0
+11-13 05:36:05.444 21878 21878 D [Pleos][SDK]Vehicle: [main]release
+11-13 05:36:05.445 21878 21878 D [Pleos][SDK]a: [main]clearAllListeners() called

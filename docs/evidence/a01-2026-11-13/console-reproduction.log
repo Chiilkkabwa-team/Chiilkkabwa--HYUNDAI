@@ -1,0 +1,43 @@
+--------- beginning of main
+11-13 02:45:20.359 29965 15865 D PleosVehicleSource: SDK callback sensor=BRAKE value=true
+11-13 02:45:20.360 29965 29965 D A01SignalTrace: gate=Locked(reason=PARKING_BRAKE_OFF) gear=OK/PARK parkingBrake=OK/false ux=OK/false belt=OK/false brake=OK/true turn=OK/NONE source=EMULATOR
+11-13 05:33:18.129 21878 21878 D PleosVehicleSource: SDK session start source=EMULATOR
+11-13 05:33:18.130 21878 21878 D A01SignalTrace: gate=Locked(reason=UNKNOWN_STATE) gear=UNKNOWN/null parkingBrake=UNKNOWN/null ux=OK/false belt=UNKNOWN/null brake=UNKNOWN/null turn=UNKNOWN/null source=EMULATOR
+11-13 05:33:26.869 21878 21878 D A01SignalTrace: gate=Locked(reason=UNKNOWN_STATE) gear=OK/PARK parkingBrake=UNKNOWN/null ux=OK/false belt=UNKNOWN/null brake=UNKNOWN/null turn=UNKNOWN/null source=EMULATOR
+11-13 05:33:26.873 21878 21878 D A01SignalTrace: gate=Locked(reason=PARKING_BRAKE_OFF) gear=OK/PARK parkingBrake=OK/false ux=OK/false belt=UNKNOWN/null brake=UNKNOWN/null turn=UNKNOWN/null source=EMULATOR
+11-13 05:33:29.502 21878 21928 D PleosVehicleSource: SDK callback sensor=TURN value=OFF
+11-13 05:33:29.603 21878 22702 D PleosVehicleSource: SDK callback sensor=BELT value=false
+11-13 05:33:29.654 21878 22702 D PleosVehicleSource: SDK callback sensor=BRAKE value=false
+11-13 05:33:32.465 21878 21878 D A01SignalTrace: gate=Locked(reason=PARKING_BRAKE_OFF) gear=OK/PARK parkingBrake=OK/false ux=OK/false belt=OK/false brake=OK/false turn=OK/NONE source=EMULATOR
+11-13 05:35:00.431 21878 27839 D PleosVehicleSource: SDK callback sensor=BRAKE value=true
+11-13 05:35:00.433 21878 21878 D A01SignalTrace: gate=Locked(reason=PARKING_BRAKE_OFF) gear=OK/PARK parkingBrake=OK/false ux=OK/false belt=OK/false brake=OK/true turn=OK/NONE source=EMULATOR
+11-13 05:35:18.976 21878 27839 D PleosVehicleSource: SDK callback sensor=BRAKE value=false
+11-13 05:35:18.979 21878 21878 D A01SignalTrace: gate=Locked(reason=PARKING_BRAKE_OFF) gear=OK/PARK parkingBrake=OK/false ux=OK/false belt=OK/false brake=OK/false turn=OK/NONE source=EMULATOR
+11-13 05:35:25.924 21878 21914 D PleosVehicleSource: SDK callback sensor=TURN value=LEFT
+11-13 05:35:25.926 21878 21878 D A01SignalTrace: gate=Locked(reason=PARKING_BRAKE_OFF) gear=OK/PARK parkingBrake=OK/false ux=OK/false belt=OK/false brake=OK/false turn=OK/LEFT source=EMULATOR
+11-13 05:35:27.081 21878 21878 D A01SignalTrace: gate=Locked(reason=UNKNOWN_STATE) gear=DISCONNECTED/null parkingBrake=DISCONNECTED/null ux=DISCONNECTED/null belt=DISCONNECTED/null brake=DISCONNECTED/null turn=DISCONNECTED/null source=EMULATOR
+11-13 05:35:50.709 21878 21878 D A01SignalTrace: gate=Locked(reason=UNKNOWN_STATE) gear=DISCONNECTED/null parkingBrake=DISCONNECTED/null ux=OK/false belt=DISCONNECTED/null brake=DISCONNECTED/null turn=DISCONNECTED/null source=EMULATOR
+11-13 05:35:50.794 21878 21878 D PleosVehicleSource: SDK session start source=EMULATOR
+11-13 05:35:50.795 21878 21878 D A01SignalTrace: gate=Locked(reason=UNKNOWN_STATE) gear=DISCONNECTED/null parkingBrake=DISCONNECTED/null ux=OK/false belt=UNKNOWN/null brake=UNKNOWN/null turn=UNKNOWN/null source=EMULATOR
+11-13 05:35:52.026 21878 21878 D A01SignalTrace: gate=Locked(reason=UNKNOWN_STATE) gear=OK/PARK parkingBrake=DISCONNECTED/null ux=OK/false belt=UNKNOWN/null brake=UNKNOWN/null turn=UNKNOWN/null source=EMULATOR
+11-13 05:35:52.028 21878 21878 D A01SignalTrace: gate=Locked(reason=PARKING_BRAKE_OFF) gear=OK/PARK parkingBrake=OK/false ux=OK/false belt=UNKNOWN/null brake=UNKNOWN/null turn=UNKNOWN/null source=EMULATOR
+11-13 05:35:52.682 21878 21914 D PleosVehicleSource: SDK callback sensor=TURN value=OFF
+11-13 05:35:52.694 21878 21878 D A01SignalTrace: gate=Locked(reason=PARKING_BRAKE_OFF) gear=OK/PARK parkingBrake=OK/false ux=OK/false belt=UNKNOWN/null brake=UNKNOWN/null turn=OK/NONE source=EMULATOR
+11-13 05:35:52.819 21878 22709 D PleosVehicleSource: SDK callback sensor=BRAKE value=false
+11-13 05:35:52.824 21878 21878 D A01SignalTrace: gate=Locked(reason=PARKING_BRAKE_OFF) gear=OK/PARK parkingBrake=OK/false ux=OK/false belt=UNKNOWN/null brake=OK/false turn=OK/NONE source=EMULATOR
+11-13 05:35:52.956 21878 21878 D A01SignalTrace: gate=Locked(reason=PARKING_BRAKE_OFF) gear=OK/PARK parkingBrake=OK/false ux=OK/false belt=OK/false brake=OK/false turn=OK/NONE source=EMULATOR
+11-13 05:35:53.008 21878 22709 D PleosVehicleSource: SDK callback sensor=BELT value=false
+11-13 05:36:05.070 21878  1307 D PleosVehicleSource: SDK callback sensor=TURN value=RIGHT
+11-13 05:36:05.072 21878 21878 D A01SignalTrace: gate=Locked(reason=PARKING_BRAKE_OFF) gear=OK/PARK parkingBrake=OK/false ux=OK/false belt=OK/false brake=OK/false turn=OK/RIGHT source=EMULATOR
+11-13 05:36:05.460 21878 21878 D A01SignalTrace: gate=Locked(reason=UNKNOWN_STATE) gear=DISCONNECTED/null parkingBrake=DISCONNECTED/null ux=DISCONNECTED/null belt=DISCONNECTED/null brake=DISCONNECTED/null turn=DISCONNECTED/null source=EMULATOR
+11-13 05:36:23.374 21878 21878 D A01SignalTrace: gate=Locked(reason=UNKNOWN_STATE) gear=DISCONNECTED/null parkingBrake=DISCONNECTED/null ux=OK/false belt=DISCONNECTED/null brake=DISCONNECTED/null turn=DISCONNECTED/null source=EMULATOR
+11-13 05:36:23.394 21878 21878 D PleosVehicleSource: SDK session start source=EMULATOR
+11-13 05:36:23.395 21878 21878 D A01SignalTrace: gate=Locked(reason=UNKNOWN_STATE) gear=DISCONNECTED/null parkingBrake=DISCONNECTED/null ux=OK/false belt=UNKNOWN/null brake=UNKNOWN/null turn=UNKNOWN/null source=EMULATOR
+11-13 05:36:23.574 21878 21878 D A01SignalTrace: gate=Locked(reason=UNKNOWN_STATE) gear=OK/PARK parkingBrake=DISCONNECTED/null ux=OK/false belt=UNKNOWN/null brake=UNKNOWN/null turn=UNKNOWN/null source=EMULATOR
+11-13 05:36:23.574 21878 21878 D A01SignalTrace: gate=Locked(reason=PARKING_BRAKE_OFF) gear=OK/PARK parkingBrake=OK/false ux=OK/false belt=UNKNOWN/null brake=UNKNOWN/null turn=UNKNOWN/null source=EMULATOR
+11-13 05:36:25.444 21878  1307 D PleosVehicleSource: SDK callback sensor=BRAKE value=false
+11-13 05:36:25.481 21878 21878 D A01SignalTrace: gate=Locked(reason=PARKING_BRAKE_OFF) gear=OK/PARK parkingBrake=OK/false ux=OK/false belt=UNKNOWN/null brake=OK/false turn=UNKNOWN/null source=EMULATOR
+11-13 05:36:25.578 21878 21878 D A01SignalTrace: gate=Locked(reason=PARKING_BRAKE_OFF) gear=OK/PARK parkingBrake=OK/false ux=OK/false belt=UNKNOWN/null brake=OK/false turn=OK/NONE source=EMULATOR
+11-13 05:36:25.586 21878 22709 D PleosVehicleSource: SDK callback sensor=TURN value=OFF
+11-13 05:36:25.638 21878 21878 D A01SignalTrace: gate=Locked(reason=PARKING_BRAKE_OFF) gear=OK/PARK parkingBrake=OK/false ux=OK/false belt=OK/false brake=OK/false turn=OK/NONE source=EMULATOR
+11-13 05:36:25.661 21878 22709 D PleosVehicleSource: SDK callback sensor=BELT value=false

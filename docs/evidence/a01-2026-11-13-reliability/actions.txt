@@ -1,0 +1,6 @@
+Seat Belt telltale ON; force-stop/start for fresh initial reads; 2026-11-13T23:22:39.7844573+09:00
+Parking Brake telltale ON; fresh reads; 2026-11-13T23:23:16.9426938+09:00
+Electronic Parking Brake telltale ON; fresh initial reads; 2026-11-13T23:24:47.9906001+09:00
+HOME pause start 2026-11-13T23:24:51.1829046+09:00
+Settings pause start 2026-11-13T23:25:10.0733884+09:00
+KEYCODE_SLEEP display test 2026-11-13T23:31:09.2005634+09:00
