@@ -79,7 +79,7 @@ private fun DrawScope.face(mood: Mood) {
         }
         Mood.WORRIED -> {
             drawOval(Ink, Offset(42.6f, 52.4f), Size(8.8f, 11.2f)); drawOval(Ink, Offset(68.6f, 52.4f), Size(8.8f, 11.2f))
-            drawPath(p("M39 47l12 3M81 47l-12 3"), Ink, style = s(3f))
+            drawPath(p("M39 50l12-4M81 50l-12-4"), Ink, style = s(3f))
             drawPath(p("M55 71q5-4 10 0"), Ink, style = s(3f))
             drawPath(p("M88 40q4 7 0 10q-4-3 0-10z"), Color(0xFF9FD3FF))
         }

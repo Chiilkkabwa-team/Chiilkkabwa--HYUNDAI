@@ -6,6 +6,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -27,6 +29,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -90,31 +93,95 @@ fun AppRoot(
     LaunchedEffect(parkedMenu) { if (!parkedMenu) sheet = null }
     // 처음 실행이면 사용법을 한 번 보여 준다(닫으면 다시 안 뜸)
     val shown = if (!parkedMenu) null else sheet ?: if (!ui.onboardingSeen) Sheet.INTRO else null
-    // 큰 차량 창에서는 전체를 키운다(CarScale). 그 안의 배치는 1100×680dp 기준
-    Box(Modifier.fillMaxSize().background(Tokens.Bg)) { CarScale {
-    Box(Modifier.fillMaxSize().padding(horizontal = 32.dp, vertical = 24.dp)) {
-        // 차량 화면(Connect-S·W)은 가로로 넓고 세로가 짧다: 가운데 최대 폭, 세로 스크롤(주행 잠금 제외)
-        val scroll = rememberScrollState()
-        Box(Modifier.align(Alignment.TopCenter).widthIn(max = MaxContentWidth).fillMaxWidth().fillMaxHeight()
-            .then(if (ui.session.phase == Phase.DRIVING_LOCK) Modifier else Modifier.verticalScroll(scroll))) {
-            when (ui.session.phase) {
-                Phase.DRIVING_LOCK -> DrivingLockScreen()
-                Phase.CHECKING -> GateScreen(ui, onStart = {}, profiles = vm, onOpen = { sheet = it })
-                Phase.READY -> GateScreen(ui, vm::startPractice, onVoicePreview, voicePreviewStatus, profiles = vm, onOpen = { sheet = it })
-                Phase.PREPARING -> if (ui.gate is GateState.Locked) GateScreen(ui, onStart = {}) else PrepRouter(vm, ui)
-                // 복기 중 주차 확인이 깨지면(E3) 복기 대신 확인 화면을 보여 준다. 기록은 남아 있다
-                Phase.REVIEW -> if (ui.session.lockReason != null) GateScreen(ui, onStart = {}) else ReviewScreen(ui, vm::saveReview)
+    ScreenFrame(
+        ui.session.phase, ui.snapshot.gear.source, onOpen = if (parkedMenu) { s -> sheet = s } else null, scrollKey = ui.session.phase to ui.step,
+        overlay = {
+            shown?.let { s ->
+                SheetHost(s, ui, onVoiceOn = vm::setVoiceOn, onVoiceCap = vm::setVoiceCap) {
+                    if (s == Sheet.INTRO) vm.markOnboardingSeen(); sheet = null
+                }
             }
+            if (ui.newBadges.isNotEmpty() && ui.session.phase != Phase.DRIVING_LOCK) BadgeToast(ui) { vm.dismissBadges() }
+            if (ui.mockMode) DebugPanel(vm, ui, Modifier.align(Alignment.BottomEnd))
+        },
+    ) {
+        when (ui.session.phase) {
+            Phase.DRIVING_LOCK -> DrivingLockScreen()
+            Phase.CHECKING -> GateScreen(ui, onStart = {}, profiles = vm)
+            Phase.READY -> GateScreen(ui, vm::startPractice, onVoicePreview, voicePreviewStatus, profiles = vm)
+            Phase.PREPARING -> if (ui.gate is GateState.Locked) GateScreen(ui, onStart = {}) else PrepRouter(vm, ui)
+            // 복기 중 주차 확인이 깨지면(E3) 복기 대신 확인 화면을 보여 준다. 기록은 남아 있다
+            Phase.REVIEW -> if (ui.session.lockReason != null) GateScreen(ui, onStart = {}) else ReviewScreen(ui, vm::saveReview)
         }
-        shown?.let { s ->
-            SheetHost(s, ui, onVoiceOn = vm::setVoiceOn, onVoiceCap = vm::setVoiceCap) {
-                if (s == Sheet.INTRO) vm.markOnboardingSeen(); sheet = null
-            }
-        }
-        if (ui.newBadges.isNotEmpty() && ui.session.phase != Phase.DRIVING_LOCK) BadgeToast(ui) { vm.dismissBadges() }
-        if (ui.mockMode) DebugPanel(vm, ui, Modifier.align(Alignment.BottomEnd))
     }
-    } }
+}
+
+/**
+ * 모든 화면의 틀(앱과 스크린샷 테스트가 같이 쓴다): 배경 → 큰 창 배율(CarScale) → 여백 →
+ * 머리줄(주행 잠금 제외) → 가운데 최대 폭 내용(세로 스크롤, 주행 잠금은 스크롤 없음) → 겹쳐 그릴 것(시트·알림·모의 패널)
+ */
+@Composable
+fun ScreenFrame(
+    phase: Phase,
+    source: SignalSource?,
+    onOpen: ((Sheet) -> Unit)?,
+    scrollKey: Any? = phase,
+    overlay: @Composable BoxScope.() -> Unit = {},
+    content: @Composable () -> Unit,
+) = Box(Modifier.fillMaxSize().background(Tokens.Bg)) {
+    CarScale {
+        Box(Modifier.fillMaxSize().padding(horizontal = 32.dp, vertical = 20.dp)) {
+            val lock = phase == Phase.DRIVING_LOCK
+            // 화면이 바뀌면 맨 위부터 보이게(이전 화면의 스크롤 위치를 끌고 오지 않는다)
+            val scroll = key(scrollKey) { rememberScrollState() }
+            Column(Modifier.align(Alignment.TopCenter).widthIn(max = MaxContentWidth).fillMaxSize()) {
+                if (!lock) { TopBar(phase, source, onOpen); Spacer(Modifier.height(20.dp)) }
+                Box(Modifier.weight(1f).fillMaxWidth().then(if (lock) Modifier else Modifier.verticalScroll(scroll))) { content() }
+            }
+            overlay()
+        }
+    }
+}
+
+/** 머리줄(웹 머리말과 같은 역할): 앱 이름·지금 단계·신호 출처(S10), 정차 확인 중에만 메뉴(S04) */
+@Composable
+private fun TopBar(phase: Phase, source: SignalSource?, onOpen: ((Sheet) -> Unit)?) = BoxWithConstraints(Modifier.fillMaxWidth()) {
+    val brand: @Composable () -> Unit = {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Mascot(Mood.CALM, 48.dp); Spacer(Modifier.width(10.dp))
+            Text("치일까봐", color = Tokens.TextMain, fontSize = Tokens.Heading, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.width(16.dp))
+            when (phase) {
+                Phase.CHECKING -> StatusPill("정차 확인 중", Pill.CHECKING)
+                Phase.READY -> StatusPill("정차 중", Pill.OK)
+                Phase.PREPARING -> StatusPill("연습 준비", Pill.INFO)
+                Phase.REVIEW -> StatusPill("돌아보기", Pill.INFO)
+                Phase.DRIVING_LOCK -> StatusPill("연습 중", Pill.BLOCKED)
+            }
+            Spacer(Modifier.width(10.dp)); SourceBadge(source)
+        }
+    }
+    val menu: @Composable () -> Unit = {
+        onOpen?.let { open ->
+            Row(horizontalArrangement = Arrangement.spacedBy(Tokens.TouchGap)) {
+                listOf(Triple("내 기록", Ico.STAR, Sheet.HISTORY), Triple("설정", Ico.SOUND, Sheet.SETTINGS),
+                    Triple("소개", Ico.INFO, Sheet.ABOUT), Triple("사용법", Ico.NOTE, Sheet.INTRO)).forEach { (t, i, s) -> MenuTile(t, i) { open(s) } }
+            }
+        }
+    }
+    if (maxWidth >= 860.dp) Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { brand(); Spacer(Modifier.weight(1f)); menu() }
+    else Column(verticalArrangement = Arrangement.spacedBy(12.dp)) { brand(); menu() }
+}
+
+/** 머리줄 메뉴 버튼: 아이콘 + 글자, 터치 80dp */
+@Composable
+private fun MenuTile(text: String, icon: Ico, onClick: () -> Unit) = Column(
+    Modifier.widthIn(min = 92.dp).heightIn(min = Tokens.TouchMin).clip(RoundedCornerShape(18.dp)).background(Tokens.Surface)
+        .border(1.5.dp, Tokens.Line, RoundedCornerShape(18.dp)).clickable(role = Role.Button, onClick = onClick).padding(horizontal = 12.dp, vertical = 8.dp),
+    horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
+) {
+    LineIcon(icon, 28.dp, Tokens.PrimaryText); Spacer(Modifier.height(4.dp))
+    Text(text, color = Tokens.TextMain, fontSize = Tokens.Caption, fontWeight = FontWeight.SemiBold)
 }
 
 @Composable
@@ -180,7 +247,6 @@ fun GateScreen(
     onVoicePreview: (() -> Unit)? = null,
     voicePreviewStatus: String? = null,
     profiles: ChiilViewModel? = null,   // 안전 확인 단계에서만 넘긴다(복기 잠금 화면에서는 null → 프로필 줄 숨김)
-    onOpen: ((Sheet) -> Unit)? = null,
 ) {
     val s = ui.snapshot
     val ready = ui.gate is GateState.Ready && ui.session.phase == Phase.READY
@@ -207,10 +273,7 @@ fun GateScreen(
                 Caption("속도가 0이어도 기어가 P가 아니면 주차로 보지 않아요")
             },
         )
-        if (profiles != null || onOpen != null) Card {
-            onOpen?.let { MenuRow(it) }
-            profiles?.let { ProfileRow(ui, it) }
-        }
+        profiles?.let { Card { ProfileRow(ui, it) } }
     }
 }
 
@@ -229,17 +292,6 @@ private fun ProfileRow(ui: UiState, vm: ChiilViewModel) {
     }
     Caption("기록은 이 기기에만, 사람마다 따로 저장돼요")
 }
-
-/** 정차 화면 전용 메뉴(웹 머리말의 내 기록·설정·소개·사용법) */
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun MenuRow(onOpen: (Sheet) -> Unit) =
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(Tokens.TouchGap), verticalArrangement = Arrangement.spacedBy(Tokens.TouchGap)) {
-        listOf(Triple("내 기록", Ico.STAR, Sheet.HISTORY), Triple("설정", Ico.SOUND, Sheet.SETTINGS),
-            Triple("소개", Ico.INFO, Sheet.ABOUT), Triple("사용법", Ico.NOTE, Sheet.INTRO)).forEach { (t, i, s) ->
-            ChoiceCard(t, false, i) { onOpen(s) }
-        }
-    }
 
 // ── A-2 목표 고르기 ────────────────────────────────────────
 private val goalIcons = mapOf("출발·정지" to Ico.BRAKE, "주차" to Ico.PARKING, "차선 바꾸기" to Ico.TURN, "좌회전" to Ico.WHEEL, "그냥 몸풀기" to Ico.FLAG)
@@ -295,29 +347,38 @@ fun WarmupScreen(ui: UiState, onSkip: () -> Unit, onNext: () -> Unit) {
             Spacer(Modifier.weight(1f))
             SourceBadge(r.results.lastOrNull()?.source ?: ui.snapshot.brakePressed.source)
         }
-        if (!r.finished) Card {
-            Row(horizontalArrangement = Arrangement.spacedBy(26.dp), verticalAlignment = Alignment.Top) {
-                IconTile(meta?.icon ?: Ico.CHECK, 132.dp, done = r.progress is Progress.Done)
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Title(r.currentTitle ?: "")
-                    meta?.let {
-                        Row(verticalAlignment = Alignment.CenterVertically) { StatusPill("필기", Pill.INFO); Spacer(Modifier.width(12.dp)); Body(it.know, Tokens.TextMain) }
-                        Row(verticalAlignment = Alignment.CenterVertically) { StatusPill("내 차에서는", Pill.WAIT); Spacer(Modifier.width(12.dp)); Body(it.car, Tokens.TextMain) }
-                    }
-                    when (val p = r.progress) {
-                        is Progress.InProgress -> {
-                            if (p.total > 1) Row(verticalAlignment = Alignment.CenterVertically) { StepDots(p.total, p.step - 1); Spacer(Modifier.width(12.dp)); Caption("${p.step}/${p.total} 단계") }
-                            Heading(p.hint, Tokens.PrimaryText)
+        if (!r.finished) Card(pad = 28.dp) {
+            BoxWithConstraints(Modifier.fillMaxWidth()) {
+                val wide = maxWidth >= 700.dp
+                Row(horizontalArrangement = Arrangement.spacedBy(if (wide) 36.dp else 22.dp), verticalAlignment = Alignment.Top) {
+                    IconTile(meta?.icon ?: Ico.CHECK, if (wide) 220.dp else 120.dp, done = r.progress is Progress.Done)
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        if (wide) Display(r.currentTitle ?: "") else Title(r.currentTitle ?: "")
+                        meta?.let {
+                            RuleLine("필기", Pill.INFO, it.know)
+                            RuleLine("내 차에서는", Pill.WAIT, it.car)
                         }
-                        is Progress.Done -> Row(verticalAlignment = Alignment.CenterVertically) {
-                            Mascot(Mood.HAPPY, 72.dp); Spacer(Modifier.width(12.dp)); Heading(p.praise, Tokens.SuccessText)
+                        when (val p = r.progress) {
+                            is Progress.InProgress -> {
+                                if (p.total > 1) Row(verticalAlignment = Alignment.CenterVertically) { StepDots(p.total, p.step - 1); Spacer(Modifier.width(12.dp)); Caption("${p.step}/${p.total} 단계") }
+                                // 지금 할 행동 한 문장: 가장 눈에 띄게
+                                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Tokens.Primary.copy(alpha = .16f))
+                                    .border(1.5.dp, Tokens.Primary.copy(alpha = .5f), RoundedCornerShape(18.dp)).padding(horizontal = 20.dp, vertical = 16.dp),
+                                    verticalAlignment = Alignment.CenterVertically) {
+                                    LineIcon(Ico.FLAG, 30.dp, Tokens.PrimaryText); Spacer(Modifier.width(14.dp)); Heading(p.hint)
+                                }
+                            }
+                            is Progress.Done -> Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Tokens.SuccessBg).padding(horizontal = 20.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically) {
+                                Mascot(Mood.HAPPY, 64.dp); Spacer(Modifier.width(14.dp)); Heading(p.praise, Tokens.SuccessText)
+                            }
+                            is Progress.Unavailable -> Banner(when (p.status) {
+                                SignalStatus.PERMISSION_DENIED -> "이 미션에 필요한 권한이 없어요. 건너뛰고 다음으로 갈게요"
+                                SignalStatus.DISCONNECTED -> "차량 상태를 확인할 수 없어요(연결 끊김)"
+                                else -> "이 차에서는 이 신호를 지원하지 않아요"
+                            })
+                            null -> Heading("조작해 보세요", Tokens.PrimaryText)
                         }
-                        is Progress.Unavailable -> Banner(when (p.status) {
-                            SignalStatus.PERMISSION_DENIED -> "이 미션에 필요한 권한이 없어요. 건너뛰고 다음으로 갈게요"
-                            SignalStatus.DISCONNECTED -> "차량 상태를 확인할 수 없어요(연결 끊김)"
-                            else -> "이 차에서는 이 신호를 지원하지 않아요"
-                        })
-                        null -> Heading("조작해 보세요", Tokens.PrimaryText)
                     }
                 }
             }
@@ -334,6 +395,13 @@ fun WarmupScreen(ui: UiState, onSkip: () -> Unit, onNext: () -> Unit) {
             }
         }
     }
+}
+
+/** 미션 설명 한 줄: 같은 폭 이름표 + 내용(두 줄이 나란히 맞게) */
+@Composable
+private fun RuleLine(tag: String, kind: Pill, text: String) = Row(verticalAlignment = Alignment.CenterVertically) {
+    Box(Modifier.width(132.dp)) { StatusPill(tag, kind) }
+    Body(text, Tokens.TextMain)
 }
 
 // ── A-5 가상 주차 ─────────────────────────────────────────
@@ -400,8 +468,10 @@ fun PedalScreen(ui: UiState, onDone: () -> Unit) {
     val pct = ui.snapshot.brakePedalPct.value ?: 0f   // 브레이크 페달 압력(가속 페달은 실차에서 열지 않음)
     TwoPane(
         left = {
-            Row(verticalAlignment = Alignment.CenterVertically) { Title("살살 밟기"); Spacer(Modifier.width(12.dp)); SourceBadge(ui.snapshot.brakePedalPct.source) }
-            IconTile(Ico.PEDAL, 140.dp, done = ui.pedal is Progress.Done)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconTile(Ico.PEDAL, 96.dp, done = ui.pedal is Progress.Done); Spacer(Modifier.width(18.dp))
+                Column { Display("살살 밟기"); SourceBadge(ui.snapshot.brakePedalPct.source) }
+            }
             Body("브레이크 페달로 해요. 초록 칸 안에서 2초 버티면 돼요. 연습용 값이며 실제 운전 기준이 아니에요")
         },
         right = {
@@ -530,7 +600,7 @@ private fun TimelineSection(tl: DriveTimeline, spoken: Set<String> = emptySet())
 fun BadgeToast(ui: UiState, onDismiss: () -> Unit) {
     LaunchedEffect(ui.newBadges) { delay(2000); onDismiss() }   // 정차 중 2초 이내로 짧게
     val b = ui.newBadges.first()
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopEnd) {   // 제목을 가리지 않게 오른쪽 위
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {   // 머리줄 가운데 빈 곳에 잠깐(내용·제목을 가리지 않게)
         Row(Modifier.clip(RoundedCornerShape(20.dp)).background(Tokens.Surface2).border(1.5.dp, Tokens.Yellow.copy(alpha = .5f), RoundedCornerShape(20.dp)).padding(horizontal = 22.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically) {
             LineIcon(Ico.STAR, 32.dp, Tokens.Yellow); Spacer(Modifier.width(12.dp))

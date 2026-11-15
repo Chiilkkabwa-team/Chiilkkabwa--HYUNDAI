@@ -1,16 +1,7 @@
 package com.chiilkkabwa.app.ui
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.chiilkkabwa.app.core.achievement.Badge
 import com.chiilkkabwa.app.core.achievement.EarnedBadge
@@ -36,21 +27,19 @@ import com.chiilkkabwa.app.core.signal.VehicleSnapshot
 import com.chiilkkabwa.app.data.store.Profile
 import com.chiilkkabwa.app.data.store.ReviewRecord
 import com.chiilkkabwa.app.ui.screens.BadgeToast
-import com.chiilkkabwa.app.ui.screens.CarScale
 import com.chiilkkabwa.app.ui.screens.DrivingLockScreen
 import com.chiilkkabwa.app.ui.screens.GateScreen
 import com.chiilkkabwa.app.ui.screens.GoalScreen
-import com.chiilkkabwa.app.ui.screens.MaxContentWidth
 import com.chiilkkabwa.app.ui.screens.PactScreen
 import com.chiilkkabwa.app.ui.screens.ParkingSimScreen
 import com.chiilkkabwa.app.ui.screens.PedalScreen
 import com.chiilkkabwa.app.ui.screens.ReadyToGoScreen
 import com.chiilkkabwa.app.ui.screens.ReviewScreen
+import com.chiilkkabwa.app.ui.screens.ScreenFrame
 import com.chiilkkabwa.app.ui.screens.Sheet
 import com.chiilkkabwa.app.ui.screens.SheetHost
 import com.chiilkkabwa.app.ui.screens.WarmupScreen
 import com.chiilkkabwa.app.ui.theme.ChiilTheme
-import com.chiilkkabwa.app.ui.theme.Tokens
 import com.github.takahirom.roborazzi.captureRoboImage
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -67,29 +56,26 @@ import org.robolectric.annotation.GraphicsMode
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 abstract class ScreenshotBase(private val size: String) {
 
-    private fun shot(name: String, content: @Composable () -> Unit) =
-        captureRoboImage("build/outputs/roborazzi/${size}_$name.png") {
-            ChiilTheme {
-                // AppRoot와 같은 틀: 배경 → 배율 → 여백 → 가운데 최대 폭
-                Box(Modifier.fillMaxSize().background(Tokens.Bg)) {
-                    CarScale {
-                        Box(Modifier.fillMaxSize().padding(horizontal = 32.dp, vertical = 24.dp)) {
-                            Box(Modifier.align(Alignment.TopCenter).widthIn(max = MaxContentWidth).fillMaxWidth().fillMaxHeight()) { content() }
-                        }
-                    }
-                }
-            }
-        }
+    /** 앱과 같은 틀(ScreenFrame: 배율·머리줄·최대 폭)에 화면을 넣어 찍는다 */
+    private fun shot(
+        name: String,
+        phase: Phase = Phase.PREPARING,
+        onOpen: ((Sheet) -> Unit)? = null,
+        overlay: @Composable BoxScope.() -> Unit = {},
+        content: @Composable () -> Unit = {},
+    ) = captureRoboImage("build/outputs/roborazzi/${size}_$name.png") {
+        ChiilTheme { ScreenFrame(phase, SignalSource.MOCK, onOpen, overlay = overlay, content = content) }
+    }
 
     private fun <T> ok(v: T) = Signal.ok(v, SignalSource.MOCK, 1L)
     private val parked = VehicleSnapshot(gear = ok(Gear.PARK), parkingBrakeOn = ok(true), uxRestricted = ok(false), passengerSeated = ok(true))
     private val me = Profile("p1", "첫째", nextGoal = "주차")
     private val readyUi = UiState(session = SessionState(Phase.READY, null), gate = GateState.Ready, snapshot = parked, profile = me, profiles = listOf(me, Profile("p2", "둘째")))
 
-    @Test fun gateReady() = shot("01_gate_ready") { GateScreen(readyUi, onStart = {}, onVoicePreview = {}, onOpen = {}) }
+    @Test fun gateReady() = shot("01_gate_ready", Phase.READY, onOpen = {}) { GateScreen(readyUi, onStart = {}, onVoicePreview = {}) }
 
-    @Test fun gateChecking() = shot("02_gate_checking") {
-        GateScreen(UiState(snapshot = VehicleSnapshot(gear = ok(Gear.DRIVE), parkingBrakeOn = ok(false)), gate = GateState.Locked(LockReason.UNKNOWN_STATE)), onStart = {}, onOpen = {})
+    @Test fun gateChecking() = shot("02_gate_checking", Phase.CHECKING, onOpen = {}) {
+        GateScreen(UiState(snapshot = VehicleSnapshot(gear = ok(Gear.DRIVE), parkingBrakeOn = ok(false)), gate = GateState.Locked(LockReason.UNKNOWN_STATE)), onStart = {})
     }
 
     @Test fun goal() = shot("03_goal") { GoalScreen(readyUi) { _, _ -> } }
@@ -117,7 +103,7 @@ abstract class ScreenshotBase(private val size: String) {
 
     @Test fun ready() = shot("10_ready") { ReadyToGoScreen(readyUi) }
 
-    @Test fun lock() = shot("11_lock") { DrivingLockScreen() }
+    @Test fun lock() = shot("11_lock", Phase.DRIVING_LOCK) { DrivingLockScreen() }
 
     private val timeline = DriveTimeline(
         points = listOf(0f to 0f, 30f to 18f, 60f to 32f, 62f to 48f, 120f to 40f, 150f to 22f, 152f to 6f, 200f to 0f).map { (t, k) -> TimelinePoint(t, k) },
@@ -125,7 +111,7 @@ abstract class ScreenshotBase(private val size: String) {
         sources = setOf(SignalSource.MOCK),
     )
 
-    @Test fun review() = shot("12_review") {
+    @Test fun review() = shot("12_review", Phase.REVIEW) {
         ReviewScreen(readyUi.copy(summary = PracticeSummary(3.2f, 14, true), timeline = timeline, spokenEventIds = setOf("e1"), mentorMode = true)) { _, _, _, _ -> }
     }
 
@@ -135,16 +121,13 @@ abstract class ScreenshotBase(private val size: String) {
         reviews = listOf(ReviewRecord(1_700_000_000_000, 14, 3.2f, "조금 떨렸어요", null, "주차")),
     )
 
-    @Test fun sheetIntro() = shot("13_sheet_intro") { SheetHost(Sheet.INTRO, readyUi) {} }
-    @Test fun sheetHistory() = shot("14_sheet_history") { SheetHost(Sheet.HISTORY, readyUi.copy(profile = history)) {} }
-    @Test fun sheetSettings() = shot("15_sheet_settings") { SheetHost(Sheet.SETTINGS, readyUi) {} }
-    @Test fun sheetAbout() = shot("16_sheet_about") { SheetHost(Sheet.ABOUT, readyUi) {} }
+    @Test fun sheetIntro() = shot("13_sheet_intro", Phase.READY, onOpen = {}, overlay = { SheetHost(Sheet.INTRO, readyUi) {} })
+    @Test fun sheetHistory() = shot("14_sheet_history", Phase.READY, onOpen = {}, overlay = { SheetHost(Sheet.HISTORY, readyUi.copy(profile = history)) {} })
+    @Test fun sheetSettings() = shot("15_sheet_settings", Phase.READY, onOpen = {}, overlay = { SheetHost(Sheet.SETTINGS, readyUi) {} })
+    @Test fun sheetAbout() = shot("16_sheet_about", Phase.READY, onOpen = {}, overlay = { SheetHost(Sheet.ABOUT, readyUi) {} })
 
-    @Test fun badge() = shot("17_badge") {
-        Box(Modifier.fillMaxSize()) {
-            GateScreen(readyUi, onStart = {})
-            BadgeToast(readyUi.copy(newBadges = listOf(EarnedBadge(Badge.FIRST_CLICK, 1, true)))) {}
-        }
+    @Test fun badge() = shot("17_badge", Phase.READY, onOpen = {}, overlay = { BadgeToast(readyUi.copy(newBadges = listOf(EarnedBadge(Badge.FIRST_CLICK, 1, true)))) {} }) {
+        GateScreen(readyUi, onStart = {})
     }
 }
 

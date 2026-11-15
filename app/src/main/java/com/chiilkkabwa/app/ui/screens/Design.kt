@@ -77,12 +77,17 @@ fun TwoPane(left: @Composable ColumnScope.() -> Unit, right: @Composable ColumnS
         } else Column(verticalArrangement = Arrangement.spacedBy(16.dp)) { left(); right() }
     }
 
-/** 마스코트 + 제목 + 부제 */
+/** 마스코트 + 제목 + 부제. 좁은 칸(두 칸 왼쪽)에서는 위아래, 넓은 한 줄(작은 창에서 위아래 배치)에서는 옆으로 작게 — 버튼이 화면 밖으로 밀리지 않게 */
 @Composable
-fun Hero(mood: Mood, title: String, sub: String? = null, size: Dp = 150.dp) = Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-    Mascot(mood, size)
-    Display(title)
-    sub?.let { Body(it) }
+fun Hero(mood: Mood, title: String, sub: String? = null, size: Dp = 150.dp) = BoxWithConstraints(Modifier.fillMaxWidth()) {
+    if (maxWidth >= 600.dp) Row(verticalAlignment = Alignment.CenterVertically) {
+        Mascot(mood, 96.dp); Spacer(Modifier.width(20.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) { Display(title); sub?.let { Body(it) } }
+    } else Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Mascot(mood, size)
+        Display(title)
+        sub?.let { Body(it) }
+    }
 }
 
 enum class Pill(val bg: Color, val fg: Color) {
