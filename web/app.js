@@ -6,6 +6,7 @@ import * as VOICE from './voice.js';
 import * as THEME from './theme.js';
 import * as OB from './onboarding.js';
 import * as RP from './replay.js';
+import * as CAR3D from './car3d.js';
 import * as LEARN from './learn.js';
 import { aboutHtml } from './about.js';
 import { holdPedal, bindBrakeSlider } from './pedal-control.js';
@@ -282,6 +283,7 @@ Screens.gate = () => ({
     el.innerHTML = `<div class="screen center">
       <div class="hero"><div class="hero-m" id="gm">${mascot('worried', 104)}</div>
         <div><h1>연습 준비를 확인할게요</h1><p class="sub">차가 직접 확인해요. 셋 다 ‘확인’이면 시작할 수 있어요.</p></div></div>
+      ${CAR3D.html()}
       <ul class="checks">
         <li data-k="gear">${icon('gear', 30)}<span class="ck-l">기어 P</span><span class="ck-s"></span></li>
         <li data-k="pb">${icon('pbrake', 30)}<span class="ck-l">주차 브레이크</span><span class="ck-s"></span></li>
@@ -297,9 +299,11 @@ Screens.gate = () => ({
       render();
     };
     this.lastMood = 'worried';
+    CAR3D.bind(el);
   },
   update() {
     const s = snapshot();
+    CAR3D.show(document, { parkingBrake: s.parkingBrakeOn.status === 'OK' && s.parkingBrakeOn.value === true, gearP: s.gear.status === 'OK' && s.gear.value === 'P' });
     const st = (sig, okFn) => (sig.status !== 'OK' ? (sig.status === 'UNKNOWN' ? 'checking' : 'blocked') : okFn(sig.value) ? 'ok' : 'wait');
     const rows = { gear: st(s.gear, (v) => v === 'P'), pb: st(s.parkingBrakeOn, (v) => v === true), ux: st(s.uxRestricted, (v) => v === false) };
     const text = { ok: '확인', wait: '대기', checking: '확인 중', blocked: '읽을 수 없음' };
@@ -411,7 +415,6 @@ function recordMission(id, prog) {
 }
 
 // A-3 워밍업 미션
-const STATUS_HELP = { UNSUPPORTED: '이 차에서는 이 신호를 읽을 수 없어요.', PERMISSION_DENIED: '이 신호를 읽을 권한이 없어요.', DISCONNECTED: '차량 신호가 잠시 끊겼어요.' };
 Screens.mission = () => ({
   mount(el) {
     const j = judgeState.judge; const meta = C.MISSION_META[j.id];
@@ -457,7 +460,7 @@ Screens.mission = () => ({
       $('#mIll').classList.add('ok');
       setTimeout(() => $('#nextBtn')?.focus(), 50);
     } else {
-      st.innerHTML = `<div class="banner warn">${icon('info', 22)}<span>${STATUS_HELP[p.status] || '신호를 읽을 수 없어요.'} 이 미션은 건너뛸게요.</span></div>`;
+      st.innerHTML = `<div class="banner warn">${icon('info', 22)}<span>${C.StatusText[p.status] || '신호를 읽을 수 없어요.'} 이 미션은 건너뛸게요.</span></div>`;
       act.innerHTML = btn('skipBtn', '건너뛰기', 'secondary big');
     }
     const go = () => {
@@ -526,7 +529,7 @@ Screens.pedal = () => ({
       $('#pActions').innerHTML = btn('nextBtn', `다음: ${{ parking: '가상 주차', pact: '멘토 약속', go: '출발 준비' }[nx]}`, 'primary big');
       $('#nextBtn').onclick = () => nextPrepStep();
     } else if (p.kind === 'unavailable') {
-      $('#pState').innerHTML = `<div class="banner warn">${icon('info', 22)}<span>${STATUS_HELP[p.status]} 이 단계는 건너뛸게요.</span></div>`;
+      $('#pState').innerHTML = `<div class="banner warn">${icon('info', 22)}<span>${C.StatusText[p.status]} 이 단계는 건너뛸게요.</span></div>`;
       $('#pActions').innerHTML = btn('skipBtn', '건너뛰기', 'secondary big'); $('#skipBtn').onclick = () => nextPrepStep();
     } else {
       $('#pState').innerHTML = '';
@@ -1935,7 +1938,8 @@ function simLoop(t) {
   const driving = session.phase === C.Phase.DRIVING_LOCK;
   // 연습 모드에서는 주행 중이 아닐 때 루프를 멈춘다(성능). 주행 중에는 음성 감시 때문에 돌려야 한다.
   if (appMode === 'practice' && !simRunning() && !driving) { simLoopOn = false; return; }
-  const dt = siteOverlayOpen() ? 0 : Math.min(0.06, (t - simLast) / 1000); simLast = t;   // 체험판 안내를 읽는 동안 가상 주행 정지
+  const slow = appMode === 'practice' && !simRunning();   // 연습 주행 잠금: 화면이 정적이라 초당 10번이면 음성 감시에 충분
+  const dt = siteOverlayOpen() ? 0 : Math.min(slow ? 0.25 : 0.06, (t - simLast) / 1000); simLast = t;   // 체험판 안내를 읽는 동안 가상 주행 정지
   if (driving) { voiceSec += dt * timeScale; voiceRealSec += dt; pumpVoice(); recordTrack(); }
   if (!simRunning() || overlay) applyKeyboard(keyboardDrive.releaseAll());
   else applyKeyboard(keyboardDrive.sample(dt));
@@ -1955,7 +1959,7 @@ function simLoop(t) {
   }
   // 주행 중이 아니면 도로 미리보기는 0.4초에 한 번만 그린다(정차 중 CPU 절약)
   if (appMode !== 'practice' && (simRunning() || t - lastIdleDraw > 400)) { drawSimView(); lastIdleDraw = t; }
-  requestAnimationFrame(simLoop);
+  if (slow) setTimeout(() => requestAnimationFrame(simLoop), 90); else requestAnimationFrame(simLoop);
 }
 startSimLoop();
 
