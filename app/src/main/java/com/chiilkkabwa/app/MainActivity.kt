@@ -15,7 +15,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import com.chiilkkabwa.app.data.vehicle.AaosVehicleSource
+import com.chiilkkabwa.app.core.voice.CoachingOffer
 import com.chiilkkabwa.app.core.voice.ParkedVoicePreview
+import com.chiilkkabwa.app.core.voice.PlaybackOutcome
 import com.chiilkkabwa.app.core.voice.PreviewResult
 import com.chiilkkabwa.app.core.safety.GateState
 import com.chiilkkabwa.app.core.session.Phase
@@ -35,6 +37,7 @@ class MainActivity : ComponentActivity() {
     private var previewAudio: AndroidPreviewAudio? = null
     private var preview: ParkedVoicePreview? = null
     private val previewResult = mutableStateOf(PreviewResult.IDLE)
+    private var speaking: CoachingOffer? = null
 
     private val pedalPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* 결과는 AaosVehicleSource가 재시작 시 확인 */ }
 
@@ -50,13 +53,21 @@ class MainActivity : ComponentActivity() {
         if (!BuildConfig.USE_MOCK && hasPedalPermissionDefinition()) {
             pedalPermission.launch(AaosVehicleSource.PEDAL_PERMISSION)
         }
-        if (BuildConfig.DEBUG && BuildConfig.USE_MOCK) {
+        if (BuildConfig.USE_MOCK) {
             val audio = AndroidPreviewAudio(this)
             previewAudio = audio
-            preview = ParkedVoicePreview(audio) { previewResult.value = it }
+            if (BuildConfig.DEBUG) {
+                preview = ParkedVoicePreview(audio) { previewResult.value = it }
+                lifecycleScope.launch {
+                    repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                        vm.ui.collect { if (!canPreview(it)) preview?.cancel() }
+                    }
+                }
+            }
+            // 모의 주행 음성 길잡이(mock 플레이버 전용, S05: 실제 주행 중 음성은 에뮬레이터 검증 전이라 vehicle에서는 켜지 않는다)
             lifecycleScope.launch {
                 repeatOnLifecycle(Lifecycle.State.RESUMED) {
-                    vm.ui.collect { if (!canPreview(it)) preview?.cancel() }
+                    vm.coachOffer.collect { o -> if (o == null) stopCoach() else speak(audio, o) }
                 }
             }
         }
@@ -92,6 +103,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onPause() {
         preview?.cancel()
+        // 앱이 가려지면 그 발화는 버린다(나중에 다시 말하지 않는다)
+        speaking?.let { stopCoach(); vm.coachDone(it, PlaybackOutcome.APP_STOPPED) }
         vm.stopSignals()
         super.onPause()
     }
@@ -99,6 +112,26 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         previewAudio?.close()
         super.onDestroy()
+    }
+
+    /** 포커스를 얻은 뒤에만 말하고, 포커스를 잃으면 멈추고 그 말은 버린다(내비·통화에 양보). */
+    private fun speak(audio: AndroidPreviewAudio, offer: CoachingOffer) {
+        if (speaking === offer) return
+        speaking = offer
+        val done = { r: PlaybackOutcome -> if (speaking === offer) { speaking = null; audio.abandonFocus(); vm.coachDone(offer, r) } }
+        when {
+            !audio.ready -> done(PlaybackOutcome.TTS_FAILED)
+            !audio.acquireFocus { audio.stop(); done(PlaybackOutcome.FOCUS_LOST) } -> done(PlaybackOutcome.FOCUS_DENIED)
+            !audio.play(offer.line) { ok -> done(if (ok) PlaybackOutcome.COMPLETED else PlaybackOutcome.TTS_FAILED) } ->
+                done(PlaybackOutcome.TTS_FAILED)
+        }
+    }
+
+    private fun stopCoach() {
+        if (speaking == null) return
+        speaking = null
+        previewAudio?.stop()
+        previewAudio?.abandonFocus()
     }
 
     private fun canPreview(ui: UiState): Boolean =

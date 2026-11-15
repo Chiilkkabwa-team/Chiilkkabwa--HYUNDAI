@@ -1,6 +1,7 @@
 package com.chiilkkabwa.app.ui
 
 import android.app.Application
+import android.os.SystemClock
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -23,6 +24,9 @@ import com.chiilkkabwa.app.core.session.SessionState
 import com.chiilkkabwa.app.core.session.summarize
 import com.chiilkkabwa.app.core.signal.SignalStatus
 import com.chiilkkabwa.app.core.signal.VehicleSnapshot
+import com.chiilkkabwa.app.core.voice.CoachingOffer
+import com.chiilkkabwa.app.core.voice.MockDriveCoach
+import com.chiilkkabwa.app.core.voice.PlaybackOutcome
 import com.chiilkkabwa.app.data.store.PracticeStore
 import com.chiilkkabwa.app.data.store.Profile
 import com.chiilkkabwa.app.data.store.ReviewRecord
@@ -80,6 +84,11 @@ class ChiilViewModel(app: Application) : AndroidViewModel(app) {
     private var lastSignalTrace: String? = null
     private val timelineRecorder = com.chiilkkabwa.app.core.review.DriveTimelineRecorder()
 
+    // B02 모의 음성 길잡이: mock 플레이버의 주행 잠금 동안만. Activity가 이 값을 보고 소리를 내고 coachDone으로 결과를 돌려준다.
+    private var coach: MockDriveCoach? = null
+    private val _coachOffer = MutableStateFlow<CoachingOffer?>(null)
+    val coachOffer: StateFlow<CoachingOffer?> = _coachOffer.asStateFlow()
+
     init {
         viewModelScope.launch { repo.snapshot.collect { onSnapshot(it) } }
         // 시간 기반 판정(2초 유지)은 준비 단계에서만 필요하다 → 그 외(특히 주행 중)에는 틱을 돌리지 않는다(CPU 규정)
@@ -115,8 +124,18 @@ class ChiilViewModel(app: Application) : AndroidViewModel(app) {
 
         // C01: 주행 잠금 동안 들어온 속도 관측만 시간표에 모은다. 새 주행마다 비우고, 다시 주차하면 복기에 넘긴다
         if (session.phase == Phase.DRIVING_LOCK) {
-            if (prev.session.phase != Phase.DRIVING_LOCK) timelineRecorder.start()
-            timelineRecorder.accept(s.speed, android.os.SystemClock.elapsedRealtimeNanos())
+            if (prev.session.phase != Phase.DRIVING_LOCK) {
+                timelineRecorder.start()
+                if (BuildConfig.USE_MOCK) coach = MockDriveCoach(prev.goal, prev.mentorMode, SystemClock.elapsedRealtime())
+            }
+            val event = timelineRecorder.accept(s.speed, SystemClock.elapsedRealtimeNanos())
+            if (event != null) coach?.let { c ->
+                c.onSpeedEvent(event, SystemClock.elapsedRealtime())
+                // 0.8초 비교 창이 닫힌 뒤 가장 급한 하나만 꺼낸다
+                viewModelScope.launch { delay(900); _coachOffer.value = c.flush(SystemClock.elapsedRealtime()) ?: _coachOffer.value }
+            }
+        } else if (coach != null) {
+            coach?.stop(SystemClock.elapsedRealtime()); coach = null; _coachOffer.value = null
         }
         val timeline = if (session.phase == Phase.REVIEW && prev.session.phase == Phase.DRIVING_LOCK) timelineRecorder.snapshot() else prev.timeline
 
@@ -186,6 +205,12 @@ class ChiilViewModel(app: Application) : AndroidViewModel(app) {
             )
         }
         _ui.update { it.copy(session = SessionReducer.onReviewDone(it.session), step = PrepStep.GOAL, pact = emptySet(), summary = null) }
+    }
+
+    /** Activity가 재생 결과를 돌려준다. 정상 완료만 '말함'으로 센다(B02 계약). */
+    fun coachDone(offer: CoachingOffer, outcome: PlaybackOutcome) {
+        coach?.complete(offer, outcome, SystemClock.elapsedRealtime())
+        if (_coachOffer.value === offer) _coachOffer.value = null
     }
 
     fun dismissBadges() = _ui.update { it.copy(newBadges = emptyList()) }
