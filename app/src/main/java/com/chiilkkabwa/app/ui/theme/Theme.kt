@@ -30,7 +30,9 @@ object Tokens {
     val DangerText = Color(0xFFFFD3D3)
     val SuccessBg = Color(0xFF173A28)
     val WarnBg = Color(0xFF3A2F12)
-    val TouchMin = 76.dp        // 큰 터치 영역(차량 화면)
+    // Pleos 주행 안전 가이드(P01): 버튼 최소 12.5×12.5mm, 버튼 사이 4mm. 1dp=1/160인치 기준 79dp·25.2dp → 올림
+    val TouchMin = 80.dp        // 큰 터치 영역(차량 화면)
+    val TouchGap = 26.dp        // 누르는 것끼리 띄우는 최소 간격
     val Display = 40.sp
     val Title = 30.sp
     val Heading = 25.sp

@@ -140,7 +140,7 @@ private fun SettingsSheet(ui: UiState, onVoiceOn: (Boolean) -> Unit, onVoiceCap:
         Heading("주행 중 음성 길잡이")
         if (BuildConfig.USE_MOCK) {
             val on = ui.voiceOn ?: true
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(Tokens.TouchGap)) {
                 ChoiceCard("켜기", on, Ico.SOUND) { onVoiceOn(true) }
                 ChoiceCard("끄기", !on, Ico.LOCK) { onVoiceOn(false) }
             }
@@ -151,7 +151,7 @@ private fun SettingsSheet(ui: UiState, onVoiceOn: (Boolean) -> Unit, onVoiceCap:
     }
     if (BuildConfig.USE_MOCK) Card {
         Heading("주행당 최대 횟수")
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(Tokens.TouchGap)) {
             listOf(3, 5).forEach { n -> ChoiceCard("${n}번", ui.voiceCap == n) { onVoiceCap(n) } }
         }
         Caption("간격은 45초로 고정이에요. 안전 정책상 앱은 5번까지만 말해요. 이 앱은 모의 신호로만 말해요")
@@ -224,7 +224,7 @@ private fun IntroSheet(onDone: () -> Unit) {
             Display(p.title)
             Body(p.body, Tokens.TextMain)
             Banner(p.note, Pill.WAIT)
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(Tokens.TouchGap)) {
                 Box(Modifier.weight(1f)) { BigButton("건너뛰기", ghost = true, onClick = onDone) }
                 Box(Modifier.weight(1f)) {
                     BigButton(if (i == introPages.lastIndex) "시작하기" else "다음") { if (i == introPages.lastIndex) onDone() else i++ }

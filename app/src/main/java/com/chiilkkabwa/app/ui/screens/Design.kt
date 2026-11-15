@@ -35,7 +35,7 @@ import androidx.compose.ui.unit.dp
 import com.chiilkkabwa.app.ui.theme.Tokens
 
 /**
- * 차량 화면용 공통 조각. 웹 체험판(web/styles.css)과 같은 모양: 둥근 카드, 큰 터치 영역(76dp),
+ * 차량 화면용 공통 조각. 웹 체험판(web/styles.css)과 같은 모양: 둥근 카드, 큰 터치 영역(80dp, 간격 26dp),
  * 상태 알약(확인·대기), 넓은 화면에서는 왼쪽 그림·오른쪽 조작 두 칸.
  */
 
@@ -60,7 +60,7 @@ fun CarScale(content: @Composable () -> Unit) = BoxWithConstraints(Modifier.fill
 @Composable fun Heading(t: String, c: Color = Tokens.TextMain) =
     Text(t, color = c, fontSize = Tokens.Heading, fontWeight = FontWeight.SemiBold, lineHeight = Tokens.Heading * 1.3f)
 @Composable fun Caption(t: String, c: Color = Tokens.Muted) =
-    Text(t, color = c, fontSize = Tokens.Caption, lineHeight = Tokens.Caption * 1.45f)
+    Text(t, color = c, fontSize = Tokens.Caption, lineHeight = Tokens.Caption * 1.5f)
 
 @Composable
 fun Card(modifier: Modifier = Modifier, color: Color = Tokens.Surface, pad: Dp = 22.dp, content: @Composable ColumnScope.() -> Unit) =
@@ -134,7 +134,7 @@ fun IconTile(icon: Ico, size: Dp = 120.dp, done: Boolean = false) = Box(
 /** 고르는 카드(목표·약속): 선택되면 파란 테두리 */
 @Composable
 fun ChoiceCard(text: String, selected: Boolean, icon: Ico? = null, modifier: Modifier = Modifier, onClick: () -> Unit) = Row(
-    modifier.heightIn(min = 76.dp).clip(RoundedCornerShape(18.dp))
+    modifier.heightIn(min = Tokens.TouchMin).clip(RoundedCornerShape(18.dp))
         .background(if (selected) Tokens.Primary.copy(alpha = .22f) else Tokens.Surface)
         .border(2.dp, if (selected) Tokens.Primary else Tokens.Line, RoundedCornerShape(18.dp))
         .clickable(role = Role.RadioButton, onClick = onClick).padding(horizontal = 20.dp, vertical = 14.dp),
@@ -151,7 +151,7 @@ fun Banner(text: String, kind: Pill = Pill.CHECKING) = Row(
     verticalAlignment = Alignment.CenterVertically,
 ) {
     LineIcon(Ico.INFO, 26.dp, kind.fg); Spacer(Modifier.width(12.dp))
-    Text(text, color = kind.fg, fontSize = Tokens.Body)
+    Text(text, color = kind.fg, fontSize = Tokens.Body, lineHeight = Tokens.Body * 1.5f)
 }
 
 /** 숫자 칸(복기 요약) */

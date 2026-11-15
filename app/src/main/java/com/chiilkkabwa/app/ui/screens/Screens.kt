@@ -72,7 +72,7 @@ import kotlinx.coroutines.launch
 import kotlin.math.PI
 
 /**
- * 화면 라우터. 규칙: 한 화면 한 행동, 큰 버튼(76dp), 넓은 화면은 왼쪽 그림·오른쪽 조작(TwoPane).
+ * 화면 라우터. 규칙: 한 화면 한 행동, 큰 버튼(80dp, 간격 26dp — Pleos P01 12.5mm·4mm), 넓은 화면은 왼쪽 그림·오른쪽 조작(TwoPane).
  * 주행 잠금(DRIVING_LOCK)은 어떤 화면보다 우선한다(정적 화면, 애니메이션·스크롤 없음).
  * 소리는 mock 플레이버의 모의 음성 길잡이만(MainActivity) — 화면은 그대로다.
  * 모양은 웹 체험판(web/)과 맞춘다: 같은 마스코트·아이콘·색.
@@ -132,7 +132,7 @@ val MaxContentWidth = 1240.dp
 
 // ── 공통 컴포넌트 ─────────────────────────────────────────
 @Composable fun Title(t: String) = Text(t, color = Tokens.TextMain, fontSize = Tokens.Title, fontWeight = FontWeight.Bold, lineHeight = Tokens.Title * 1.3f)
-@Composable fun Body(t: String, c: Color = Tokens.TextSub) = Text(t, color = c, fontSize = Tokens.Body, lineHeight = Tokens.Body * 1.45f)
+@Composable fun Body(t: String, c: Color = Tokens.TextSub) = Text(t, color = c, fontSize = Tokens.Body, lineHeight = Tokens.Body * 1.5f)
 
 @Composable
 fun BigButton(text: String, enabled: Boolean = true, ghost: Boolean = false, onClick: () -> Unit) {
@@ -156,10 +156,13 @@ fun SourceBadge(src: SignalSource?) {
 }
 
 @Composable
-fun Chip(text: String, selected: Boolean, onClick: () -> Unit) =
-    Text(text, color = if (selected) Tokens.TextMain else Tokens.TextSub, fontSize = Tokens.Body, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-        modifier = Modifier.clip(RoundedCornerShape(14.dp)).background(if (selected) Tokens.Primary else Tokens.Surface)
-            .clickable(role = Role.Button, onClick = onClick).padding(horizontal = 20.dp, vertical = 14.dp))
+fun Chip(text: String, selected: Boolean, onClick: () -> Unit) = Box(
+    Modifier.heightIn(min = Tokens.TouchMin).clip(RoundedCornerShape(16.dp))
+        .background(if (selected) Tokens.Primary else Tokens.Surface)
+        .border(1.5.dp, if (selected) Tokens.Primary else Tokens.Line, RoundedCornerShape(16.dp))
+        .clickable(role = Role.Button, onClick = onClick).padding(horizontal = 24.dp),
+    contentAlignment = Alignment.Center,
+) { Text(text, color = if (selected) Tokens.TextMain else Tokens.TextSub, fontSize = Tokens.Body, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal) }
 
 /** 신호 → 확인 상태 알약 */
 private fun <T> Signal<T>.pill(ok: (T) -> Boolean): Pair<Pill, String> = when {
@@ -191,15 +194,16 @@ fun GateScreen(
                 val (g, gt) = s.gear.pill { it == Gear.PARK }
                 val (b, bt) = s.parkingBrakeOn.pill { it }
                 val (u, ut) = s.uxRestricted.pill { !it }
+                Row(verticalAlignment = Alignment.CenterVertically) { Caption("차 신호", Tokens.TextSub); Spacer(Modifier.width(10.dp)); SourceBadge(s.gear.source) }
                 CheckCard(Ico.GEAR, "기어 P", g, gt)
                 CheckCard(Ico.PBRAKE, "주차 브레이크", b, bt)
                 CheckCard(Ico.ROAD, "주행 제한 없음", u, ut)
                 Body(if (ready) "준비됐어요. 시작해 볼까요?" else (ui.gate as? GateState.Locked)?.reason?.message ?: "", if (ready) Tokens.SuccessText else Tokens.TextSub)
-                BigButton("연습 시작", enabled = ready, onClick = onStart)
-                if (onVoicePreview != null && ui.gate is GateState.Ready) {
-                    BigButton("음성 안내 듣기 (모의)", ghost = true, onClick = onVoicePreview)
-                    voicePreviewStatus?.let { Caption(it) }
+                Column(verticalArrangement = Arrangement.spacedBy(Tokens.TouchGap)) {
+                    BigButton("연습 시작", enabled = ready, onClick = onStart)
+                    if (onVoicePreview != null && ui.gate is GateState.Ready) BigButton("음성 안내 듣기 (모의)", ghost = true, onClick = onVoicePreview)
                 }
+                if (onVoicePreview != null && ui.gate is GateState.Ready) voicePreviewStatus?.let { Caption(it) }
                 Caption("속도가 0이어도 기어가 P가 아니면 주차로 보지 않아요")
             },
         )
@@ -216,7 +220,7 @@ fun GateScreen(
 private fun ProfileRow(ui: UiState, vm: ChiilViewModel) {
     var confirm by remember(ui.profile.id) { mutableStateOf(false) }
     Row(verticalAlignment = Alignment.CenterVertically) { LineIcon(Ico.USER, 26.dp, Tokens.TextSub); Spacer(Modifier.width(10.dp)); Heading("누구의 연습인가요") }
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(Tokens.TouchGap), verticalArrangement = Arrangement.spacedBy(Tokens.TouchGap)) {
         (ui.profiles.ifEmpty { listOf(ui.profile) }).forEach { p -> Chip(p.displayName, p.id == ui.profile.id) { vm.switchProfile(p.id) } }
         if (ui.profiles.size < PracticeStore.ALIASES.size) Chip("+ 추가", false) { vm.addProfile() }
         Chip(if (confirm) "한 번 더 누르면 ${ui.profile.displayName} 기록 삭제" else "기록 지우기", false) {
@@ -230,7 +234,7 @@ private fun ProfileRow(ui: UiState, vm: ChiilViewModel) {
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun MenuRow(onOpen: (Sheet) -> Unit) =
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(Tokens.TouchGap), verticalArrangement = Arrangement.spacedBy(Tokens.TouchGap)) {
         listOf(Triple("내 기록", Ico.STAR, Sheet.HISTORY), Triple("설정", Ico.SOUND, Sheet.SETTINGS),
             Triple("소개", Ico.INFO, Sheet.ABOUT), Triple("사용법", Ico.NOTE, Sheet.INTRO)).forEach { (t, i, s) ->
             ChoiceCard(t, false, i) { onOpen(s) }
@@ -248,11 +252,11 @@ fun GoalScreen(ui: UiState, onChoose: (String, Boolean) -> Unit) {
     TwoPane(
         left = { Hero(Mood.CALM, "오늘 뭐가 제일 걱정돼요?", "하나만 골라요. 음성 길잡이도 이 목표에 대해서만 말해요.") },
         right = {
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(Tokens.TouchGap), verticalArrangement = Arrangement.spacedBy(Tokens.TouchGap)) {
                 Goals.all.forEach { g -> ChoiceCard(g, g == goal, goalIcons[g] ?: Ico.FLAG) { goal = g } }
             }
-            Spacer(Modifier.height(6.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Spacer(Modifier.height(Tokens.TouchGap - 14.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(Tokens.TouchGap)) {
                 Box(Modifier.weight(1f)) { BigButton("혼자 연습", enabled = goal != null, ghost = passenger) { onChoose(goal!!, false) } }
                 Box(Modifier.weight(1f)) { BigButton("멘토와 함께", enabled = goal != null, ghost = !passenger) { onChoose(goal!!, true) } }
             }
@@ -374,7 +378,7 @@ fun ParkingSimScreen(ui: UiState, onDone: () -> Unit) {
                         size = Size((sim.widthM * ppm).toFloat(), (sim.lengthM * ppm).toFloat()))
                 }
             }
-            Column(Modifier.width(300.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(Modifier.width(300.dp), verticalArrangement = Arrangement.spacedBy(Tokens.TouchGap)) {
                 Card(pad = 18.dp) {
                     Row(verticalAlignment = Alignment.CenterVertically) { LineIcon(Ico.WHEEL, 30.dp, Tokens.PrimaryText); Spacer(Modifier.width(10.dp))
                         Heading(if (realSteer != null) "실제 핸들 ${steer.toInt()}°" else "핸들(화면) ${steer.toInt()}°") }
@@ -427,8 +431,10 @@ fun PedalScreen(ui: UiState, onDone: () -> Unit) {
 fun PactScreen(ui: UiState, onToggle: (String) -> Unit, onConfirm: () -> Unit) = TwoPane(
     left = { Hero(Mood.CALM, "오늘의 약속", "운전하는 사람과 옆자리 사람이 같이 골라요. 최대 ${PactOptions.MAX}개") ; Banner("오늘 목표: ${ui.goal ?: "-"}", Pill.INFO) },
     right = {
-        PactOptions.all.forEach { ChoiceCard(it, it in ui.pact, Ico.PACT, Modifier.fillMaxWidth()) { onToggle(it) } }
-        BigButton("둘 다 약속했어요", enabled = ui.pact.isNotEmpty(), onClick = onConfirm)
+        Column(verticalArrangement = Arrangement.spacedBy(Tokens.TouchGap)) {
+            PactOptions.all.forEach { ChoiceCard(it, it in ui.pact, Ico.PACT, Modifier.fillMaxWidth()) { onToggle(it) } }
+            BigButton("둘 다 약속했어요", enabled = ui.pact.isNotEmpty(), onClick = onConfirm)
+        }
     },
 )
 
@@ -462,21 +468,21 @@ fun ReviewScreen(ui: UiState, onSave: (String?, String?, String?, Boolean) -> Un
             Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                 StatTile("${it.durationMin}분", if (it.durationFromVehicle) "연습 시간" else "연습 시간(앱 기준)", Modifier.weight(1f))
                 StatTile(it.distanceKm?.let { d -> "%.1fkm".format(d) } ?: "—", "거리", Modifier.weight(1f))
-                StatTile("${ui.timeline.marks.size}번", "급한 속도 변화", Modifier.weight(1f))
+                StatTile("${ui.timeline.marks.size}번", "빠른 속도 변화", Modifier.weight(1f))
             }
         }
         Card { TimelineSection(ui.timeline, ui.spokenEventIds) }
         Card {
             Heading("오늘 어땠어요?")
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) { ReviewChips.learner.forEach { Chip(it, it == learner) { learner = it } } }
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(Tokens.TouchGap), verticalArrangement = Arrangement.spacedBy(Tokens.TouchGap)) { ReviewChips.learner.forEach { Chip(it, it == learner) { learner = it } } }
             if (ui.mentorMode) {
                 Heading("멘토 한마디")
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) { ReviewChips.mentor.forEach { Chip(it, it == mentor) { mentor = it } } }
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(Tokens.TouchGap), verticalArrangement = Arrangement.spacedBy(Tokens.TouchGap)) { ReviewChips.mentor.forEach { Chip(it, it == mentor) { mentor = it } } }
             }
             Heading("다음 목표 하나")
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) { ReviewChips.nextGoals.forEach { Chip(it, it == next) { next = it } } }
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(Tokens.TouchGap), verticalArrangement = Arrangement.spacedBy(Tokens.TouchGap)) { ReviewChips.nextGoals.forEach { Chip(it, it == next) { next = it } } }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(Tokens.TouchGap)) {
             Box(Modifier.weight(1f)) { BigButton("저장하고 다음 연습") { onSave(learner, mentor, next, false) } }
             Box(Modifier.weight(1f)) { BigButton("혼자 운전 시작할래요", ghost = true) { onSave(learner, mentor, next, true) } }
         }
